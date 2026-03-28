@@ -16,6 +16,7 @@ export type PasswordResetDraft = {
 export type AuthSession = {
   expiresAt: string;
   gatewayContextToken: string;
+  phoneVerified?: boolean;
   userId: number;
 };
 

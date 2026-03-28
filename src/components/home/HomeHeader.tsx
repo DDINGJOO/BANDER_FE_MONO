@@ -15,6 +15,7 @@ type HomeHeaderProps = {
   onSearchChange: (value: string) => void;
   onSearchClear: () => void;
   onSearchFocus: () => void;
+  onSearchSubmit: (value: string) => void;
   onSuggestionSelect: (value: string) => void;
   searchOpen: boolean;
   searchQuery: string;
@@ -28,6 +29,7 @@ export function HomeHeader({
   onSearchChange,
   onSearchClear,
   onSearchFocus,
+  onSearchSubmit,
   onSuggestionSelect,
   searchOpen,
   searchQuery,
@@ -54,6 +56,12 @@ export function HomeHeader({
                   onSearchChange(event.target.value);
                 }}
                 onFocus={onSearchFocus}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') {
+                    event.preventDefault();
+                    onSearchSubmit(searchQuery);
+                  }
+                }}
                 placeholder="공간, 업체, 커뮤니티 검색"
                 value={searchQuery}
               />
@@ -68,7 +76,16 @@ export function HomeHeader({
                     ×
                   </button>
                 ) : null}
-                {authenticated ? <SearchIcon /> : null}
+                {authenticated ? (
+                  <button
+                    aria-label="헤더 검색 실행"
+                    className="home-header__search-submit"
+                    onClick={() => onSearchSubmit(searchQuery)}
+                    type="button"
+                  >
+                    <SearchIcon />
+                  </button>
+                ) : null}
               </div>
             </div>
 

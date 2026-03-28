@@ -1,7 +1,9 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { BookmarkIcon, StarIcon } from '../shared/Icons';
 
 type HomeSpaceCardProps = {
+  detailPath?: string;
   image: string;
   location: string;
   price: string;
@@ -12,8 +14,8 @@ type HomeSpaceCardProps = {
 };
 
 export function HomeSpaceCard(props: HomeSpaceCardProps) {
-  return (
-    <article className="home-space-card">
+  const cardContent = (
+    <>
       <div className="home-space-card__image-wrap">
         <img alt="" className="home-space-card__image" src={props.image} />
         <BookmarkIcon />
@@ -38,6 +40,20 @@ export function HomeSpaceCard(props: HomeSpaceCardProps) {
           <p className="home-space-card__tags">주차가능 · 예약가능</p>
         </div>
       </div>
+    </>
+  );
+
+  if (props.detailPath) {
+    return (
+      <Link className="home-space-card home-space-card__link" to={props.detailPath}>
+        {cardContent}
+      </Link>
+    );
+  }
+
+  return (
+    <article className="home-space-card">
+      {cardContent}
     </article>
   );
 }

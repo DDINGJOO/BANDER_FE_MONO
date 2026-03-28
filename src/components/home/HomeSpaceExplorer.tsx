@@ -20,6 +20,8 @@ type DateDraft = {
 };
 
 type HomeSpaceExplorerProps = {
+  headerContent?: React.ReactNode;
+  resultLimit?: number;
   variant?: ExplorerVariant;
 };
 
@@ -76,8 +78,14 @@ function summarizeSelection(values: string[], emptyLabel: string) {
   return `${values[0]} 외 ${values.length - 1}`;
 }
 
-export function HomeSpaceExplorer({ variant = 'section' }: HomeSpaceExplorerProps) {
+export function HomeSpaceExplorer({
+  headerContent,
+  resultLimit,
+  variant = 'section',
+}: HomeSpaceExplorerProps) {
   const isHero = variant === 'hero';
+  const visibleCards =
+    typeof resultLimit === 'number' ? HOME_SPACE_CARDS.slice(0, resultLimit) : HOME_SPACE_CARDS;
   const explorerRef = useRef<HTMLDivElement | null>(null);
   const [openPanel, setOpenPanel] = useState<ExplorerPanel>(null);
   const [heroSearchQuery, setHeroSearchQuery] = useState('');
@@ -859,8 +867,10 @@ export function HomeSpaceExplorer({ variant = 'section' }: HomeSpaceExplorerProp
         </button>
       </div>
 
+      {headerContent}
+
       <div className="home-space-grid">
-        {HOME_SPACE_CARDS.map((space) => (
+        {visibleCards.map((space) => (
           <HomeSpaceCard key={space.title} {...space} />
         ))}
       </div>

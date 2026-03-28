@@ -35,6 +35,7 @@ export const HOME_HOT_POSTS = [
 
 export const HOME_SPACE_CARDS = [
   {
+    detailPath: '/spaces/yeongchang-upright-room',
     image: 'https://www.figma.com/api/mcp/asset/dbac413c-ce1b-4204-8349-58d93f3e31cb',
     location: '서울 마포구 동교동',
     price: '15,000원',
@@ -44,6 +45,7 @@ export const HOME_SPACE_CARDS = [
     title: '영창 업라이트 피아노 연습실',
   },
   {
+    detailPath: '/spaces/a-room-grand-piano-rental',
     image: 'https://www.figma.com/api/mcp/asset/faf24acb-5b97-4dc9-b496-b8cfd2bf7e18',
     location: '서울 마포구 서교동',
     price: '10,000원',
@@ -53,6 +55,7 @@ export const HOME_SPACE_CARDS = [
     title: 'A룸 그랜드 피아노 대관',
   },
   {
+    detailPath: '/spaces/jazz-ensemble-room',
     image: 'https://www.figma.com/api/mcp/asset/af67d13c-fbe7-4493-b2d3-4eb610f26c41',
     location: '서울 마포구 동교동',
     price: '13,000원',
@@ -62,6 +65,7 @@ export const HOME_SPACE_CARDS = [
     title: '재즈 합주실',
   },
   {
+    detailPath: '/spaces/yamaha-u3-room',
     image: 'https://www.figma.com/api/mcp/asset/c1c89983-892a-473c-893f-8018ed149c33',
     location: '서울 마포구 신수동',
     price: '14,000원',
@@ -71,6 +75,7 @@ export const HOME_SPACE_CARDS = [
     title: '야마하 U3 피아노 연습실',
   },
   {
+    detailPath: '/spaces/room-black',
     image: 'https://www.figma.com/api/mcp/asset/c003f7b2-6b79-4df6-88f2-ce06a65691be',
     location: '서울 마포구 연남동',
     price: '10,000원',
@@ -80,6 +85,7 @@ export const HOME_SPACE_CARDS = [
     title: 'Room Black',
   },
   {
+    detailPath: '/spaces/jazz-big-room',
     image: 'https://www.figma.com/api/mcp/asset/c74a7024-1f71-4321-8fa6-330d5df89437',
     location: '서울 마포구 연남동',
     price: '18,000원',
@@ -89,6 +95,7 @@ export const HOME_SPACE_CARDS = [
     title: '재즈합주실/앙상블실',
   },
   {
+    detailPath: '/spaces/room-b-u1',
     image: 'https://www.figma.com/api/mcp/asset/34569b09-a2a7-4e61-8869-29c0db88dc25',
     location: '서울 마포구 망원동',
     price: '14,000원',
@@ -98,6 +105,7 @@ export const HOME_SPACE_CARDS = [
     title: '[ROOM B] 야마하 업라이트 U1',
   },
   {
+    detailPath: '/spaces/upright-room-2',
     image: 'https://www.figma.com/api/mcp/asset/890bf1d4-4704-428f-8db7-e76f9adf6a27',
     location: '서울 마포구 염리동',
     price: '12,000원',

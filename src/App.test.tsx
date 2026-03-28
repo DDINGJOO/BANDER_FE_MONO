@@ -194,11 +194,63 @@ test('renders the authenticated header preview on the home-auth route', () => {
 
   expect(screen.getByRole('link', { name: '커뮤니티' })).toBeInTheDocument();
   expect(screen.getByRole('link', { name: '탐색' })).toBeInTheDocument();
-  expect(screen.getByRole('link', { name: /예약/ })).toBeInTheDocument();
+  expect(screen.getAllByRole('link', { name: /예약/ })[0]).toBeInTheDocument();
   expect(screen.getByRole('button', { name: '스크랩' })).toBeInTheDocument();
   expect(screen.getByRole('button', { name: '채팅' })).toBeInTheDocument();
   expect(screen.getByRole('button', { name: '알림' })).toBeInTheDocument();
   expect(screen.getByRole('button', { name: '프로필 메뉴' })).toBeInTheDocument();
+});
+
+test('moves to the search results page when submitting the header search', async () => {
+  renderAt('/home-auth');
+
+  fireEvent.change(screen.getByPlaceholderText('공간, 업체, 커뮤니티 검색'), {
+    target: { value: '합주' },
+  });
+  fireEvent.keyDown(screen.getByPlaceholderText('공간, 업체, 커뮤니티 검색'), {
+    code: 'Enter',
+    key: 'Enter',
+  });
+
+  expect(await screen.findByRole('heading', { name: /합주.*검색 결과/ })).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: '업체' })).toBeInTheDocument();
+  expect(screen.getByText('4개의 공간')).toBeInTheDocument();
+});
+
+test('switches search result tabs and opens the community sort menu', async () => {
+  renderAt('/search?q=합주');
+
+  fireEvent.click(screen.getByRole('button', { name: '업체' }));
+  expect(screen.getByText('3개의 업체')).toBeInTheDocument();
+  expect(screen.getByText('유스뮤직')).toBeInTheDocument();
+
+  fireEvent.click(screen.getByRole('button', { name: '커뮤니티' }));
+  expect(screen.getByText('3개의 게시글')).toBeInTheDocument();
+  expect(screen.getByText('서울 지역 연습실습실 가격 비교 정리했습니다 🎵')).toBeInTheDocument();
+
+  fireEvent.click(screen.getByRole('button', { name: '최신순' }));
+  expect(screen.getByRole('button', { name: '좋아요 많은 순' })).toBeInTheDocument();
+});
+
+test('moves to the room detail page when clicking a space card', async () => {
+  renderAt('/search?q=합주');
+
+  fireEvent.click(screen.getByText('A룸 그랜드 피아노 대관').closest('a') as HTMLAnchorElement);
+
+  expect(
+    await screen.findByRole('heading', { level: 1, name: 'A룸 그랜드 피아노 대관' })
+  ).toBeInTheDocument();
+  expect(screen.getByText('유스뮤직')).toBeInTheDocument();
+  expect(screen.getByText('업체 정보')).toBeInTheDocument();
+  expect(screen.getByText(/휴대폰 본인인증이 필요해요/)).toBeInTheDocument();
+
+  fireEvent.click(screen.getByRole('button', { name: '본인인증 미완료' }));
+
+  expect(screen.getByText('날짜 선택')).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: '20' }));
+  expect(screen.getByText('2025년 8월 20일 (수)')).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: '선택완료' }));
+  expect(await screen.findByRole('heading', { name: '예약하기' })).toBeInTheDocument();
 });
 
 test('opens the guest modal from the home page and moves to login', () => {
@@ -283,7 +335,7 @@ test('submits login and returns to the home page', async () => {
     expect(window.sessionStorage.getItem('bander.authSession')).toContain('gateway-context-token')
   );
   expect(await screen.findByText('이달의 HOT 게시글')).toBeInTheDocument();
-  expect(screen.getByRole('link', { name: /예약/ })).toBeInTheDocument();
+  expect(screen.getAllByRole('link', { name: /예약/ })[0]).toBeInTheDocument();
   expect(screen.queryByRole('button', { name: '로그인/회원가입' })).not.toBeInTheDocument();
 });
 

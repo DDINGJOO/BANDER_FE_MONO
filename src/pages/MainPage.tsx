@@ -1,10 +1,10 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { GuestGateModal } from '../components/home/GuestGateModal';
+import { HomeFooter } from '../components/home/HomeFooter';
 import { HomeHeader } from '../components/home/HomeHeader';
 import { HomePostCard } from '../components/home/HomePostCard';
 import { HomeSpaceExplorer } from '../components/home/HomeSpaceExplorer';
-import { BrandMark } from '../components/shared/BrandMark';
 import { loadAuthSession } from '../data/authSession';
 import {
   HOME_CATEGORY_BUBBLES,
@@ -65,10 +65,14 @@ export function MainPage({ previewAuthenticated = false }: { previewAuthenticate
           setHeaderSearchOpen(false);
         }}
         onSearchFocus={() => setHeaderSearchOpen(Boolean(headerSearchQuery.trim()))}
-        onSuggestionSelect={(value) => {
-          setHeaderSearchQuery(value);
-          setHeaderSearchOpen(false);
+        onSearchSubmit={(value) => {
+          const normalizedValue = value.trim();
+          if (!normalizedValue) {
+            return;
+          }
+          navigate(`/search?q=${encodeURIComponent(normalizedValue)}`);
         }}
+        onSuggestionSelect={(value) => navigate(`/search?q=${encodeURIComponent(value)}`)}
         searchOpen={headerSearchOpen}
         searchQuery={headerSearchQuery}
         searchRef={headerSearchRef}
@@ -161,31 +165,7 @@ export function MainPage({ previewAuthenticated = false }: { previewAuthenticate
         </div>
       </section>
 
-      <footer className="home-footer">
-        <div className="home-footer__inner">
-          <div className="home-footer__brand-block">
-            <BrandMark compact />
-            <div className="home-footer__navline">
-              <span>홈</span>
-              <span>커뮤니티</span>
-              <span>탐색</span>
-              <span>내정보</span>
-            </div>
-            <div className="home-footer__company">
-              <p>주소 : 서울시 마포구 와우산로 15길 30</p>
-              <p>(주)팀바인드</p>
-              <p>대표자명 : 주자연</p>
-              <p>사업자등록번호 : 113-23-79817</p>
-            </div>
-            <p className="home-footer__meta">COPYRIGHT(C) © 2025 Bander. All rights reserved.</p>
-          </div>
-          <div className="home-footer__support">
-            <p className="home-footer__support-label">고객센터</p>
-            <p className="home-footer__support-number">02-1234-5678</p>
-            <p className="home-footer__support-time">AM 09:00 ~ PM 06:00 (일요일, 공휴일 휴무)</p>
-          </div>
-        </div>
-      </footer>
+      <HomeFooter />
 
       <GuestGateModal
         onClose={() => setGuestModalOpen(false)}
