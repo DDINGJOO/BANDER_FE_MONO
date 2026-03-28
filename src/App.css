@@ -2997,20 +2997,30 @@
 
 .space-reservation__payment-methods {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
+  grid-template-columns: minmax(0, 164px);
   margin-top: 16px;
 }
 
-.space-reservation__payment-methods button {
+.space-reservation__payment-method {
   min-height: 50px;
-  border: 0;
+  border: 1px solid transparent;
   border-radius: 10px;
   background: #f6f8fa;
-  color: var(--color-black);
-  font-size: 14px;
-  font-weight: 500;
+  padding: 15px;
   cursor: pointer;
+}
+
+.space-reservation__payment-method--selected {
+  border-color: var(--color-main-yellow);
+  background: #fffbee;
+}
+
+.space-reservation__payment-method-image {
+  display: block;
+  width: 108px;
+  height: 34px;
+  object-fit: contain;
+  margin: 0 auto;
 }
 
 .space-reservation__payment-summary {

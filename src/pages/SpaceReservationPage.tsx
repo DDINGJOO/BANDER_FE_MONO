@@ -16,6 +16,9 @@ const HEADER_KEYWORD_SUGGESTIONS = [
   '합정 굿마인드',
 ];
 
+const TOSS_PAY_IMAGE =
+  'https://www.figma.com/api/mcp/asset/2eae63a4-d92c-4d34-9e5c-985a8b6f3ade';
+
 const TIME_COLUMNS = Array.from({ length: 24 }, (_, hour) => {
   const firstLabel = `${String(hour).padStart(2, '0')}:00`;
   const secondLabel = `${String(hour).padStart(2, '0')}:30`;
@@ -120,7 +123,6 @@ export function SpaceReservationPage() {
   const isAuthenticated = Boolean(authSession);
   const [headerSearchOpen, setHeaderSearchOpen] = useState(false);
   const [headerSearchQuery, setHeaderSearchQuery] = useState('');
-  const [bottomAgreementsOpen, setBottomAgreementsOpen] = useState(false);
   const [selectedTimes, setSelectedTimes] = useState<string[]>([]);
   const [isSelectingTime, setIsSelectingTime] = useState(false);
   const [timeSelectionStart, setTimeSelectionStart] = useState<number | null>(null);
@@ -134,6 +136,7 @@ export function SpaceReservationPage() {
   const [couponModalOpen, setCouponModalOpen] = useState(false);
   const [paymentResult, setPaymentResult] = useState<PaymentResultState>(null);
   const [paymentResultMode, setPaymentResultMode] = useState<'failed' | 'success'>('success');
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<'tosspay' | null>(null);
   const [downloadedCouponIds, setDownloadedCouponIds] = useState<string[]>([]);
   const [canScrollTimelineNext, setCanScrollTimelineNext] = useState(true);
   const [canScrollTimelinePrev, setCanScrollTimelinePrev] = useState(false);
@@ -264,6 +267,8 @@ export function SpaceReservationPage() {
   const allCouponsDownloaded = COUPON_ITEMS.every((item) => downloadedCouponIds.includes(item.id));
   const requiredAgreementsChecked =
     agreements.collection && agreements.thirdParty && agreements.paymentAgency;
+  const canSubmitPayment =
+    requiredAgreementsChecked && selectedTimes.length > 0 && selectedPaymentMethod === 'tosspay';
   const modalRoot = typeof document !== 'undefined' ? document.body : null;
 
   const setAllAgreements = (checked: boolean) => {
@@ -558,14 +563,12 @@ export function SpaceReservationPage() {
         <section className="space-reservation__section">
           <h2>결제수단</h2>
           <div className="space-reservation__payment-methods">
-            <button className="space-reservation__payment-method space-reservation__payment-method--toss" type="button">
-              <span className="space-reservation__payment-method-logo">
-                <span className="space-reservation__payment-method-dot" />
-                <span className="space-reservation__payment-method-wordmark">toss</span>
-              </span>
-              <span className="space-reservation__payment-method-wordmark space-reservation__payment-method-wordmark--pay">
-                pay
-              </span>
+            <button
+              className={`space-reservation__payment-method ${selectedPaymentMethod === 'tosspay' ? 'space-reservation__payment-method--selected' : ''}`}
+              onClick={() => setSelectedPaymentMethod('tosspay')}
+              type="button"
+            >
+              <img alt="tosspay" className="space-reservation__payment-method-image" src={TOSS_PAY_IMAGE} />
             </button>
           </div>
         </section>
@@ -584,40 +587,23 @@ export function SpaceReservationPage() {
 
       <div className="space-reservation__bottom-bar">
         <div className="space-reservation__bottom-main">
-          <button
-            className="space-reservation__bottom-summary"
-            onClick={() => setBottomAgreementsOpen((current) => !current)}
-            type="button"
-          >
+          <button className="space-reservation__bottom-summary" type="button">
             <span>결제정보</span>
             <strong>{totalPrice.toLocaleString()}원</strong>
             <span className="space-reservation__bottom-summary-arrow">
               <ChevronIcon />
             </span>
           </button>
-          <button
-            className="space-reservation__submit"
-            disabled={!requiredAgreementsChecked || selectedTimes.length === 0}
-            onClick={() => setPaymentResult(paymentResultMode)}
-            type="button"
-          >
+        <button
+          className="space-reservation__submit"
+          disabled={!canSubmitPayment}
+          onClick={() => setPaymentResult(paymentResultMode)}
+          type="button"
+        >
             총 {totalPrice.toLocaleString()}원 결제하기
           </button>
         </div>
 
-        <button
-          className="space-reservation__bottom-consent-toggle"
-          onClick={() => setBottomAgreementsOpen((current) => !current)}
-          type="button"
-        >
-          <span className={`space-reservation__agreement-check ${agreements.all ? 'space-reservation__agreement-check--active' : ''}`}>✓</span>
-          <span>약관 전체 동의</span>
-          <span className={`space-reservation__bottom-consent-arrow ${bottomAgreementsOpen ? 'space-reservation__bottom-consent-arrow--open' : ''}`}>
-            <ChevronIcon />
-          </span>
-        </button>
-
-        {bottomAgreementsOpen ? (
         <div className="space-reservation__bottom-agreements">
           <button
             className="space-reservation__agreement space-reservation__agreement--all"
@@ -658,7 +644,6 @@ export function SpaceReservationPage() {
             <span className="space-reservation__agreement-arrow"><ChevronIcon /></span>
           </button>
         </div>
-        ) : null}
       </div>
 
       {optionsOpen && modalRoot

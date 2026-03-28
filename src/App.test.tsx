@@ -251,6 +251,9 @@ test('moves to the room detail page when clicking a space card', async () => {
   expect(screen.getByText('2025년 8월 20일 (수)')).toBeInTheDocument();
   fireEvent.click(screen.getByRole('button', { name: '선택완료' }));
   expect(await screen.findByRole('heading', { name: '예약하기' })).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: /총 10,000원 결제하기/ })).toBeDisabled();
+  fireEvent.click(screen.getByRole('button', { name: 'tosspay' }));
+  expect(screen.getByRole('button', { name: /총 10,000원 결제하기/ })).toBeEnabled();
 });
 
 test('opens the guest modal from the home page and moves to login', () => {
