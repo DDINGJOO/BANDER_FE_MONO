@@ -1,5 +1,6 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import * as Slider from '@radix-ui/react-slider';
+import { useNavigate } from 'react-router-dom';
 import { HomeSpaceCard } from './HomeSpaceCard';
 import { ChevronIcon, SearchIcon, SelectedCheckIcon } from '../shared/Icons';
 import {
@@ -83,6 +84,7 @@ export function HomeSpaceExplorer({
   resultLimit,
   variant = 'section',
 }: HomeSpaceExplorerProps) {
+  const navigate = useNavigate();
   const isHero = variant === 'hero';
   const visibleCards =
     typeof resultLimit === 'number' ? HOME_SPACE_CARDS.slice(0, resultLimit) : HOME_SPACE_CARDS;
@@ -176,6 +178,17 @@ export function HomeSpaceExplorer({
     setOpenPanel('keyword');
   };
 
+  const submitHeroSearch = useCallback(() => {
+    const trimmed = heroSearchQuery.trim();
+    const fromKeywords = appliedKeywordSelections
+      .map((keyword) => keyword.replace(/^#/, ''))
+      .filter(Boolean)
+      .join(' ')
+      .trim();
+    const q = trimmed || fromKeywords || '합주';
+    navigate(`/search?q=${encodeURIComponent(q)}`);
+  }, [appliedKeywordSelections, heroSearchQuery, navigate]);
+
   const handleDateRangeChange = (nextValue: number[]) => {
     const [startHour, endHour] = nextValue;
     setDraftDate((current) => ({
@@ -220,13 +233,17 @@ export function HomeSpaceExplorer({
   const dateButtonLabel = appliedDate
     ? `25.08.${String(appliedDate.day).padStart(2, '0')} / ${appliedDate.startHour}시 ~ ${appliedDate.endHour}시`
     : isHero
-      ? '25.08.13 / 0시 ~ 24시'
+      ? '날짜선택'
       : '날짜/시간';
   const peopleButtonLabel = appliedPeopleCount > 0 ? `${appliedPeopleCount}명` : '인원';
   const regionButtonLabel = summarizeSelection(appliedRegionSelections, '지역');
   const spaceButtonLabel = summarizeSelection(appliedSpaceSelections, '공간');
   const keywordButtonLabel =
-    appliedKeywordSelections.length > 0 ? `키워드 ${appliedKeywordSelections.length}` : '키워드';
+    appliedKeywordSelections.length > 0
+      ? `${isHero ? '악기' : '키워드'} ${appliedKeywordSelections.length}`
+      : isHero
+        ? '악기'
+        : '키워드';
 
   const hasActiveRegion = appliedRegionSelections.length > 0;
   const hasActiveSpace = appliedSpaceSelections.length > 0;
@@ -593,28 +610,53 @@ export function HomeSpaceExplorer({
           </div>
 
           <div className="home-search__filter-wrap">
-            {hasActiveSpace ? (
+            {hasActiveDate ? (
               <div className="home-search__filter-control">
-                <button className="home-search__filter home-search__filter--split" onClick={openSpacePanel} type="button">
-                  <span>{spaceButtonLabel}</span>
+                <button className="home-search__filter home-search__filter--split" onClick={openDatePanel} type="button">
+                  <span>{dateButtonLabel}</span>
                   <ChevronIcon />
                 </button>
                 <button
-                  aria-label="공간 필터 초기화"
+                  aria-label="일정 필터 초기화"
                   className="home-search__filter-clear"
-                  onClick={clearSpaceFilter}
+                  onClick={clearDateFilter}
                   type="button"
                 >
                   ×
                 </button>
               </div>
             ) : (
-              <button className="home-search__filter" onClick={openSpacePanel} type="button">
-                <span>{spaceButtonLabel}</span>
+              <button className="home-search__filter" onClick={openDatePanel} type="button">
+                <span>일정</span>
                 <ChevronIcon />
               </button>
             )}
-            {openPanel === 'space' ? spacePanel : null}
+            {openPanel === 'date' ? datePanel : null}
+          </div>
+
+          <div className="home-search__filter-wrap">
+            {hasActivePeople ? (
+              <div className="home-search__filter-control">
+                <button className="home-search__filter home-search__filter--split" onClick={openPeoplePanel} type="button">
+                  <span>{peopleButtonLabel}</span>
+                  <ChevronIcon />
+                </button>
+                <button
+                  aria-label="인원 필터 초기화"
+                  className="home-search__filter-clear"
+                  onClick={clearPeopleFilter}
+                  type="button"
+                >
+                  ×
+                </button>
+              </div>
+            ) : (
+              <button className="home-search__filter" onClick={openPeoplePanel} type="button">
+                <span>인원</span>
+                <ChevronIcon />
+              </button>
+            )}
+            {openPanel === 'people' ? peoplePanel : null}
           </div>
 
           <div className="home-search__filter-wrap">
@@ -647,19 +689,11 @@ export function HomeSpaceExplorer({
           </div>
 
           <button
-            className={`home-search__filter ${reservableOnly ? 'home-search__filter--active' : ''}`}
-            onClick={() => setReservableOnly((current) => !current)}
-            type="button"
-          >
-            예약가능
-          </button>
-
-          <button
             className={`home-search__filter ${parkingOnly ? 'home-search__filter--active' : ''}`}
             onClick={() => setParkingOnly((current) => !current)}
             type="button"
           >
-            주차가능
+            주차
           </button>
         </div>
 
@@ -670,7 +704,13 @@ export function HomeSpaceExplorer({
               <input
                 className="home-search__input"
                 onChange={(event) => setHeroSearchQuery(event.target.value)}
-                placeholder="어떤 음악 공간을 찾으시나요?"
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') {
+                    event.preventDefault();
+                    submitHeroSearch();
+                  }
+                }}
+                placeholder="어떤 공간을 찾으시나요?"
                 value={heroSearchQuery}
               />
               {heroSearchQuery ? (
@@ -695,7 +735,6 @@ export function HomeSpaceExplorer({
               <span>{dateButtonLabel}</span>
               <ChevronIcon />
             </button>
-            {openPanel === 'date' ? datePanel : null}
           </div>
 
           <div className="home-search__field-wrap">
@@ -707,11 +746,15 @@ export function HomeSpaceExplorer({
               <span>{peopleButtonLabel}</span>
               <ChevronIcon />
             </button>
-            {openPanel === 'people' ? peoplePanel : null}
           </div>
 
-          <button className="home-search__submit" type="button">
-            검색
+          <button
+            aria-label="검색"
+            className="home-search__submit home-search__submit--icon"
+            onClick={submitHeroSearch}
+            type="button"
+          >
+            <SearchIcon />
           </button>
         </div>
       </div>

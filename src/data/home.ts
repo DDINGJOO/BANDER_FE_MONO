@@ -116,35 +116,49 @@ export const HOME_SPACE_CARDS = [
   },
 ];
 
+/** 메인 Figma(6049:3787) — 밴더 인기 합주실 원형 카테고리 */
 export const HOME_CATEGORY_BUBBLES = [
-  { accent: '#f28b2f', label: '피아노실' },
-  { accent: '#f1578f', label: '보컬 연습실' },
-  { accent: '#9d3ef6', label: '합주실' },
-  { accent: '#54c7f4', label: '댄스 스튜디오' },
-  { accent: '#3f7bff', label: '미디 작업실' },
-  { accent: '#fb64b6', label: '사진/영상 스튜디오' },
-  { accent: '#f6a623', label: '녹음실' },
+  { accent: '#f1578f', label: '보컬/미디' },
+  { accent: '#9d3ef6', label: '밴드/합주' },
+  { accent: '#54c7f4', label: '댄스/연기' },
+  { accent: '#c4a35a', label: '클래식/현악' },
+  { accent: '#f28b2f', label: '피아노' },
+  { accent: '#5c6bc0', label: '드럼' },
+  { accent: '#7cb342', label: '현악/관악' },
+  { accent: '#fb64b6', label: '기타/베이스' },
 ];
 
 export const HOME_REVIEW_CARDS = [
   {
     author: 'mellowkeys',
+    date: '2025.02.12',
+    image: 'https://www.figma.com/api/mcp/asset/faf24acb-5b97-4dc9-b496-b8cfd2bf7e18',
     rating: '4.8',
+    spaceName: '엔젤 업라이트 피아노 연습실',
     text: '피아노 상태가 좋아서 연습 집중도가 높았습니다. 예약도 빠르고 입실 절차가 깔끔했어요.',
   },
   {
     author: 'mixlab',
+    date: '2025.02.08',
+    image: 'https://www.figma.com/api/mcp/asset/dbac413c-ce1b-4204-8349-58d93f3e31cb',
     rating: '5.0',
+    spaceName: 'A룸 그랜드 피아노 대관',
     text: '장비 구성이 명확해서 합주 리허설용으로 좋았습니다. 다음에도 같은 공간으로 재예약할 예정입니다.',
   },
   {
     author: 'vocalroom',
+    date: '2025.02.03',
+    image: 'https://www.figma.com/api/mcp/asset/c1c89983-892a-473c-893f-8018ed149c33',
     rating: '4.6',
+    spaceName: '재즈 합주실',
     text: '방음이 안정적이고 조명이 편안해서 보컬 녹음 연습용으로 적합했습니다.',
   },
   {
     author: 'bandercrew',
+    date: '2025.01.28',
+    image: 'https://www.figma.com/api/mcp/asset/890bf1d4-4704-428f-8db7-e76f9adf6a27',
     rating: '4.9',
+    spaceName: 'Room Black',
     text: '게스트로 둘러보기에도 정보가 명확해서 공간 비교가 쉬웠습니다. 첫 예약 진입 장벽이 낮았어요.',
   },
 ];

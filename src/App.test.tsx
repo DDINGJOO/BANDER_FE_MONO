@@ -183,10 +183,21 @@ beforeEach(() => {
 test('renders the guest home page on the root route', () => {
   renderAt('/');
 
-  expect(screen.getByText('이달의 HOT 게시글')).toBeInTheDocument();
+  expect(screen.getByRole('heading', { name: /이달의 HOT 게시물/ })).toBeInTheDocument();
   expect(screen.getAllByRole('button', { name: '로그인/회원가입' }).length).toBeGreaterThan(0);
-  expect(screen.getByPlaceholderText('어떤 음악 공간을 찾으시나요?')).toBeInTheDocument();
+  expect(screen.getByPlaceholderText('어떤 공간을 찾으시나요?')).toBeInTheDocument();
   expect(screen.getByRole('button', { name: '검색' })).toBeInTheDocument();
+});
+
+test('navigates from main hero search to search results', () => {
+  renderAt('/');
+
+  fireEvent.change(screen.getByPlaceholderText('어떤 공간을 찾으시나요?'), {
+    target: { value: '그랜드 피아노' },
+  });
+  fireEvent.click(screen.getByRole('button', { name: '검색' }));
+
+  expect(screen.getByRole('heading', { name: /그랜드 피아노.*검색 결과/ })).toBeInTheDocument();
 });
 
 test('renders the authenticated header preview on the home-auth route', () => {
@@ -195,8 +206,8 @@ test('renders the authenticated header preview on the home-auth route', () => {
   expect(screen.getByRole('link', { name: '커뮤니티' })).toBeInTheDocument();
   expect(screen.getByRole('link', { name: '탐색' })).toBeInTheDocument();
   expect(screen.getAllByRole('link', { name: /예약/ })[0]).toBeInTheDocument();
-  expect(screen.getByRole('button', { name: '스크랩' })).toBeInTheDocument();
-  expect(screen.getByRole('button', { name: '채팅' })).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: '장바구니' })).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: '찜 목록' })).toBeInTheDocument();
   expect(screen.getByRole('button', { name: '알림' })).toBeInTheDocument();
   expect(screen.getByRole('button', { name: '프로필 메뉴' })).toBeInTheDocument();
 });
@@ -251,9 +262,23 @@ test('moves to the room detail page when clicking a space card', async () => {
   expect(screen.getByText('2025년 8월 20일 (수)')).toBeInTheDocument();
   fireEvent.click(screen.getByRole('button', { name: '선택완료' }));
   expect(await screen.findByRole('heading', { name: '예약하기' })).toBeInTheDocument();
-  expect(screen.getByRole('button', { name: /총 10,000원 결제하기/ })).toBeDisabled();
+  const payButtonMatcher = /총 [\d,]+원 결제하기/;
+  expect(screen.getByRole('button', { name: payButtonMatcher })).toBeDisabled();
+
+  const firstBookableSlot = screen
+    .getAllByRole('button')
+    .find(
+      (el) =>
+        el.className.includes('space-reservation__timeline-slot') &&
+        !el.className.includes('space-reservation__timeline-slot--disabled')
+    );
+  expect(firstBookableSlot).toBeTruthy();
+  fireEvent.mouseDown(firstBookableSlot as HTMLButtonElement);
+
+  fireEvent.click(screen.getByRole('button', { name: /전체동의/ }));
+  expect(screen.getByRole('button', { name: payButtonMatcher })).toBeDisabled();
   fireEvent.click(screen.getByRole('button', { name: 'tosspay' }));
-  expect(screen.getByRole('button', { name: /총 10,000원 결제하기/ })).toBeEnabled();
+  expect(screen.getByRole('button', { name: payButtonMatcher })).toBeEnabled();
 });
 
 test('opens the guest modal from the home page and moves to login', () => {
@@ -270,7 +295,7 @@ test('opens the guest modal from the home page and moves to login', () => {
 test('opens the date-time picker and renders the dual slider controls', () => {
   renderAt('/');
 
-  fireEvent.click(screen.getByRole('button', { name: '25.08.13 / 0시 ~ 24시' }));
+  fireEvent.click(screen.getByRole('button', { name: '날짜선택' }));
 
   expect(screen.getByText('시간 선택')).toBeInTheDocument();
   expect(screen.getByRole('slider', { name: '검색 시작 시간' })).toBeInTheDocument();
@@ -287,12 +312,12 @@ test('shows applied summaries on the hero search filters after selection', () =>
 
   expect(screen.getByRole('button', { name: /강남구/ })).toBeInTheDocument();
 
-  fireEvent.click(screen.getAllByRole('button', { name: /^키워드/ })[0]);
+  fireEvent.click(screen.getAllByRole('button', { name: /^악기$/ })[0]);
   fireEvent.click(screen.getByRole('button', { name: '#합주실' }));
   fireEvent.click(screen.getByRole('button', { name: '#연습실' }));
   fireEvent.click(screen.getByRole('button', { name: '선택완료' }));
 
-  expect(screen.getByRole('button', { name: /키워드 2/ })).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: /악기 2/ })).toBeInTheDocument();
 });
 
 test('clears an applied hero filter from the active filter x button', () => {
@@ -337,7 +362,7 @@ test('submits login and returns to the home page', async () => {
   await waitFor(() =>
     expect(window.sessionStorage.getItem('bander.authSession')).toContain('gateway-context-token')
   );
-  expect(await screen.findByText('이달의 HOT 게시글')).toBeInTheDocument();
+  expect(await screen.findByRole('heading', { name: /이달의 HOT 게시물/ })).toBeInTheDocument();
   expect(screen.getAllByRole('link', { name: /예약/ })[0]).toBeInTheDocument();
   expect(screen.queryByRole('button', { name: '로그인/회원가입' })).not.toBeInTheDocument();
 });

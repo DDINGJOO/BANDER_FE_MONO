@@ -9,8 +9,8 @@ export function HomeFooter() {
           <BrandMark compact />
           <div className="home-footer__navline">
             <span>홈</span>
-            <span>커뮤니티</span>
             <span>탐색</span>
+            <span>합주실</span>
             <span>내정보</span>
           </div>
           <div className="home-footer__company">

@@ -6,16 +6,6 @@ import { ChevronIcon } from '../components/shared/Icons';
 import { loadAuthSession } from '../data/authSession';
 import { HOME_SPACE_CARDS } from '../data/home';
 
-const HEADER_KEYWORD_SUGGESTIONS = [
-  '합주실 스토어',
-  '합주실',
-  '합주공간',
-  '합주스튜디오',
-  '합정 뮤직 업라운드',
-  '합정 뮤직스퀘어',
-  '합정 굿마인드',
-];
-
 const TOSS_PAY_IMAGE =
   'https://www.figma.com/api/mcp/asset/2eae63a4-d92c-4d34-9e5c-985a8b6f3ade';
 
@@ -121,8 +111,6 @@ export function SpaceReservationPage() {
   const [searchParams] = useSearchParams();
   const authSession = loadAuthSession();
   const isAuthenticated = Boolean(authSession);
-  const [headerSearchOpen, setHeaderSearchOpen] = useState(false);
-  const [headerSearchQuery, setHeaderSearchQuery] = useState('');
   const [selectedTimes, setSelectedTimes] = useState<string[]>([]);
   const [isSelectingTime, setIsSelectingTime] = useState(false);
   const [timeSelectionStart, setTimeSelectionStart] = useState<number | null>(null);
@@ -146,24 +134,8 @@ export function SpaceReservationPage() {
     people: 0,
     piano: 0,
   });
-  const headerSearchRef = useRef<HTMLDivElement | null>(null);
   const timelineScrollRef = useRef<HTMLDivElement | null>(null);
   const scrollDragStateRef = useRef({ active: false, scrollLeft: 0, startX: 0 });
-
-  useEffect(() => {
-    const handlePointerDown = (event: MouseEvent) => {
-      const target = event.target as Node;
-
-      if (!headerSearchRef.current?.contains(target)) {
-        setHeaderSearchOpen(false);
-      }
-    };
-
-    document.addEventListener('mousedown', handlePointerDown);
-    return () => {
-      document.removeEventListener('mousedown', handlePointerDown);
-    };
-  }, []);
 
   const updateTimelineNavState = () => {
     if (!timelineScrollRef.current) {
@@ -211,19 +183,6 @@ export function SpaceReservationPage() {
       window.removeEventListener('resize', handleResize);
     };
   }, []);
-
-  const filteredSuggestions = HEADER_KEYWORD_SUGGESTIONS.filter((item) =>
-    item.toLowerCase().includes(headerSearchQuery.toLowerCase())
-  );
-
-  const handleSearchSubmit = (value: string) => {
-    const normalizedValue = value.trim();
-    if (!normalizedValue) {
-      return;
-    }
-
-    navigate(`/search?q=${encodeURIComponent(normalizedValue)}`);
-  };
 
   const spaceCard = useMemo(
     () => HOME_SPACE_CARDS.find((item) => item.detailPath === `/spaces/${slug}`) ?? HOME_SPACE_CARDS[1],
@@ -369,28 +328,7 @@ export function SpaceReservationPage() {
 
   return (
     <main className="space-reservation-page">
-      <HomeHeader
-        authenticated={isAuthenticated}
-        filteredSuggestions={filteredSuggestions}
-        onGuestCta={() => navigate('/login')}
-        onSearchChange={(value) => {
-          setHeaderSearchQuery(value);
-          setHeaderSearchOpen(Boolean(value.trim()));
-        }}
-        onSearchClear={() => {
-          setHeaderSearchQuery('');
-          setHeaderSearchOpen(false);
-        }}
-        onSearchFocus={() => setHeaderSearchOpen(Boolean(headerSearchQuery.trim()))}
-        onSearchSubmit={handleSearchSubmit}
-        onSuggestionSelect={(value) => {
-          setHeaderSearchOpen(false);
-          handleSearchSubmit(value);
-        }}
-        searchOpen={headerSearchOpen}
-        searchQuery={headerSearchQuery}
-        searchRef={headerSearchRef}
-      />
+      <HomeHeader authenticated={isAuthenticated} onGuestCta={() => navigate('/login')} variant="icon" />
 
       <section className="space-reservation__shell">
         <div className="space-reservation__header">

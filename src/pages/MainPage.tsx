@@ -1,15 +1,19 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { HEADER_SEARCH_KEYWORD_SUGGESTIONS } from '../config/searchSuggestions';
 import { GuestGateModal } from '../components/home/GuestGateModal';
 import { HomeFooter } from '../components/home/HomeFooter';
 import { HomeHeader } from '../components/home/HomeHeader';
 import { HomePostCard } from '../components/home/HomePostCard';
+import { HomeReviewCard } from '../components/home/HomeReviewCard';
+import { HomeSpaceCard } from '../components/home/HomeSpaceCard';
 import { HomeSpaceExplorer } from '../components/home/HomeSpaceExplorer';
 import { loadAuthSession } from '../data/authSession';
 import {
   HOME_CATEGORY_BUBBLES,
   HOME_HOT_POSTS,
   HOME_REVIEW_CARDS,
+  HOME_SPACE_CARDS,
 } from '../data/home';
 
 export function MainPage({ previewAuthenticated = false }: { previewAuthenticated?: boolean }) {
@@ -19,16 +23,7 @@ export function MainPage({ previewAuthenticated = false }: { previewAuthenticate
   const [headerSearchOpen, setHeaderSearchOpen] = useState(false);
   const [headerSearchQuery, setHeaderSearchQuery] = useState('');
   const headerSearchRef = useRef<HTMLDivElement | null>(null);
-
-  const keywordSuggestions = [
-    '합주실 스토어',
-    '합주실',
-    '합주공간',
-    '합주스튜디오',
-    '합정 뮤직 업라운드',
-    '합정 뮤직스퀘어',
-    '합정 굿마인드',
-  ];
+  const hotPostsScrollRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     const handlePointerDown = (event: MouseEvent) => {
@@ -46,7 +41,7 @@ export function MainPage({ previewAuthenticated = false }: { previewAuthenticate
     };
   }, []);
 
-  const filteredSuggestions = keywordSuggestions.filter((item) =>
+  const filteredSuggestions = HEADER_SEARCH_KEYWORD_SUGGESTIONS.filter((item) =>
     item.toLowerCase().includes(headerSearchQuery.toLowerCase())
   );
 
@@ -98,13 +93,24 @@ export function MainPage({ previewAuthenticated = false }: { previewAuthenticate
 
       <section className="home-section" id="hot-posts">
         <div className="home-section__heading">
-          <h2>이달의 HOT 게시글</h2>
-          <span>♥</span>
+          <h2>
+            이달의 HOT 게시물 <span aria-hidden="true">❤️</span>
+          </h2>
         </div>
-        <div className="home-post-grid">
-          {HOME_HOT_POSTS.map((post) => (
-            <HomePostCard key={post.title} {...post} />
-          ))}
+        <div className="home-post-carousel">
+          <div className="home-post-carousel__track" ref={hotPostsScrollRef}>
+            {HOME_HOT_POSTS.map((post) => (
+              <HomePostCard key={post.title} {...post} />
+            ))}
+          </div>
+          <button
+            aria-label="다음 게시글 보기"
+            className="home-post-carousel__next"
+            onClick={() => hotPostsScrollRef.current?.scrollBy({ behavior: 'smooth', left: 300 })}
+            type="button"
+          >
+            ›
+          </button>
         </div>
       </section>
 
@@ -117,7 +123,7 @@ export function MainPage({ previewAuthenticated = false }: { previewAuthenticate
 
       <section className="home-bubbles">
         <div className="home-bubbles__inner">
-          <h2>밴더 인기 장르별</h2>
+          <h2>밴더 인기 합주실</h2>
           <div className="home-bubbles__list">
             {HOME_CATEGORY_BUBBLES.map((item) => (
               <div className="home-bubble" key={item.label}>
@@ -132,6 +138,24 @@ export function MainPage({ previewAuthenticated = false }: { previewAuthenticate
         </div>
       </section>
 
+      <section className="home-section home-section--popular-spaces" id="popular-spaces">
+        <div className="home-space-grid">
+          {HOME_SPACE_CARDS.slice(0, 8).map((space) => (
+            <HomeSpaceCard key={space.title} {...space} />
+          ))}
+        </div>
+      </section>
+
+      <section aria-label="공간 호스트 모집" className="home-host-cta">
+        <div className="home-host-cta__inner">
+          <span aria-hidden="true" className="home-host-cta__pick" />
+          <p className="home-host-cta__copy">당신의 공간, 밴더와 함께하고 수익 창출을 누려보세요.</p>
+          <a className="home-host-cta__link" href="#spaces">
+            신청하러 가기 &gt;
+          </a>
+        </div>
+      </section>
+
       <section className="home-section" id="reviews">
         <div className="home-section__heading home-section__heading--stack">
           <h2>밴더 리얼 후기를 확인하세요.</h2>
@@ -139,12 +163,7 @@ export function MainPage({ previewAuthenticated = false }: { previewAuthenticate
         </div>
         <div className="home-review-grid">
           {HOME_REVIEW_CARDS.map((review) => (
-            <article className="home-review-card" key={review.author}>
-              <div className="home-review-card__stars">★ ★ ★ ★ ☆</div>
-              <p className="home-review-card__score">{review.rating}</p>
-              <p className="home-review-card__text">{review.text}</p>
-              <p className="home-review-card__author">@{review.author}</p>
-            </article>
+            <HomeReviewCard key={`${review.author}-${review.date}`} {...review} />
           ))}
         </div>
       </section>

@@ -1,26 +1,12 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { HomeFooter } from '../components/home/HomeFooter';
 import { HomeHeader } from '../components/home/HomeHeader';
 import { HomeSpaceCard } from '../components/home/HomeSpaceCard';
-import { ChevronIcon, StarIcon } from '../components/shared/Icons';
+import { BookmarkIcon, ChevronIcon, StarIcon } from '../components/shared/Icons';
 import { loadAuthSession } from '../data/authSession';
-import { HOME_SPACE_CARDS } from '../data/home';
-import {
-  ROOM_DETAIL_DATA,
-  ROOM_DETAIL_INFO_ROWS,
-  ROOM_DETAIL_RECOMMENDATIONS,
-} from '../data/spaceDetail';
-
-const HEADER_KEYWORD_SUGGESTIONS = [
-  '합주실 스토어',
-  '합주실',
-  '합주공간',
-  '합주스튜디오',
-  '합정 뮤직 업라운드',
-  '합정 뮤직스퀘어',
-  '합정 굿마인드',
-];
+import { ROOM_DETAIL_INFO_ROWS, ROOM_DETAIL_RECOMMENDATIONS } from '../data/spaceDetail';
+import { useSpaceDetail } from '../hooks/useSpaceDetail';
 
 type DetailCalendarDay = {
   day: number;
@@ -64,56 +50,17 @@ const DETAIL_CALENDAR_DAYS: DetailCalendarDay[] = [
 
 export function SpaceDetailPage() {
   const navigate = useNavigate();
-  const { slug } = useParams();
+  const { slug: slugParam } = useParams();
+  const { detail, slug } = useSpaceDetail(slugParam);
   const authSession = loadAuthSession();
   const isAuthenticated = Boolean(authSession);
   const [phoneVerified, setPhoneVerified] = useState(authSession?.phoneVerified === true);
-  const [headerSearchOpen, setHeaderSearchOpen] = useState(false);
-  const [headerSearchQuery, setHeaderSearchQuery] = useState('');
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [selectedBookingDay, setSelectedBookingDay] = useState<number | null>(null);
-  const headerSearchRef = useRef<HTMLDivElement | null>(null);
+  const galleryRef = useRef<HTMLElement | null>(null);
 
-  useEffect(() => {
-    const handlePointerDown = (event: MouseEvent) => {
-      const target = event.target as Node;
-
-      if (!headerSearchRef.current?.contains(target)) {
-        setHeaderSearchOpen(false);
-      }
-    };
-
-    document.addEventListener('mousedown', handlePointerDown);
-    return () => {
-      document.removeEventListener('mousedown', handlePointerDown);
-    };
-  }, []);
-
-  const filteredSuggestions = HEADER_KEYWORD_SUGGESTIONS.filter((item) =>
-    item.toLowerCase().includes(headerSearchQuery.toLowerCase())
-  );
-
-  const spaceCard = useMemo(
-    () => HOME_SPACE_CARDS.find((item) => item.detailPath === `/spaces/${slug}`) ?? HOME_SPACE_CARDS[1],
-    [slug]
-  );
-
-  const detail = {
-    ...ROOM_DETAIL_DATA,
-    category: spaceCard.subtitle,
-    location: spaceCard.location,
-    priceLabel: `${spaceCard.price}~`,
-    studioName: spaceCard.studio,
-    title: spaceCard.title,
-  };
-
-  const handleSearchSubmit = (value: string) => {
-    const normalizedValue = value.trim();
-    if (!normalizedValue) {
-      return;
-    }
-
-    navigate(`/search?q=${encodeURIComponent(normalizedValue)}`);
+  const scrollToGallery = () => {
+    galleryRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
   const selectedBookingDateLabel = selectedBookingDay
@@ -122,32 +69,11 @@ export function SpaceDetailPage() {
 
   return (
     <main className="space-detail-page">
-      <HomeHeader
-        authenticated={isAuthenticated}
-        filteredSuggestions={filteredSuggestions}
-        onGuestCta={() => navigate('/login')}
-        onSearchChange={(value) => {
-          setHeaderSearchQuery(value);
-          setHeaderSearchOpen(Boolean(value.trim()));
-        }}
-        onSearchClear={() => {
-          setHeaderSearchQuery('');
-          setHeaderSearchOpen(false);
-        }}
-        onSearchFocus={() => setHeaderSearchOpen(Boolean(headerSearchQuery.trim()))}
-        onSearchSubmit={handleSearchSubmit}
-        onSuggestionSelect={(value) => {
-          setHeaderSearchOpen(false);
-          handleSearchSubmit(value);
-        }}
-        searchOpen={headerSearchOpen}
-        searchQuery={headerSearchQuery}
-        searchRef={headerSearchRef}
-      />
+      <HomeHeader authenticated={isAuthenticated} onGuestCta={() => navigate('/login')} variant="icon" />
 
       <section className="space-detail__inner">
         <div className="space-detail__top">
-          <div className="space-detail__gallery">
+          <section ref={galleryRef} aria-label="공간 사진" className="space-detail__gallery">
             <div className="space-detail__hero-image-wrap">
               <img
                 alt={detail.title}
@@ -155,19 +81,24 @@ export function SpaceDetailPage() {
                 src={detail.gallery[selectedImageIndex]}
               />
             </div>
-            <div className="space-detail__thumb-grid">
-              {detail.gallery.slice(1).map((image, index) => (
-                <button
-                  className={`space-detail__thumb ${selectedImageIndex === index + 1 ? 'space-detail__thumb--active' : ''}`}
-                  key={image}
-                  onClick={() => setSelectedImageIndex(index + 1)}
-                  type="button"
-                >
-                  <img alt="" className="space-detail__thumb-image" src={image} />
-                </button>
-              ))}
+            <div className="space-detail__thumb-stack">
+              <div className="space-detail__thumb-grid">
+                {detail.gallery.slice(1).map((image, index) => (
+                  <button
+                    className={`space-detail__thumb ${selectedImageIndex === index + 1 ? 'space-detail__thumb--active' : ''}`}
+                    key={image}
+                    onClick={() => setSelectedImageIndex(index + 1)}
+                    type="button"
+                  >
+                    <img alt="" className="space-detail__thumb-image" src={image} />
+                  </button>
+                ))}
+              </div>
+              <button className="space-detail__gallery-viewall" onClick={scrollToGallery} type="button">
+                사진 전체 보기
+              </button>
             </div>
-          </div>
+          </section>
 
           <aside className="space-detail__booking-card">
             <div className="space-detail__test-toggle">
@@ -182,6 +113,13 @@ export function SpaceDetailPage() {
             </div>
             {phoneVerified ? (
               <>
+                <div className="space-detail__booking-pricing-bar">
+                  <span className="space-detail__booking-pricing-label">이용금액</span>
+                  <span className="space-detail__booking-pricing-value">
+                    <span aria-hidden="true" className="space-detail__booking-cal" />
+                    {detail.pricingLines[0]?.value ?? '10분 1,000원'}
+                  </span>
+                </div>
                 <div className="space-detail__booking-header">
                   <h2>날짜 선택</h2>
                   <p className={selectedBookingDay ? 'space-detail__booking-date-value' : ''}>
@@ -238,7 +176,14 @@ export function SpaceDetailPage() {
                 </p>
                 <button
                   className="space-detail__verify-button"
-                  onClick={() => navigate(isAuthenticated ? '/login' : '/login')}
+                  onClick={() => {
+                    if (!isAuthenticated) {
+                      navigate(`/login?returnTo=${encodeURIComponent(`/spaces/${slug}`)}`);
+                      return;
+                    }
+
+                    setPhoneVerified(true);
+                  }}
                   type="button"
                 >
                   <span className="space-detail__verify-badge">20초</span>
@@ -252,38 +197,104 @@ export function SpaceDetailPage() {
         <div className="space-detail__content">
           <div className="space-detail__main">
             <div className="space-detail__summary">
-              <div className="space-detail__eyebrow">
-                <span>{detail.category}</span>
-                <span className="space-detail__dot" />
-                <span>{detail.studioName}</span>
+              <div className="space-detail__summary-title-row">
+                <div className="space-detail__summary-title-main">
+                  <div className="space-detail__eyebrow">
+                    <span>{detail.category}</span>
+                    <span className="space-detail__dot" />
+                    <span>{detail.studioName}</span>
+                  </div>
+                  <h1 className="space-detail__title">{detail.title}</h1>
+                </div>
+                <button aria-label="스크랩" className="space-detail__scrap space-detail__scrap--icon" type="button">
+                  <BookmarkIcon />
+                </button>
               </div>
-              <h1 className="space-detail__title">{detail.title}</h1>
-              <p className="space-detail__location">{detail.location} · {detail.address}</p>
-              <div className="space-detail__rating-row">
+
+              <p className="space-detail__location space-detail__location--split">
+                <span>{detail.location}</span>
+                <span className="space-detail__dot" aria-hidden="true" />
+                <span>{detail.address}</span>
+              </p>
+
+              <div className="space-detail__rating-row space-detail__rating-row--detail">
                 <div className="space-detail__stars">
                   {Array.from({ length: 5 }).map((_, index) => (
                     <StarIcon key={index} />
                   ))}
-                  <span>{detail.rating}({detail.reviewCount})</span>
+                  <span>
+                    {detail.rating}({detail.reviewCount})
+                  </span>
                 </div>
-                <button className="space-detail__scrap" type="button">
-                  저장
-                </button>
               </div>
-              <div className="space-detail__price-row">
-                <div className="space-detail__price">
-                  <strong>{detail.priceLabel}</strong>
-                  <span>/60분</span>
-                </div>
-                <div className="space-detail__tags">
+
+              <div className="space-detail__tags-distance-row">
+                <div className="space-detail__tags space-detail__tags--block">
                   {detail.summaryTags.map((tag) => (
                     <span className="space-detail__tag" key={tag}>
                       {tag}
                     </span>
                   ))}
                 </div>
+                <div className="space-detail__distance-block">
+                  <strong className="space-detail__distance-strong">{detail.stationDistance}</strong>
+                  <span className="space-detail__distance-sub">도보</span>
+                </div>
               </div>
+
+              <hr className="space-detail__rule" />
+
+              <div className="space-detail__pricing-spec" aria-label="요금 및 운영">
+                {detail.pricingLines.map((line) => (
+                  <div className="space-detail__pricing-spec-row" key={`${line.label}-${line.value}`}>
+                    <span className="space-detail__pricing-spec-label">{line.label}</span>
+                    <span className="space-detail__pricing-spec-value">{line.value}</span>
+                  </div>
+                ))}
+                <div className="space-detail__pricing-spec-row">
+                  <span className="space-detail__pricing-spec-label">운영시간</span>
+                  <span className="space-detail__pricing-spec-value space-detail__pricing-spec-value--with-icon">
+                    {detail.operatingSummary}
+                    <ChevronIcon />
+                  </span>
+                </div>
+              </div>
+
+              <a
+                className="space-detail__map-search"
+                href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(detail.address)}`}
+                rel="noopener noreferrer"
+                target="_blank"
+              >
+                <span className="space-detail__map-search-placeholder">{detail.mapSearchPlaceholder}</span>
+                <span className="space-detail__map-search-icon" aria-hidden="true">
+                  <ChevronIcon />
+                </span>
+              </a>
+
+              <hr className="space-detail__rule" />
+
+              <div className="space-detail__description-block">
+                <p className="space-detail__description space-detail__description--lead">{detail.description}</p>
+                <span className="space-detail__description-pill">{detail.descriptionCategoryLabel}</span>
+              </div>
+
+              <p className="space-detail__trust-banner">{detail.trustBanner}</p>
             </div>
+
+            <section className="space-detail__section">
+              <div className="space-detail__section-title-wrap">
+                <h2>공지사항</h2>
+              </div>
+              <div className="space-detail__notice-list">
+                {detail.notices.map((notice) => (
+                  <article className="space-detail__notice-card" key={notice.title}>
+                    <h3>{notice.title}</h3>
+                    <p>{notice.body}</p>
+                  </article>
+                ))}
+              </div>
+            </section>
 
             <section className="space-detail__section">
               <div className="space-detail__section-title-wrap">
@@ -294,7 +305,11 @@ export function SpaceDetailPage() {
                   {ROOM_DETAIL_INFO_ROWS.map((row) => (
                     <div className="space-detail__info-row" key={row.label}>
                       <span className="space-detail__info-label">{row.label}</span>
-                      <span className="space-detail__info-value">{row.value}</span>
+                      <span
+                        className={`space-detail__info-value ${row.label === '주소' ? 'space-detail__info-value--multiline' : ''}`}
+                      >
+                        {row.value}
+                      </span>
                     </div>
                   ))}
                 </div>
@@ -338,7 +353,6 @@ export function SpaceDetailPage() {
 
             <section className="space-detail__section">
               <h2>상세 정보</h2>
-              <p className="space-detail__description">{detail.description}</p>
               <div className="space-detail__policy-list">
                 {detail.policies.map((policy) => (
                   <article className="space-detail__policy-card" key={policy.title}>
@@ -378,7 +392,6 @@ export function SpaceDetailPage() {
               </div>
             </section>
           </div>
-
         </div>
 
         <section className="space-detail__section space-detail__section--recommend">

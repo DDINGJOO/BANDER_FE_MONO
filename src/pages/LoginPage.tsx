@@ -1,12 +1,28 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { login } from '../api/auth';
+import { getDevLoginHint } from '../config/devLogin';
+import { Button, InlineAlert, TextField } from '../components/ui';
 import { BrandMark } from '../components/shared/BrandMark';
 import { AppleIcon, CheckIcon, GoogleIcon, KakaoIcon } from '../components/shared/Icons';
 import { saveAuthSession } from '../data/authSession';
 
+function safeReturnPath(raw: string | null) {
+  if (!raw) {
+    return '/';
+  }
+
+  if (!raw.startsWith('/') || raw.startsWith('//')) {
+    return '/';
+  }
+
+  return raw;
+}
+
 export function LoginPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const devLoginHint = getDevLoginHint();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
@@ -28,7 +44,7 @@ export function LoginPage() {
         gatewayContextToken: result.gatewayContextToken,
         userId: result.userId,
       });
-      navigate('/');
+      navigate(safeReturnPath(searchParams.get('returnTo')));
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : '로그인에 실패했습니다.');
     } finally {
@@ -48,49 +64,44 @@ export function LoginPage() {
           </div>
 
           <form className="login-form" onSubmit={handleSubmit}>
-            {errorMessage ? (
-              <div className="signup-toast" role="alert">
-                <span className="signup-toast__text">{errorMessage}</span>
-              </div>
-            ) : null}
+            {devLoginHint ? <p className="login-dev-hint">{devLoginHint}</p> : null}
+            <InlineAlert message={errorMessage} />
             <div className="login-form__fields">
               <label className="sr-only" htmlFor="loginEmail">
                 이메일
               </label>
-              <div className="login-input">
-                <input
-                  autoComplete="email"
-                  className="login-input__control"
-                  id="loginEmail"
-                  name="email"
-                  onChange={(event) => setEmail(event.target.value)}
-                  placeholder="이메일을 입력해주세요."
-                  type="email"
-                  value={email}
-                />
-              </div>
+              <TextField
+                autoComplete="email"
+                className="login-input__control"
+                id="loginEmail"
+                name="email"
+                onChange={(event) => setEmail(event.target.value)}
+                placeholder="이메일을 입력해주세요."
+                type="email"
+                value={email}
+                wrapClassName="login-input"
+              />
 
               <label className="sr-only" htmlFor="loginPassword">
                 비밀번호
               </label>
-              <div className="login-input">
-                <input
-                  autoComplete="current-password"
-                  className="login-input__control"
-                  id="loginPassword"
-                  name="password"
-                  onChange={(event) => setPassword(event.target.value)}
-                  placeholder="비밀번호를 입력해주세요."
-                  type="password"
-                  value={password}
-                />
-              </div>
+              <TextField
+                autoComplete="current-password"
+                className="login-input__control"
+                id="loginPassword"
+                name="password"
+                onChange={(event) => setPassword(event.target.value)}
+                placeholder="비밀번호를 입력해주세요."
+                type="password"
+                value={password}
+                wrapClassName="login-input"
+              />
             </div>
 
             <div className="login-form__actions">
-              <button className="login-button" disabled={isSubmitting} type="submit">
+              <Button disabled={isSubmitting} type="submit">
                 로그인
-              </button>
+              </Button>
 
               <div className="login-meta">
                 <label className="login-keep">

@@ -1,4 +1,31 @@
+import type { SpaceNoticeItem, SpacePricingLine } from '../types/space';
 import { HOME_SPACE_CARDS } from './home';
+
+/** Figma 룸 상세(6071:32854) 지도 검색 입력 플레이스홀더 */
+export const SPACE_DETAIL_MAP_SEARCH_PLACEHOLDER = '원하는 장소를 검색해보세요.';
+
+/** 메인 컬럼 안내 배너 (Figma: 착한 가격…) */
+export const SPACE_DETAIL_TRUST_BANNER = '착한 가격, 믿을만한 곳';
+
+export const SPACE_DETAIL_PRICING_LINES: SpacePricingLine[] = [
+  { label: '이용금액', value: '10분 1,000원' },
+  { label: '야간·주말', value: '10분 1,200원' },
+];
+
+export const SPACE_DETAIL_OPERATING_SUMMARY = '오늘(금) 06:00 - 23:00';
+
+/** 역에서 도보 거리 배지 (Figma 메타) */
+export const SPACE_DETAIL_STATION_DISTANCE = '200m';
+
+/** 주소 카드 보조 줄 (Figma: 상수역 … 563m) */
+export const SPACE_DETAIL_ADDRESS_TRANSIT = '상수역 1번 출구에서 563m';
+
+export const SPACE_DETAIL_NOTICES: SpaceNoticeItem[] = [
+  {
+    body: '그랜드 피아노 음량은 22시 이후 조절 부탁드립니다. 음식물은 냄새가 적은 간단한 스낵만 가능합니다.',
+    title: '이용 안내',
+  },
+];
 
 export const ROOM_DETAIL_DATA = {
   address: '서울시 마포구 독막로9길 31 지하 1층',
@@ -63,10 +90,14 @@ export const ROOM_DETAIL_DATA = {
     name: '유스뮤직',
     spaces: '15개의 공간',
   },
+  descriptionCategoryLabel: '전체',
 };
 
 export const ROOM_DETAIL_INFO_ROWS = [
-  { label: '주소', value: '서울시 마포구 독막로9길 31 지하 1층' },
+  {
+    label: '주소',
+    value: '서울시 마포구 독막로9길 31 지하 1층\n상수역 1번 출구에서 563m',
+  },
   { label: '오는 길', value: '상수역 1번 출구에서 우측으로 이동 (푸글렌 서울)' },
   { label: '영업시간', value: '오늘(금) 06:00 - 23:00' },
   { label: '전화번호', value: '0507-1111-1234' },

@@ -160,6 +160,35 @@ export function SearchIcon() {
   );
 }
 
+export function HeaderCartIcon() {
+  return (
+    <svg aria-hidden="true" className="home-header__icon" fill="none" viewBox="0 0 30 30">
+      <path
+        d="M9.5 9.5H23L21.2 18.1H11.4L9.5 9.5ZM9.5 9.5L8.8 7.2C8.65 6.75 8.25 6.45 7.8 6.45H6"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.65"
+      />
+      <circle cx="12.5" cy="22.5" fill="currentColor" opacity="0.15" r="1.6" />
+      <circle cx="19.5" cy="22.5" fill="currentColor" opacity="0.15" r="1.6" />
+    </svg>
+  );
+}
+
+export function HeaderWishlistIcon() {
+  return (
+    <svg aria-hidden="true" className="home-header__icon" fill="none" viewBox="0 0 30 30">
+      <path
+        d="M15 22.5L8.2 16.35C7.15 15.4 6.95 13.85 7.75 12.65C8.5 11.5 10.1 11.15 11.35 11.95L15 14.45L18.65 11.95C19.9 11.15 21.5 11.5 22.25 12.65C23.05 13.85 22.85 15.4 21.8 16.35L15 22.5Z"
+        stroke="currentColor"
+        strokeLinejoin="round"
+        strokeWidth="1.65"
+      />
+    </svg>
+  );
+}
+
 export function HeaderBookmarkIcon() {
   return (
     <svg aria-hidden="true" className="home-header__icon" fill="none" viewBox="0 0 30 30">

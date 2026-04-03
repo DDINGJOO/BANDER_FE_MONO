@@ -1,46 +1,26 @@
+import { tryDevLoginBypass } from '../config/devLogin';
 import { getJson, postJson } from './client';
+import type {
+  LoginResponse,
+  PasswordResetVerifyResponse,
+  SignupCompletionResponse,
+  SignupNicknameAvailabilityResponse,
+  SignupRegistrationResponse,
+  SignupTermResponse,
+  SignupVerificationVerifyResponse,
+  VerificationIssueResponse,
+} from '../types/authApi';
 
-export type VerificationIssueResponse = {
-  dispatchType: 'CREATED' | 'RESENT_EXISTING' | 'ROTATED';
-  expiresAt: string;
-  resendAvailableAt: string;
-};
-
-export type SignupVerificationVerifyResponse = {
-  expiresAt: string;
-  verifiedEmailToken: string;
-};
-
-export type SignupRegistrationResponse = {
-  expiresAt: string;
-  signupCompletionToken: string;
-  status: string;
-  userId: number;
-};
-
-export type SignupTermResponse = {
-  contentUrl: string;
-  effectiveAt: string;
-  required: boolean;
-  termCode: string;
-  title: string;
-  version: string;
-};
-
-export type SignupNicknameAvailabilityResponse = {
-  available: boolean;
-};
-
-export type PasswordResetVerifyResponse = {
-  expiresAt: string;
-  passwordResetToken: string;
-};
-
-export type LoginResponse = {
-  expiresAt: string;
-  gatewayContextToken: string;
-  userId: number;
-};
+export type {
+  LoginResponse,
+  PasswordResetVerifyResponse,
+  SignupCompletionResponse,
+  SignupNicknameAvailabilityResponse,
+  SignupRegistrationResponse,
+  SignupTermResponse,
+  SignupVerificationVerifyResponse,
+  VerificationIssueResponse,
+} from '../types/authApi';
 
 export function requestSignupVerification(email: string) {
   return postJson<VerificationIssueResponse>('/api/v1/auth/signup/request', { email });
@@ -88,7 +68,7 @@ export function completeSignup(
   profileImageRef: string,
   consents: Array<{ agreed: boolean; termCode: string; version: string }>
 ) {
-  return postJson<{ status: string; userId: number }>('/api/v1/auth/signup/completion', {
+  return postJson<SignupCompletionResponse>('/api/v1/auth/signup/completion', {
     consents,
     gender,
     nickname,
@@ -126,6 +106,11 @@ export function completePasswordReset(
 }
 
 export function login(email: string, password: string) {
+  const bypass = tryDevLoginBypass(email, password);
+  if (bypass) {
+    return Promise.resolve(bypass);
+  }
+
   return postJson<LoginResponse>('/api/v1/auth/login', {
     email,
     password,

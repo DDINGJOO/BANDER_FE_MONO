@@ -4,17 +4,8 @@ import { HomeFooter } from '../components/home/HomeFooter';
 import { HomeHeader } from '../components/home/HomeHeader';
 import { HomeSpaceExplorer } from '../components/home/HomeSpaceExplorer';
 import { ChevronIcon } from '../components/shared/Icons';
+import { HEADER_SEARCH_KEYWORD_SUGGESTIONS } from '../config/searchSuggestions';
 import { loadAuthSession } from '../data/authSession';
-
-const HEADER_KEYWORD_SUGGESTIONS = [
-  '합주실 스토어',
-  '합주실',
-  '합주공간',
-  '합주스튜디오',
-  '합정 뮤직 업라운드',
-  '합정 뮤직스퀘어',
-  '합정 굿마인드',
-];
 
 const SEARCH_VENDOR_RESULTS = [
   { name: '유스뮤직', spaces: '15개의 공간', tone: 'linear-gradient(135deg, #7f1315, #e26447)' },
@@ -103,7 +94,7 @@ export function SearchResultsPage() {
     };
   }, []);
 
-  const filteredSuggestions = HEADER_KEYWORD_SUGGESTIONS.filter((item) =>
+  const filteredSuggestions = HEADER_SEARCH_KEYWORD_SUGGESTIONS.filter((item) =>
     item.toLowerCase().includes(headerSearchQuery.toLowerCase())
   );
 

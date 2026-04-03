@@ -35,7 +35,7 @@ export function HomeSpaceCard(props: HomeSpaceCardProps) {
         <div className="home-space-card__bottom">
           <div className="home-space-card__price">
             <strong>{props.price}</strong>
-            <span>/60분</span>
+            <span>/시간</span>
           </div>
           <p className="home-space-card__tags">주차가능 · 예약가능</p>
         </div>
