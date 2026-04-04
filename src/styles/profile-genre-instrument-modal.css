@@ -1,0 +1,234 @@
+/* Figma: 선호 장르/악기 모달 6415:78329 · 6419:78522 · 6419:78664 · 6419:78723 */
+
+.profile-gi-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+@media (min-width: 480px) {
+  .profile-gi-modal {
+    align-items: center;
+    padding: 24px;
+  }
+}
+
+.profile-gi-modal__backdrop {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  background: rgba(0, 0, 0, 0.45);
+  cursor: pointer;
+}
+
+.profile-gi-modal__panel {
+  position: relative;
+  z-index: 1;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 374px;
+  max-height: min(90vh, 720px);
+  display: flex;
+  flex-direction: column;
+  background: #ffffff;
+  border-radius: 10px 10px 0 0;
+  box-shadow: 0 3px 20px rgba(0, 0, 0, 0.08);
+  font-family: 'Pretendard', system-ui, sans-serif;
+}
+
+@media (min-width: 480px) {
+  .profile-gi-modal__panel {
+    border-radius: 10px;
+    max-height: min(85vh, 680px);
+  }
+}
+
+.profile-gi-modal__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 15px;
+  flex-shrink: 0;
+}
+
+.profile-gi-modal__title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 26px;
+  color: #000000;
+}
+
+.profile-gi-modal__close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: #000000;
+  cursor: pointer;
+}
+
+.profile-gi-modal__close-svg {
+  display: block;
+}
+
+.profile-gi-modal__tabs {
+  display: flex;
+  width: 100%;
+  border-bottom: 1px solid #f0f2f5;
+  flex-shrink: 0;
+}
+
+.profile-gi-modal__tab {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 0 8px 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.profile-gi-modal__tab-label {
+  font-size: 15px;
+  line-height: 22px;
+  font-weight: 500;
+  color: #a3a9b5;
+  text-align: center;
+  width: 100%;
+}
+
+.profile-gi-modal__tab--active .profile-gi-modal__tab-label {
+  font-weight: 600;
+  color: #000000;
+}
+
+.profile-gi-modal__tab-line {
+  display: block;
+  width: 100%;
+  height: 2px;
+  background: #a3a9b5;
+  opacity: 0;
+}
+
+.profile-gi-modal__tab--active .profile-gi-modal__tab-line {
+  background: #000000;
+  opacity: 1;
+}
+
+.profile-gi-modal__body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 15px;
+  overflow: hidden;
+}
+
+.profile-gi-modal__hint {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 22px;
+  color: #ffa20c;
+  flex-shrink: 0;
+}
+
+.profile-gi-modal__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  align-content: flex-start;
+  overflow-y: auto;
+  max-height: 442px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.profile-gi-modal__chip {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 50px;
+  padding: 15px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: #f6f8fa;
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 22px;
+  color: #000000;
+  cursor: pointer;
+  text-align: center;
+}
+
+.profile-gi-modal__chip--selected {
+  background: #fffbee;
+  border-color: #f6d155;
+}
+
+.profile-gi-modal__footer {
+  display: flex;
+  gap: 10px;
+  padding: 15px;
+  flex-shrink: 0;
+}
+
+.profile-gi-modal__btn-reset {
+  flex: 0 0 90px;
+  height: 56px;
+  padding: 18px 12px;
+  border: none;
+  border-radius: 10px;
+  background: #eff2f5;
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 22px;
+  color: #000000;
+  cursor: pointer;
+}
+
+.profile-gi-modal__btn-done {
+  flex: 1;
+  min-width: 0;
+  height: 56px;
+  padding: 18px 16px;
+  border: none;
+  border-radius: 10px;
+  background: #c4c9d4;
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 22px;
+  color: #ffffff;
+  cursor: not-allowed;
+}
+
+.profile-gi-modal__btn-done--active {
+  background: #f6d155;
+  color: #000000;
+  cursor: pointer;
+}
+
+.profile-gi-modal__btn-done:disabled {
+  background: #c4c9d4;
+  color: #ffffff;
+  cursor: not-allowed;
+}

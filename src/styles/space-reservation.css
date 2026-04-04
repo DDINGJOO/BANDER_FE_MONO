@@ -17,24 +17,51 @@
   margin-bottom: 20px;
 }
 
-.space-reservation__header h1,
-.space-reservation__section h2 {
+.space-reservation__header h1 {
   margin: 0;
   color: var(--color-black);
-  font-size: 24px;
+  font-size: 30px;
   font-weight: 700;
-  line-height: 32px;
+  line-height: normal;
+}
+
+.space-reservation__section > h2:not(.space-reservation__time-section-title) {
+  margin: 0;
+  color: var(--color-black);
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 26px;
+}
+
+.space-reservation__time-section-title {
+  margin: 0;
+  color: var(--color-black);
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 28px;
 }
 
 .space-reservation__back {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   width: 30px;
   height: 30px;
+  padding: 0;
   border: 0;
   background: transparent;
   color: var(--color-black);
-  font-size: 24px;
-  line-height: 1;
   cursor: pointer;
+}
+
+.space-reservation__back-icon {
+  display: inline-flex;
+  transform: rotate(90deg);
+}
+
+.space-reservation__back-icon .signup-profile__chevron {
+  width: 20px;
+  height: 20px;
 }
 
 .space-reservation__summary-card,
@@ -80,17 +107,24 @@
 .space-reservation__summary-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px 20px;
+  gap: 16px 24px;
   padding: 18px 20px 20px;
   background: #f6f8fa;
 }
 
-.space-reservation__summary-grid div {
+.space-reservation__summary-grid-col {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.space-reservation__summary-grid-col > div {
   display: flex;
   gap: 20px;
 }
 
 .space-reservation__summary-grid span {
+  flex-shrink: 0;
   width: 80px;
   color: var(--color-muted);
   font-size: 15px;
@@ -125,6 +159,53 @@
   cursor: default;
 }
 
+/* Figma 6225:45288 — 시간 선택 카드 */
+.space-reservation__section--time {
+  border-color: #f6d155;
+}
+
+.space-reservation__time-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.space-reservation__time-section-head-main {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.space-reservation__calendar-icon {
+  flex-shrink: 0;
+  color: var(--color-black);
+}
+
+.space-reservation__time-section-range {
+  flex-shrink: 0;
+  max-width: 55%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--color-black);
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 22px;
+  text-align: right;
+  cursor: default;
+}
+
+.space-reservation__timeline-lead {
+  margin: 10px 0 0;
+  color: #6d7a87;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 18px;
+}
+
 .space-reservation__section-caption,
 .space-reservation__point-note {
   margin: 6px 0 0;
@@ -134,7 +215,7 @@
 }
 
 .space-reservation__timeline {
-  margin-top: 16px;
+  margin-top: 14px;
   overflow: hidden;
   position: relative;
   padding: 0 28px;
@@ -319,23 +400,52 @@
 
 .space-reservation__legend {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 14px;
-  margin-top: 12px;
+  gap: 14px 18px;
+  margin-top: 14px;
   color: var(--color-muted);
   font-size: 12px;
   line-height: 16px;
 }
 
+.space-reservation__legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.space-reservation__legend-swatch {
+  flex-shrink: 0;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+}
+
+.space-reservation__legend-swatch--available {
+  background: #f0f2f5;
+  box-shadow: inset 0 0 0 1px #d7dee8;
+}
+
+.space-reservation__legend-swatch--blocked {
+  background:
+    linear-gradient(45deg, transparent 45%, #aeb8c7 45%, #aeb8c7 55%, transparent 55%),
+    #c4c9d4;
+}
+
+.space-reservation__legend-swatch--selected {
+  background: #fffbee;
+  box-shadow: inset 0 0 0 1px #ffa20c;
+}
+
 .space-reservation__field-list {
   display: flex;
   flex-direction: column;
-  gap: 22px;
+  gap: 30px;
   margin-top: 16px;
 }
 
 .space-reservation__select,
-.space-reservation__discount-input,
 .space-reservation__field input,
 .space-reservation__field textarea {
   width: 100%;
@@ -347,7 +457,26 @@
   line-height: 22px;
 }
 
-.space-reservation__select,
+.space-reservation__discount-input {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid #f0f2f5;
+  border-radius: 10px;
+  background: var(--color-white);
+  color: var(--color-black);
+  font-size: 15px;
+  line-height: 22px;
+}
+
+.space-reservation__select {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 50px;
+  padding: 15px;
+  cursor: pointer;
+}
+
 .space-reservation__discount-input {
   display: flex;
   align-items: center;
@@ -355,6 +484,17 @@
   min-height: 50px;
   padding: 15px;
   cursor: pointer;
+}
+
+.space-reservation__discount-input-value {
+  margin-left: auto;
+  margin-right: 8px;
+  color: var(--color-muted-strong);
+  font-weight: 500;
+}
+
+.space-reservation__discount-list > div.space-reservation__discount-input {
+  cursor: default;
 }
 
 .space-reservation__field {
@@ -405,10 +545,23 @@
   cursor: pointer;
 }
 
+.space-reservation__payment-only-note {
+  margin: 8px 0 0;
+  color: var(--color-muted-strong);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 18px;
+}
+
 .space-reservation__payment-methods {
   display: flex;
   width: fit-content;
-  margin-top: 16px;
+  margin-top: 12px;
+}
+
+.space-reservation__payment-methods--single {
+  width: fit-content;
+  max-width: 100%;
 }
 
 .space-reservation__payment-method {
@@ -419,6 +572,17 @@
   background: #f6f8fa;
   padding: 10px 14px;
   cursor: pointer;
+}
+
+.space-reservation__payment-method--only {
+  flex: 0 0 auto;
+  width: 132px;
+  min-height: 44px;
+  border: 1px solid var(--color-main-yellow);
+  border-radius: 10px;
+  background: #fffbee;
+  padding: 8px 12px;
+  cursor: default;
 }
 
 .space-reservation__payment-method--selected {
@@ -434,23 +598,104 @@
   margin: 0 auto;
 }
 
+.space-reservation__payment-method--only .space-reservation__payment-method-image {
+  width: 96px;
+  height: 28px;
+}
+
 .space-reservation__payment-summary {
   margin-top: 16px;
 }
 
-.space-reservation__payment-summary > div {
+.space-reservation__payment-summary-rows > div {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 6px 0;
+  padding: 10px 0;
+  border-bottom: 1px solid #f0f2f5;
   color: var(--color-black);
   font-size: 14px;
   line-height: 20px;
 }
 
-.space-reservation__payment-total strong {
+.space-reservation__payment-summary-rows > div:last-of-type {
+  border-bottom: 0;
+  padding-bottom: 8px;
+}
+
+.space-reservation__payment-total {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 14px;
+  margin-top: 4px;
+}
+
+.space-reservation__payment-total > span {
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 22px;
+  color: var(--color-black);
+}
+
+.space-reservation__payment-total-price {
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 24px;
   color: #ff3a3d;
+}
+
+.space-reservation__payment-agreement-all {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  margin-top: 16px;
+  padding: 14px 16px;
+  border: 1px solid #f0f2f5;
+  border-radius: 10px;
+  background: #f6f8fa;
+  color: var(--color-black);
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 22px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.space-reservation__payment-agreement-all-check {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 5px;
+  background: var(--color-white);
+  box-shadow: inset 0 0 0 1px #e2e6ec;
+  color: transparent;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.space-reservation__payment-agreement-all-check--active {
+  background: var(--color-main-yellow);
+  box-shadow: none;
+  color: var(--color-black);
+}
+
+.space-reservation__payment-agreement-all-chevron {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.space-reservation__payment-agreement-all-chevron .signup-profile__chevron {
+  width: 14px;
+  height: 14px;
+  transform: rotate(-90deg);
 }
 
 .space-reservation__bottom-bar {
@@ -466,7 +711,7 @@
   min-height: 135px;
   padding: 20px 24px 14px;
   background: rgba(255, 255, 255, 0.96);
-  box-shadow: 0 -3px 30px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 -3px 50px rgba(0, 0, 0, 0.1);
 }
 
 .space-reservation__bottom-main {
@@ -492,15 +737,25 @@
   cursor: pointer;
 }
 
-.space-reservation__bottom-summary span,
-.space-reservation__bottom-summary strong {
-  font-size: 15px;
-  line-height: 22px;
+.space-reservation__bottom-summary-title {
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 26px;
+  color: var(--color-black);
 }
 
-.space-reservation__bottom-summary strong {
+.space-reservation__bottom-summary-right {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   margin-left: auto;
+}
+
+.space-reservation__bottom-summary-right strong {
+  font-size: 16px;
   font-weight: 700;
+  line-height: 24px;
+  color: var(--color-black);
 }
 
 .space-reservation__bottom-summary-arrow {
@@ -573,8 +828,8 @@
 }
 
 .space-reservation__agreement-check--active {
-  color: #7f8897;
-  background: #eff2f5;
+  background: var(--color-main-yellow);
+  color: var(--color-black);
 }
 
 .space-reservation__agreement-required {
@@ -623,9 +878,76 @@
   padding: 0 20px 20px;
 }
 
+/* Figma 6426:24604 다운로드 전 · 6426:24729 적용 가능 쿠폰(다운로드 완료) */
 .space-reservation__modal-dialog--coupon {
+  display: flex;
+  flex-direction: column;
+  width: min(100%, 510px);
   max-height: min(720px, calc(100vh - 48px));
+  padding: 0;
   overflow: hidden;
+  background: var(--color-white);
+  box-shadow: var(--shadow-card);
+}
+
+.space-reservation__coupon-modal-header {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: space-between;
+  padding: 15px 20px;
+  border-radius: 15px 15px 0 0;
+  background: var(--color-white);
+}
+
+.space-reservation__coupon-modal-header h2 {
+  margin: 0;
+  color: var(--color-black);
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 26px;
+}
+
+.space-reservation__coupon-modal-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--color-black);
+  cursor: pointer;
+}
+
+.space-reservation__coupon-modal-footer {
+  flex-shrink: 0;
+  padding: 10px 20px 20px;
+  background: var(--color-white);
+  border-radius: 0 0 15px 15px;
+}
+
+/* 모달 닫기 — 쿠폰 수령은 카드 우측 다운로드 버튼만 */
+.space-reservation__coupon-footer-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  max-width: 460px;
+  min-height: 56px;
+  margin: 0 auto;
+  padding: 18px 24px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--color-main-yellow);
+  color: var(--color-black);
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 22px;
+  cursor: pointer;
+}
+
+.space-reservation__coupon-footer-btn:hover {
+  filter: brightness(0.98);
 }
 
 .space-reservation__modal-header {
@@ -778,64 +1100,209 @@
   cursor: default;
 }
 
-.space-reservation__coupon-list {
-  gap: 10px;
-  max-height: calc(100vh - 220px);
-  padding: 10px 0 0;
+.space-reservation__modal-dialog--coupon .space-reservation__coupon-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: none;
+  padding: 10px 20px 20px;
   overflow-y: auto;
+  gap: 10px;
+  background: var(--color-white);
 }
 
 .space-reservation__coupon-card {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 16px;
+  gap: 15px;
   padding: 20px 15px;
   border: 1px solid var(--color-line);
   border-radius: 15px;
+  background: var(--color-white);
 }
 
-.space-reservation__coupon-copy {
+.space-reservation__coupon-card-main {
+  display: flex;
   flex: 1 1 auto;
+  flex-direction: column;
+  gap: 15px;
   min-width: 0;
 }
 
+.space-reservation__coupon-card-head {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
 .space-reservation__coupon-subtitle {
-  margin: 0 0 5px;
+  margin: 0;
   color: var(--color-black);
   font-size: 13px;
   font-weight: 500;
   line-height: 18px;
 }
 
-.space-reservation__coupon-title {
-  margin: 0;
+.space-reservation__coupon-value-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.space-reservation__coupon-value-main {
   color: var(--color-accent-text);
   font-size: 22px;
   font-weight: 700;
   line-height: 28px;
 }
 
-.space-reservation__coupon-description {
-  margin: 5px 0 0;
+.space-reservation__coupon-value-suffix {
+  padding-top: 2px;
+  color: var(--color-black);
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 22px;
+}
+
+.space-reservation__coupon-meta-note {
+  margin: 0;
   color: var(--color-muted);
   font-size: 13px;
+  font-weight: 500;
   line-height: 18px;
 }
 
 .space-reservation__coupon-terms {
-  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
 }
 
-.space-reservation__coupon-terms p {
-  margin: 4px 0 0;
+.space-reservation__coupon-term-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 5px;
+}
+
+.space-reservation__coupon-term-row p {
+  margin: 0;
   color: var(--color-muted-strong);
   font-size: 14px;
+  font-weight: 500;
   line-height: 20px;
+}
+
+.space-reservation__coupon-term-dot {
+  flex-shrink: 0;
+  width: 2px;
+  height: 2px;
+  margin-top: 9px;
+  border-radius: 50%;
+  background: var(--color-muted-strong);
+}
+
+.space-reservation__coupon-term-row-wrap {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.space-reservation__coupon-usage-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  max-width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  color: inherit;
+}
+
+.space-reservation__coupon-usage-label {
+  flex: 1 1 auto;
+  min-width: 0;
+  color: var(--color-muted-strong);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 20px;
+}
+
+.space-reservation__coupon-usage-chevron {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  color: var(--color-muted-strong);
+  transition: transform 0.2s ease;
+}
+
+.space-reservation__coupon-usage-chevron--open {
+  transform: rotate(180deg);
+}
+
+.space-reservation__coupon-usage-chevron .signup-profile__chevron {
+  width: 14px;
+  height: 14px;
+}
+
+/* Figma 6426:24839 — 사용가능 룸 (rounded 15, pad 20, title 16B / list 14M gap 10) */
+.space-reservation__coupon-rooms-popover {
+  max-width: 360px;
+  padding: 20px;
+  border: 0;
+  border-radius: 15px;
+  margin-top: 4px;
+  background: var(--color-white);
+  box-shadow: 0 0 0 1px var(--color-line);
+}
+
+.space-reservation__coupon-rooms-popover-title {
+  margin: 0 0 10px;
+  color: var(--color-accent-text);
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 24px;
+}
+
+.space-reservation__coupon-rooms-popover-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.space-reservation__coupon-rooms-popover-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--color-black);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 20px;
+}
+
+.space-reservation__coupon-rooms-popover-item .space-reservation__coupon-term-dot {
+  background: var(--color-black);
+}
+
+.space-reservation__coupon-dl-svg,
+.space-reservation__coupon-check-svg {
+  display: block;
+  width: 24px;
+  height: 24px;
 }
 
 .space-reservation__coupon-action {
   display: inline-flex;
+  flex-shrink: 0;
   align-items: center;
   justify-content: center;
   width: 36px;
@@ -844,15 +1311,14 @@
   border-radius: 999px;
   background: rgba(255, 162, 12, 0.1);
   color: var(--color-accent-text);
-  font-size: 24px;
-  line-height: 1;
   cursor: pointer;
-  flex: 0 0 auto;
 }
 
+/* Figma 6426:24729 — Gray 1 원 + 체크(24) */
 .space-reservation__coupon-action--done {
   background: #eff1f5;
   color: var(--color-muted-strong);
+  cursor: default;
 }
 
 .space-reservation__result-dialog {

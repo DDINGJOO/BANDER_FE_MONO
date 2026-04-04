@@ -12,12 +12,22 @@ import {
 } from '../../data/home';
 
 type ExplorerPanel = 'date' | 'keyword' | 'people' | 'region' | 'space' | null;
-type ExplorerVariant = 'hero' | 'section';
+type ExplorerVariant = 'hero' | 'map' | 'section';
 
 type DateDraft = {
   day: number;
   endHour: number;
+  month: number;
   startHour: number;
+  year: number;
+};
+
+type CalendarCell = {
+  day: number;
+  key: string;
+  month: number;
+  outside: boolean;
+  year: number;
 };
 
 type HomeSpaceExplorerProps = {
@@ -26,30 +36,37 @@ type HomeSpaceExplorerProps = {
   variant?: ExplorerVariant;
 };
 
-const DEFAULT_DATE_DRAFT: DateDraft = {
-  day: 13,
-  endHour: 24,
-  startHour: 0,
-};
+function createTodayDateDraft(): DateDraft {
+  const t = new Date();
+  return {
+    day: t.getDate(),
+    endHour: 24,
+    month: t.getMonth() + 1,
+    startHour: 0,
+    year: t.getFullYear(),
+  };
+}
 
-const CALENDAR_CELLS = [
-  { day: 27, key: 'prev-27', outside: true },
-  { day: 28, key: 'prev-28', outside: true },
-  { day: 29, key: 'prev-29', outside: true },
-  { day: 30, key: 'prev-30', outside: true },
-  { day: 31, key: 'prev-31', outside: true },
-  ...Array.from({ length: 31 }, (_, index) => ({
-    day: index + 1,
-    key: `current-${index + 1}`,
-    outside: false,
-  })),
-  { day: 1, key: 'next-1', outside: true },
-  { day: 2, key: 'next-2', outside: true },
-  { day: 3, key: 'next-3', outside: true },
-  { day: 4, key: 'next-4', outside: true },
-  { day: 5, key: 'next-5', outside: true },
-  { day: 6, key: 'next-6', outside: true },
-];
+function buildCalendarGrid(viewYear: number, viewMonth: number): CalendarCell[] {
+  const cells: CalendarCell[] = [];
+  const firstOfMonth = new Date(viewYear, viewMonth - 1, 1);
+  const startOffset = firstOfMonth.getDay();
+  const cursor = new Date(viewYear, viewMonth - 1, 1 - startOffset);
+  for (let i = 0; i < 42; i++) {
+    const y = cursor.getFullYear();
+    const m = cursor.getMonth() + 1;
+    const d = cursor.getDate();
+    cells.push({
+      day: d,
+      key: `cal-${y}-${m}-${d}-${i}`,
+      month: m,
+      outside: m !== viewMonth || y !== viewYear,
+      year: y,
+    });
+    cursor.setDate(cursor.getDate() + 1);
+  }
+  return cells;
+}
 
 function toggleSelection(list: string[], value: string) {
   if (list.includes(value)) {
@@ -86,6 +103,7 @@ export function HomeSpaceExplorer({
 }: HomeSpaceExplorerProps) {
   const navigate = useNavigate();
   const isHero = variant === 'hero';
+  const labelModeHero = variant === 'hero';
   const visibleCards =
     typeof resultLimit === 'number' ? HOME_SPACE_CARDS.slice(0, resultLimit) : HOME_SPACE_CARDS;
   const explorerRef = useRef<HTMLDivElement | null>(null);
@@ -109,7 +127,11 @@ export function HomeSpaceExplorer({
   const [draftPeopleCount, setDraftPeopleCount] = useState(0);
 
   const [appliedDate, setAppliedDate] = useState<DateDraft | null>(null);
-  const [draftDate, setDraftDate] = useState<DateDraft>(DEFAULT_DATE_DRAFT);
+  const [draftDate, setDraftDate] = useState<DateDraft>(() => createTodayDateDraft());
+  const [calendarView, setCalendarView] = useState(() => {
+    const t = new Date();
+    return { month: t.getMonth() + 1, year: t.getFullYear() };
+  });
 
   useEffect(() => {
     const handlePointerDown = (event: MouseEvent) => {
@@ -154,7 +176,9 @@ export function HomeSpaceExplorer({
       return;
     }
 
-    setDraftDate(appliedDate ?? DEFAULT_DATE_DRAFT);
+    const nextDraft = appliedDate ?? createTodayDateDraft();
+    setDraftDate(nextDraft);
+    setCalendarView({ year: nextDraft.year, month: nextDraft.month });
     setOpenPanel('date');
   };
 
@@ -226,13 +250,15 @@ export function HomeSpaceExplorer({
 
   const clearDateFilter = () => {
     setAppliedDate(null);
-    setDraftDate(DEFAULT_DATE_DRAFT);
+    const next = createTodayDateDraft();
+    setDraftDate(next);
+    setCalendarView({ year: next.year, month: next.month });
     setOpenPanel(null);
   };
 
   const dateButtonLabel = appliedDate
-    ? `25.08.${String(appliedDate.day).padStart(2, '0')} / ${appliedDate.startHour}시 ~ ${appliedDate.endHour}시`
-    : isHero
+    ? `${String(appliedDate.year % 100).padStart(2, '0')}.${String(appliedDate.month).padStart(2, '0')}.${String(appliedDate.day).padStart(2, '0')} / ${appliedDate.startHour}시 ~ ${appliedDate.endHour}시`
+    : labelModeHero
       ? '날짜선택'
       : '날짜/시간';
   const peopleButtonLabel = appliedPeopleCount > 0 ? `${appliedPeopleCount}명` : '인원';
@@ -240,8 +266,8 @@ export function HomeSpaceExplorer({
   const spaceButtonLabel = summarizeSelection(appliedSpaceSelections, '공간');
   const keywordButtonLabel =
     appliedKeywordSelections.length > 0
-      ? `${isHero ? '악기' : '키워드'} ${appliedKeywordSelections.length}`
-      : isHero
+      ? `${labelModeHero ? '악기' : '키워드'} ${appliedKeywordSelections.length}`
+      : labelModeHero
         ? '악기'
         : '키워드';
 
@@ -392,6 +418,8 @@ export function HomeSpaceExplorer({
     </div>
   );
 
+  const calendarCells = buildCalendarGrid(calendarView.year, calendarView.month);
+
   const datePanel = (
     <div className="home-explorer-panel home-explorer-panel--date">
       <div className="home-explorer-panel__header">
@@ -402,9 +430,31 @@ export function HomeSpaceExplorer({
       </div>
       <div className="home-explorer-panel__body home-explorer-panel__body--date">
         <div className="home-explorer-date__month">
-          <button type="button">‹</button>
-          <span>2025년 8월</span>
-          <button type="button">›</button>
+          <button
+            aria-label="이전 달"
+            onClick={() => {
+              setCalendarView((v) => {
+                const d = new Date(v.year, v.month - 2, 1);
+                return { year: d.getFullYear(), month: d.getMonth() + 1 };
+              });
+            }}
+            type="button"
+          >
+            ‹
+          </button>
+          <span>{`${calendarView.year}년 ${calendarView.month}월`}</span>
+          <button
+            aria-label="다음 달"
+            onClick={() => {
+              setCalendarView((v) => {
+                const d = new Date(v.year, v.month, 1);
+                return { year: d.getFullYear(), month: d.getMonth() + 1 };
+              });
+            }}
+            type="button"
+          >
+            ›
+          </button>
         </div>
         <div className="home-explorer-date__weekdays">
           {['일', '월', '화', '수', '목', '금', '토'].map((weekday) => (
@@ -412,23 +462,30 @@ export function HomeSpaceExplorer({
           ))}
         </div>
         <div className="home-explorer-date__grid">
-          {CALENDAR_CELLS.map((cell) => (
-            <button
-              className={`home-explorer-date__cell ${cell.outside ? 'home-explorer-date__cell--outside' : ''} ${!cell.outside && draftDate.day === cell.day ? 'home-explorer-date__cell--selected' : ''}`}
-              disabled={cell.outside}
-              key={cell.key}
-              onClick={() =>
-                !cell.outside &&
-                setDraftDate((current) => ({
-                  ...current,
-                  day: cell.day,
-                }))
-              }
-              type="button"
-            >
-              {cell.day}
-            </button>
-          ))}
+          {calendarCells.map((cell) => {
+            const selected =
+              draftDate.year === cell.year &&
+              draftDate.month === cell.month &&
+              draftDate.day === cell.day;
+            return (
+              <button
+                className={`home-explorer-date__cell ${cell.outside ? 'home-explorer-date__cell--outside' : ''} ${selected ? 'home-explorer-date__cell--selected' : ''}`}
+                key={cell.key}
+                onClick={() => {
+                  setDraftDate((current) => ({
+                    ...current,
+                    day: cell.day,
+                    month: cell.month,
+                    year: cell.year,
+                  }));
+                  setCalendarView({ year: cell.year, month: cell.month });
+                }}
+                type="button"
+              >
+                {cell.day}
+              </button>
+            );
+          })}
         </div>
         <div className="home-explorer-date__time">
           <div className="home-explorer-date__time-header">
@@ -436,7 +493,7 @@ export function HomeSpaceExplorer({
             <span>{`${draftDate.startHour}시 ~ ${draftDate.endHour}시`}</span>
           </div>
           <Slider.Root
-            aria-label={`${isHero ? '검색' : '탐색'} 시간 범위`}
+            aria-label={`${labelModeHero ? '검색' : '탐색'} 시간 범위`}
             className="home-explorer-date__slider"
             max={24}
             min={0}
@@ -449,11 +506,11 @@ export function HomeSpaceExplorer({
               <Slider.Range className="home-explorer-date__slider-range" />
             </Slider.Track>
             <Slider.Thumb
-              aria-label={`${isHero ? '검색' : '탐색'} 시작 시간`}
+              aria-label={`${labelModeHero ? '검색' : '탐색'} 시작 시간`}
               className="home-explorer-date__slider-thumb"
             />
             <Slider.Thumb
-              aria-label={`${isHero ? '검색' : '탐색'} 종료 시간`}
+              aria-label={`${labelModeHero ? '검색' : '탐색'} 종료 시간`}
               className="home-explorer-date__slider-thumb"
             />
           </Slider.Root>
@@ -466,7 +523,11 @@ export function HomeSpaceExplorer({
       <div className="home-explorer-panel__footer">
         <button
           className="home-explorer-panel__action home-explorer-panel__action--ghost"
-          onClick={() => setDraftDate(DEFAULT_DATE_DRAFT)}
+          onClick={() => {
+            const d = createTodayDateDraft();
+            setDraftDate(d);
+            setCalendarView({ year: d.year, month: d.month });
+          }}
           type="button"
         >
           초기화
@@ -577,6 +638,159 @@ export function HomeSpaceExplorer({
           선택완료
         </button>
       </div>
+    </div>
+  );
+
+  const renderExplorerToolbar = (toolbarExtraClass?: string) => (
+    <div
+      className={
+        toolbarExtraClass ? `home-explorer__toolbar ${toolbarExtraClass}` : 'home-explorer__toolbar'
+      }
+    >
+      <div className="home-explorer__filter-wrap">
+        {hasActiveRegion ? (
+          <div className="home-explorer__filter-control">
+            <button className="home-explorer__filter home-explorer__filter--split" onClick={openRegionPanel} type="button">
+              <span>{regionButtonLabel}</span>
+              <ChevronIcon />
+            </button>
+            <button
+              aria-label="지역 필터 초기화"
+              className="home-explorer__filter-clear"
+              onClick={clearRegionFilter}
+              type="button"
+            >
+              ×
+            </button>
+          </div>
+        ) : (
+          <button className="home-explorer__filter" onClick={openRegionPanel} type="button">
+            <span>{regionButtonLabel}</span>
+            <ChevronIcon />
+          </button>
+        )}
+        {openPanel === 'region' ? regionPanel : null}
+      </div>
+
+      <div className="home-explorer__filter-wrap">
+        {hasActiveSpace ? (
+          <div className="home-explorer__filter-control">
+            <button className="home-explorer__filter home-explorer__filter--split" onClick={openSpacePanel} type="button">
+              <span>{spaceButtonLabel}</span>
+              <ChevronIcon />
+            </button>
+            <button
+              aria-label="공간 필터 초기화"
+              className="home-explorer__filter-clear"
+              onClick={clearSpaceFilter}
+              type="button"
+            >
+              ×
+            </button>
+          </div>
+        ) : (
+          <button className="home-explorer__filter" onClick={openSpacePanel} type="button">
+            <span>{spaceButtonLabel}</span>
+            <ChevronIcon />
+          </button>
+        )}
+        {openPanel === 'space' ? spacePanel : null}
+      </div>
+
+      <div className="home-explorer__filter-wrap">
+        {hasActiveDate ? (
+          <div className="home-explorer__filter-control">
+            <button className="home-explorer__filter home-explorer__filter--split" onClick={openDatePanel} type="button">
+              <span>{dateButtonLabel}</span>
+              <ChevronIcon />
+            </button>
+            <button
+              aria-label="날짜시간 필터 초기화"
+              className="home-explorer__filter-clear"
+              onClick={clearDateFilter}
+              type="button"
+            >
+              ×
+            </button>
+          </div>
+        ) : (
+          <button className="home-explorer__filter" onClick={openDatePanel} type="button">
+            <span>{dateButtonLabel}</span>
+            <ChevronIcon />
+          </button>
+        )}
+        {openPanel === 'date' ? datePanel : null}
+      </div>
+
+      <div className="home-explorer__filter-wrap">
+        {hasActivePeople ? (
+          <div className="home-explorer__filter-control">
+            <button className="home-explorer__filter home-explorer__filter--split" onClick={openPeoplePanel} type="button">
+              <span>{peopleButtonLabel}</span>
+              <ChevronIcon />
+            </button>
+            <button
+              aria-label="인원 필터 초기화"
+              className="home-explorer__filter-clear"
+              onClick={clearPeopleFilter}
+              type="button"
+            >
+              ×
+            </button>
+          </div>
+        ) : (
+          <button className="home-explorer__filter" onClick={openPeoplePanel} type="button">
+            <span>{peopleButtonLabel}</span>
+            <ChevronIcon />
+          </button>
+        )}
+        {openPanel === 'people' ? peoplePanel : null}
+      </div>
+
+      <div className="home-explorer__filter-wrap">
+        {hasActiveKeyword ? (
+          <div className="home-explorer__filter-control">
+            <button
+              className="home-explorer__filter home-explorer__filter--split"
+              onClick={openKeywordPanel}
+              type="button"
+            >
+              <span>{keywordButtonLabel}</span>
+              <ChevronIcon />
+            </button>
+            <button
+              aria-label="키워드 필터 초기화"
+              className="home-explorer__filter-clear"
+              onClick={clearKeywordFilter}
+              type="button"
+            >
+              ×
+            </button>
+          </div>
+        ) : (
+          <button className="home-explorer__filter" onClick={openKeywordPanel} type="button">
+            <span>{keywordButtonLabel}</span>
+            <ChevronIcon />
+          </button>
+        )}
+        {openPanel === 'keyword' ? keywordPanel : null}
+      </div>
+
+      <button
+        className={`home-explorer__filter ${reservableOnly ? 'home-explorer__filter--active' : ''}`}
+        onClick={() => setReservableOnly((current) => !current)}
+        type="button"
+      >
+        예약가능
+      </button>
+
+      <button
+        className={`home-explorer__filter ${parkingOnly ? 'home-explorer__filter--active' : ''}`}
+        onClick={() => setParkingOnly((current) => !current)}
+        type="button"
+      >
+        주차가능
+      </button>
     </div>
   );
 
@@ -761,154 +975,54 @@ export function HomeSpaceExplorer({
     );
   }
 
+  if (variant === 'map') {
+    return (
+      <div className="home-explorer home-explorer--map-sidebar" ref={explorerRef}>
+        <div className="home-search__bar home-search__bar--map-sidebar">
+          <div className="home-search__field home-search__field--wide">
+            <span className="home-search__field-inner">
+              <SearchIcon />
+              <input
+                className="home-search__input"
+                onChange={(event) => setHeroSearchQuery(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') {
+                    event.preventDefault();
+                    submitHeroSearch();
+                  }
+                }}
+                placeholder="어떤 음악 공간을 찾으시나요?"
+                value={heroSearchQuery}
+              />
+              {heroSearchQuery ? (
+                <button
+                  aria-label="메인 검색어 지우기"
+                  className="home-search__clear"
+                  onClick={() => setHeroSearchQuery('')}
+                  type="button"
+                >
+                  ×
+                </button>
+              ) : null}
+            </span>
+          </div>
+          <button
+            aria-label="검색"
+            className="home-search__submit home-search__submit--icon"
+            onClick={submitHeroSearch}
+            type="button"
+          >
+            <SearchIcon />
+          </button>
+        </div>
+        {renderExplorerToolbar('home-explorer__toolbar--map-sidebar')}
+      </div>
+    );
+  }
+
   return (
     <div className="home-explorer" ref={explorerRef}>
-      <div className="home-explorer__toolbar">
-        <div className="home-explorer__filter-wrap">
-          {hasActiveRegion ? (
-            <div className="home-explorer__filter-control">
-              <button className="home-explorer__filter home-explorer__filter--split" onClick={openRegionPanel} type="button">
-                <span>{regionButtonLabel}</span>
-                <ChevronIcon />
-              </button>
-              <button
-                aria-label="지역 필터 초기화"
-                className="home-explorer__filter-clear"
-                onClick={clearRegionFilter}
-                type="button"
-              >
-                ×
-              </button>
-            </div>
-          ) : (
-            <button className="home-explorer__filter" onClick={openRegionPanel} type="button">
-              <span>{regionButtonLabel}</span>
-              <ChevronIcon />
-            </button>
-          )}
-          {openPanel === 'region' ? regionPanel : null}
-        </div>
-
-        <div className="home-explorer__filter-wrap">
-          {hasActiveSpace ? (
-            <div className="home-explorer__filter-control">
-              <button className="home-explorer__filter home-explorer__filter--split" onClick={openSpacePanel} type="button">
-                <span>{spaceButtonLabel}</span>
-                <ChevronIcon />
-              </button>
-              <button
-                aria-label="공간 필터 초기화"
-                className="home-explorer__filter-clear"
-                onClick={clearSpaceFilter}
-                type="button"
-              >
-                ×
-              </button>
-            </div>
-          ) : (
-            <button className="home-explorer__filter" onClick={openSpacePanel} type="button">
-              <span>{spaceButtonLabel}</span>
-              <ChevronIcon />
-            </button>
-          )}
-          {openPanel === 'space' ? spacePanel : null}
-        </div>
-
-        <div className="home-explorer__filter-wrap">
-          {hasActiveDate ? (
-            <div className="home-explorer__filter-control">
-              <button className="home-explorer__filter home-explorer__filter--split" onClick={openDatePanel} type="button">
-                <span>{dateButtonLabel}</span>
-                <ChevronIcon />
-              </button>
-              <button
-                aria-label="날짜시간 필터 초기화"
-                className="home-explorer__filter-clear"
-                onClick={clearDateFilter}
-                type="button"
-              >
-                ×
-              </button>
-            </div>
-          ) : (
-            <button className="home-explorer__filter" onClick={openDatePanel} type="button">
-              <span>{dateButtonLabel}</span>
-              <ChevronIcon />
-            </button>
-          )}
-          {openPanel === 'date' ? datePanel : null}
-        </div>
-
-        <div className="home-explorer__filter-wrap">
-          {hasActivePeople ? (
-            <div className="home-explorer__filter-control">
-              <button className="home-explorer__filter home-explorer__filter--split" onClick={openPeoplePanel} type="button">
-                <span>{peopleButtonLabel}</span>
-                <ChevronIcon />
-              </button>
-              <button
-                aria-label="인원 필터 초기화"
-                className="home-explorer__filter-clear"
-                onClick={clearPeopleFilter}
-                type="button"
-              >
-                ×
-              </button>
-            </div>
-          ) : (
-            <button className="home-explorer__filter" onClick={openPeoplePanel} type="button">
-              <span>{peopleButtonLabel}</span>
-              <ChevronIcon />
-            </button>
-          )}
-          {openPanel === 'people' ? peoplePanel : null}
-        </div>
-
-        <div className="home-explorer__filter-wrap">
-          {hasActiveKeyword ? (
-            <div className="home-explorer__filter-control">
-              <button
-                className="home-explorer__filter home-explorer__filter--split"
-                onClick={openKeywordPanel}
-                type="button"
-              >
-                <span>{keywordButtonLabel}</span>
-                <ChevronIcon />
-              </button>
-              <button
-                aria-label="키워드 필터 초기화"
-                className="home-explorer__filter-clear"
-                onClick={clearKeywordFilter}
-                type="button"
-              >
-                ×
-              </button>
-            </div>
-          ) : (
-            <button className="home-explorer__filter" onClick={openKeywordPanel} type="button">
-              <span>{keywordButtonLabel}</span>
-              <ChevronIcon />
-            </button>
-          )}
-          {openPanel === 'keyword' ? keywordPanel : null}
-        </div>
-
-        <button
-          className={`home-explorer__filter ${reservableOnly ? 'home-explorer__filter--active' : ''}`}
-          onClick={() => setReservableOnly((current) => !current)}
-          type="button"
-        >
-          예약가능
-        </button>
-
-        <button
-          className={`home-explorer__filter ${parkingOnly ? 'home-explorer__filter--active' : ''}`}
-          onClick={() => setParkingOnly((current) => !current)}
-          type="button"
-        >
-          주차가능
-        </button>
-      </div>
+      {renderExplorerToolbar()}
 
       {headerContent}
 

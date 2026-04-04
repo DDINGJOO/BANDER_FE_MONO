@@ -1,0 +1,359 @@
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { ChangePasswordModal } from '../components/account/ChangePasswordModal';
+import { HomeFooter } from '../components/home/HomeFooter';
+import { HomeHeader } from '../components/home/HomeHeader';
+import { ChevronIcon } from '../components/shared/Icons';
+import { HEADER_SEARCH_KEYWORD_SUGGESTIONS } from '../config/searchSuggestions';
+import { loadAuthSession } from '../data/authSession';
+import {
+  ACCOUNT_SETTINGS_DEFAULT_PHONE,
+  resolveAccountSettingsEmail,
+  type AccountLinkProvider,
+} from '../data/accountSettings';
+import '../styles/account-settings.css';
+
+function LinkDoneCheck() {
+  return (
+    <svg
+      aria-hidden
+      className="account-settings__check-glyph"
+      fill="none"
+      height="14"
+      viewBox="0 0 14 14"
+      width="14"
+    >
+      <path
+        d="M3 7.15L5.65 9.8L11 4.45"
+        stroke="#6d7a87"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.5"
+      />
+    </svg>
+  );
+}
+
+function KakaoGlyph() {
+  return (
+    <svg aria-hidden fill="none" height="22" viewBox="0 0 22 22" width="22">
+      <path
+        d="M11 3.5c4.1 0 7.5 2.6 7.5 5.8 0 2.1-1.4 3.9-3.5 5l1.2 4.5-4.9-3.2H11c-4.1 0-7.5-2.6-7.5-5.8S6.9 3.5 11 3.5z"
+        fill="#3C1E1E"
+      />
+    </svg>
+  );
+}
+
+function GoogleGlyph() {
+  return (
+    <svg aria-hidden height="22" viewBox="0 0 22 22" width="22">
+      <path d="M11 9.2v3.9h5.5c-.25 1.3-1.5 3.8-5.5 3.8-3.3 0-6-2.7-6-6s2.7-6 6-6c1.9 0 3.1.8 3.8 1.5l2.6-2.5C15.9 2.7 13.6 1.5 11 1.5 6.4 1.5 2.5 5.4 2.5 10s3.9 8.5 8.5 8.5c4.9 0 8.2-3.4 8.2-8.3 0-.55-.06-1-.15-1.4H11z" fill="#4285F4" />
+      <path d="M3.8 6.7l3.1 2.3c.75-2 2.9-3.4 5.1-3.4 1.9 0 3.1.8 3.8 1.5l2.6-2.5C15.9 2.7 13.6 1.5 11 1.5 7.5 1.5 4.5 3.6 3.8 6.7z" fill="#EA4335" />
+      <path d="M11 20.5c2.5 0 4.6-.8 6.1-2.3l-2.8-2.2c-.8.55-1.9.95-3.3.95-3.2 0-5.9-2.1-6.9-5.1l-3.05 2.35c1.45 2.9 4.45 4.9 7.95 4.9z" fill="#34A853" />
+      <path d="M4.1 13.9c-.25-.75-.4-1.55-.4-2.4 0-.85.15-1.65.4-2.4L1.05 6.75C.4 8.1 0 9.5 0 11s.4 2.9 1.05 4.25L4.1 13.9z" fill="#FBBC05" />
+    </svg>
+  );
+}
+
+function AppleGlyph() {
+  return (
+    <svg aria-hidden fill="#ffffff" height="20" viewBox="0 0 20 24" width="17">
+      <path d="M15.3 12.7c0-2.5 2.1-3.7 2.2-3.8-.15-.4-.6-1.4-1.2-2.1-.7-.8-1.4-1.7-2.5-1.7s-1.4.5-2.7.5-1.6-.5-2.7-.5-1.8.7-2.5 1.7c-1.3 1.8-1.5 4.4-.6 6.5.6 1.4 1.7 3 2.9 3 .6 0 1-.4 2.1-.4 1.1 0 1.4.4 2.1.4 1.2 0 2.2-1.3 2.8-2.6-2.5-1-2.1-3.7-2-4.6zM13.2 3.8c.7-.8 1.1-1.9 1-3-.9 0-2 .6-2.7 1.5-.6.7-1.1 1.9-1 3 1 0 2-.6 2.7-1.5z" />
+    </svg>
+  );
+}
+
+export function AccountSettingsPage() {
+  const navigate = useNavigate();
+  const isAuthenticated = Boolean(loadAuthSession());
+  const [headerSearchOpen, setHeaderSearchOpen] = useState(false);
+  const [headerSearchQuery, setHeaderSearchQuery] = useState('');
+  const headerSearchRef = useRef<HTMLDivElement | null>(null);
+
+  const [email] = useState(() => resolveAccountSettingsEmail());
+  const [marketingOptIn, setMarketingOptIn] = useState(true);
+  const [linked, setLinked] = useState<Record<AccountLinkProvider, boolean>>({
+    kakao: true,
+    google: false,
+    apple: false,
+  });
+  const [changePasswordOpen, setChangePasswordOpen] = useState(false);
+
+  const filteredSuggestions = HEADER_SEARCH_KEYWORD_SUGGESTIONS.filter((item) =>
+    item.toLowerCase().includes(headerSearchQuery.toLowerCase()),
+  );
+
+  const onHeaderSearchSubmit = useCallback(
+    (value: string) => {
+      const q = value.trim();
+      if (!q) return;
+      navigate(`/search?q=${encodeURIComponent(q)}`);
+    },
+    [navigate],
+  );
+
+  useEffect(() => {
+    const onPointerDown = (event: MouseEvent) => {
+      if (!headerSearchRef.current?.contains(event.target as Node)) {
+        setHeaderSearchOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', onPointerDown);
+    return () => document.removeEventListener('mousedown', onPointerDown);
+  }, []);
+
+  const toggleLink = (p: AccountLinkProvider) => {
+    if (p === 'kakao' && linked.kakao) return;
+    setLinked((prev) => ({ ...prev, [p]: !prev[p] }));
+  };
+
+  return (
+    <main className="account-settings-page">
+      <HomeHeader
+        authenticated={isAuthenticated}
+        filteredSuggestions={filteredSuggestions}
+        onGuestCta={() => navigate('/login')}
+        onSearchChange={(value) => {
+          setHeaderSearchQuery(value);
+          setHeaderSearchOpen(Boolean(value.trim()));
+        }}
+        onSearchClear={() => {
+          setHeaderSearchQuery('');
+          setHeaderSearchOpen(false);
+        }}
+        onSearchFocus={() =>
+          setHeaderSearchOpen(Boolean(headerSearchQuery.trim()))
+        }
+        onSearchSubmit={onHeaderSearchSubmit}
+        onSuggestionSelect={(value) => {
+          setHeaderSearchOpen(false);
+          onHeaderSearchSubmit(value);
+        }}
+        searchOpen={headerSearchOpen}
+        searchQuery={headerSearchQuery}
+        searchRef={headerSearchRef}
+      />
+
+      <div className="account-settings-page__main">
+        <div className="account-settings">
+          <header className="account-settings__header">
+            <button
+              type="button"
+              className="account-settings__back"
+              onClick={() => navigate(-1)}
+              aria-label="뒤로"
+            >
+              <span className="account-settings__back-chevron" aria-hidden>
+                <ChevronIcon />
+              </span>
+            </button>
+            <h1 className="account-settings__title">계정 설정</h1>
+          </header>
+
+          <div className="account-settings__stack">
+            <section className="account-settings__section">
+              <span className="account-settings__label" id="account-email-label">
+                이메일
+              </span>
+              <div
+                className="account-settings__readonly"
+                aria-labelledby="account-email-label"
+              >
+                {email}
+              </div>
+            </section>
+
+            <section className="account-settings__section">
+              <span className="account-settings__label">비밀번호 변경</span>
+              <button
+                type="button"
+                className="account-settings__password-btn"
+                onClick={() => setChangePasswordOpen(true)}
+              >
+                비밀번호 변경
+              </button>
+            </section>
+
+            <section className="account-settings__section">
+              <span className="account-settings__label">휴대폰 번호</span>
+              <div className="account-settings__phone-row">
+                <span className="account-settings__phone-value">
+                  {ACCOUNT_SETTINGS_DEFAULT_PHONE}
+                </span>
+                <button type="button" className="account-settings__verify-btn">
+                  인증받기
+                </button>
+              </div>
+            </section>
+
+            <section className="account-settings__section">
+              <span className="account-settings__label">선택 약관 동의</span>
+              <div className="account-settings__marketing-row">
+                <div className="account-settings__marketing-left">
+                  <button
+                    type="button"
+                    className="account-settings__consent-toggle"
+                    aria-pressed={marketingOptIn}
+                    onClick={() => setMarketingOptIn((v) => !v)}
+                    aria-label="마케팅 정보 수신 동의"
+                  >
+                    {marketingOptIn ? (
+                      <svg
+                        aria-hidden
+                        fill="none"
+                        height="10"
+                        viewBox="0 0 12 10"
+                        width="12"
+                      >
+                        <path
+                          d="M1 5l3.5 3.5L11 1"
+                          stroke="currentColor"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth="1.5"
+                        />
+                      </svg>
+                    ) : (
+                      <svg
+                        aria-hidden
+                        fill="none"
+                        height="7"
+                        viewBox="0 0 10 7"
+                        width="10"
+                      >
+                        <path
+                          d="M1 1h8M1 3.5h5"
+                          stroke="currentColor"
+                          strokeLinecap="round"
+                          strokeWidth="1.2"
+                        />
+                      </svg>
+                    )}
+                  </button>
+                  <div className="account-settings__consent-text">
+                    <span className="account-settings__consent-optional">
+                      (선택)
+                    </span>
+                    <span className="account-settings__consent-main">
+                      마케팅 정보 수신동의
+                    </span>
+                  </div>
+                </div>
+                <a
+                  className="account-settings__marketing-chevron"
+                  href="/signup/terms"
+                  aria-label="약관 자세히 보기"
+                >
+                  <ChevronIcon />
+                </a>
+              </div>
+            </section>
+
+            <section className="account-settings__section">
+              <span className="account-settings__label">계정연동</span>
+              <div className="account-settings__link-box">
+                <div className="account-settings__link-row">
+                  <div className="account-settings__link-left">
+                    <span
+                      className="account-settings__sns-icon account-settings__sns-icon--kakao"
+                      aria-hidden
+                    >
+                      <KakaoGlyph />
+                    </span>
+                    <span className="account-settings__sns-name">카카오</span>
+                  </div>
+                  <div className="account-settings__link-status">
+                    {linked.kakao ? (
+                      <>
+                        <LinkDoneCheck />
+                        <span className="account-settings__link-done">
+                          연동완료
+                        </span>
+                      </>
+                    ) : (
+                      <button
+                        type="button"
+                        className="account-settings__link-action"
+                        onClick={() => toggleLink('kakao')}
+                      >
+                        연동하기
+                      </button>
+                    )}
+                  </div>
+                </div>
+                <div className="account-settings__link-row">
+                  <div className="account-settings__link-left">
+                    <span
+                      className="account-settings__sns-icon account-settings__sns-icon--google"
+                      aria-hidden
+                    >
+                      <GoogleGlyph />
+                    </span>
+                    <span className="account-settings__sns-name">구글</span>
+                  </div>
+                  {linked.google ? (
+                    <div className="account-settings__link-status">
+                      <LinkDoneCheck />
+                      <span className="account-settings__link-done">
+                        연동완료
+                      </span>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      className="account-settings__link-action"
+                      onClick={() => toggleLink('google')}
+                    >
+                      연동하기
+                    </button>
+                  )}
+                </div>
+                <div className="account-settings__link-row">
+                  <div className="account-settings__link-left">
+                    <span
+                      className="account-settings__sns-icon account-settings__sns-icon--apple"
+                      aria-hidden
+                    >
+                      <AppleGlyph />
+                    </span>
+                    <span className="account-settings__sns-name">애플</span>
+                  </div>
+                  {linked.apple ? (
+                    <div className="account-settings__link-status">
+                      <LinkDoneCheck />
+                      <span className="account-settings__link-done">
+                        연동완료
+                      </span>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      className="account-settings__link-action"
+                      onClick={() => toggleLink('apple')}
+                    >
+                      연동하기
+                    </button>
+                  )}
+                </div>
+              </div>
+            </section>
+          </div>
+
+          <div className="account-settings__withdraw-wrap">
+            <button type="button" className="account-settings__withdraw">
+              회원탈퇴
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <ChangePasswordModal
+        open={changePasswordOpen}
+        onClose={() => setChangePasswordOpen(false)}
+      />
+
+      <HomeFooter />
+    </main>
+  );
+}

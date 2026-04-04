@@ -1,0 +1,143 @@
+/* Figma 6419:86624 — 알림 설정 */
+
+.notification-settings-page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: #ffffff;
+}
+
+.notification-settings-page__main {
+  flex: 1 0 auto;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 32px 20px 56px;
+}
+
+.notification-settings {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 852px;
+  margin: 0 auto;
+  font-family: 'Pretendard', system-ui, sans-serif;
+  color: #000000;
+}
+
+.notification-settings__header {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  margin-bottom: 40px;
+}
+
+.notification-settings__back {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border: 1px solid #f0f2f5;
+  border-radius: 50%;
+  background: #ffffff;
+  padding: 0;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 3px 15px rgba(0, 0, 0, 0.05);
+}
+
+.notification-settings__back-chevron {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transform: rotate(180deg);
+  color: #000000;
+}
+
+.notification-settings__back-chevron .signup-profile__chevron {
+  width: 20px;
+  height: 20px;
+}
+
+.notification-settings__title {
+  margin: 0;
+  font-size: 30px;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+}
+
+.notification-settings__list {
+  display: flex;
+  flex-direction: column;
+}
+
+.notification-settings__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 19px 0;
+  border-bottom: 1px solid #f0f2f5;
+}
+
+.notification-settings__text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.notification-settings__row-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 26px;
+  color: #000000;
+}
+
+.notification-settings__row-desc {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 22px;
+  color: #a3a9b5;
+}
+
+.notification-settings__switch {
+  flex-shrink: 0;
+  position: relative;
+  width: 39px;
+  height: 22px;
+  padding: 0;
+  border: none;
+  border-radius: 11px;
+  background: #eff1f5;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.notification-settings__switch[aria-checked='true'] {
+  background: #f6d155;
+}
+
+.notification-settings__switch:focus-visible {
+  outline: 2px solid #2c80ff;
+  outline-offset: 2px;
+}
+
+.notification-settings__switch-knob {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+  transition: transform 0.2s ease;
+  pointer-events: none;
+}
+
+.notification-settings__switch[aria-checked='true'] .notification-settings__switch-knob {
+  transform: translateX(17px);
+}

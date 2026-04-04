@@ -1,3 +1,4 @@
+import { getApiBaseUrl, getGatewayAuthToken } from '../config/publicEnv';
 import { clearAuthSession, loadAuthSession } from '../data/authSession';
 
 export type ApiErrorPayload = {
@@ -24,20 +25,6 @@ export class ApiError extends Error {
   }
 }
 
-function apiBaseUrl() {
-  const value = process.env.REACT_APP_API_BASE_URL?.trim();
-  if (!value) {
-    return '';
-  }
-
-  return value.endsWith('/') ? value.slice(0, -1) : value;
-}
-
-function gatewayAuthToken() {
-  const value = process.env.REACT_APP_GATEWAY_AUTH_TOKEN?.trim();
-  return value || 'local-dev-gateway-token';
-}
-
 function buildHeaders(init?: RequestInit) {
   const headers = new Headers(init?.headers ?? {});
   if (!headers.has('Content-Type')) {
@@ -47,7 +34,7 @@ function buildHeaders(init?: RequestInit) {
   const authSession = loadAuthSession();
   if (authSession?.gatewayContextToken) {
     headers.set('X-Gateway-Context', authSession.gatewayContextToken);
-    headers.set('X-Gateway-Auth', gatewayAuthToken());
+    headers.set('X-Gateway-Auth', getGatewayAuthToken());
   }
 
   return headers;
@@ -57,7 +44,7 @@ export async function requestJson<T>(path: string, init?: RequestInit): Promise<
   let response: Response;
 
   try {
-    response = await fetch(`${apiBaseUrl()}${path}`, {
+    response = await fetch(`${getApiBaseUrl()}${path}`, {
       ...init,
       headers: buildHeaders(init),
     });

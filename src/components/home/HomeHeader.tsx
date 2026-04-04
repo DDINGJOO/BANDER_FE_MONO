@@ -1,5 +1,7 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
+import React, { useEffect, useRef, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { clearAuthSession } from '../../data/authSession';
+import { resolveHomeProfileMenuModel, type HomeProfileMenuModel } from '../../types/homeProfileMenu';
 import { BrandMark } from '../shared/BrandMark';
 import {
   ChevronIcon,
@@ -8,10 +10,14 @@ import {
   HeaderWishlistIcon,
   SearchIcon,
 } from '../shared/Icons';
+import { HomeProfileMenu } from './HomeProfileMenu';
+import { LogoutConfirmModal } from './LogoutConfirmModal';
 
 type HomeHeaderSharedProps = {
   authenticated: boolean;
   onGuestCta: () => void;
+  /** Figma 프로필 드롭다운 — API 필드 매핑용 */
+  profileMenu?: Partial<HomeProfileMenuModel>;
 };
 
 export type HomeHeaderSearchBarProps = HomeHeaderSharedProps & {
@@ -38,14 +44,43 @@ function isSearchBar(props: HomeHeaderProps): props is HomeHeaderSearchBarProps 
 }
 
 export function HomeHeader(props: HomeHeaderProps) {
-  const { authenticated, onGuestCta } = props;
+  const { authenticated, onGuestCta, profileMenu: profileMenuPartial } = props;
   const bar = isSearchBar(props);
+  const navigate = useNavigate();
+  const profileRootRef = useRef<HTMLDivElement | null>(null);
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [logoutOpen, setLogoutOpen] = useState(false);
+  const profileModel = resolveHomeProfileMenuModel(profileMenuPartial);
+
+  useEffect(() => {
+    if (!profileOpen) {
+      return;
+    }
+    const onDocMouseDown = (event: MouseEvent) => {
+      const node = profileRootRef.current;
+      if (node && !node.contains(event.target as Node)) {
+        setProfileOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', onDocMouseDown);
+    return () => document.removeEventListener('mousedown', onDocMouseDown);
+  }, [profileOpen]);
+
+  useEffect(() => {
+    if (!profileOpen) {
+      return;
+    }
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setProfileOpen(false);
+      }
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [profileOpen]);
 
   return (
     <header className={`home-header ${authenticated ? 'home-header--authenticated' : ''}`}>
-      <Link className="home-header__register-pill" to={{ hash: 'spaces', pathname: '/' }}>
-        공간 등록하기
-      </Link>
       <div className={`home-header__inner ${authenticated ? 'home-header__inner--authenticated' : ''}`}>
         <div className={`home-header__main ${authenticated ? 'home-header__main--authenticated' : ''}`}>
           <BrandMark compact />
@@ -132,8 +167,8 @@ export function HomeHeader(props: HomeHeaderProps) {
             {authenticated ? (
               <>
                 <Link to={{ hash: 'community', pathname: '/' }}>커뮤니티</Link>
-                <Link to="/search">탐색</Link>
-                <Link className="home-header__reservation-link" to={{ hash: 'reservation', pathname: '/' }}>
+                <Link to="/search/map">탐색</Link>
+                <Link className="home-header__reservation-link" to="/my-reservations">
                   <span>예약</span>
                   <span className="home-header__reservation-badge">3</span>
                 </Link>
@@ -142,7 +177,7 @@ export function HomeHeader(props: HomeHeaderProps) {
               <>
                 <Link to={{ hash: 'hot-posts', pathname: '/' }}>커뮤니티</Link>
                 <Link to={{ hash: 'spaces', pathname: '/' }}>탐색</Link>
-                <Link to={{ hash: 'reviews', pathname: '/' }}>테다</Link>
+                <Link to={{ hash: 'reviews', pathname: '/' }}>후기</Link>
               </>
             )}
           </nav>
@@ -157,19 +192,40 @@ export function HomeHeader(props: HomeHeaderProps) {
             <button aria-label="찜 목록" className="home-header__icon-button" type="button">
               <HeaderWishlistIcon />
             </button>
-            <button
+            <Link
               aria-label="알림"
               className="home-header__icon-button home-header__icon-button--alert"
-              type="button"
+              to="/notifications"
             >
               <HeaderAlarmIcon />
-            </button>
-            <button aria-label="프로필 메뉴" className="home-header__profile" type="button">
-              <span aria-hidden="true" className="home-header__avatar" />
-              <span aria-hidden="true" className="home-header__profile-arrow">
-                <ChevronIcon />
-              </span>
-            </button>
+            </Link>
+            <div className="home-header__profile-wrap" ref={profileRootRef}>
+              <button
+                aria-expanded={profileOpen}
+                aria-haspopup="menu"
+                aria-label="프로필 메뉴"
+                className="home-header__profile"
+                onClick={() => setProfileOpen((open) => !open)}
+                type="button"
+              >
+                <span aria-hidden="true" className="home-header__avatar" />
+                <span aria-hidden="true" className="home-header__profile-arrow">
+                  <ChevronIcon />
+                </span>
+              </button>
+              {profileOpen ? (
+                <div className="home-header__profile-dropdown">
+                  <HomeProfileMenu
+                    model={profileModel}
+                    onRequestClose={() => setProfileOpen(false)}
+                    onLogoutClick={() => {
+                      setProfileOpen(false);
+                      setLogoutOpen(true);
+                    }}
+                  />
+                </div>
+              ) : null}
+            </div>
           </div>
         ) : (
           <div className="home-header__actions">
@@ -179,6 +235,16 @@ export function HomeHeader(props: HomeHeaderProps) {
           </div>
         )}
       </div>
+
+      <LogoutConfirmModal
+        onCancel={() => setLogoutOpen(false)}
+        onConfirm={() => {
+          clearAuthSession();
+          setLogoutOpen(false);
+          navigate(0);
+        }}
+        open={logoutOpen}
+      />
     </header>
   );
 }

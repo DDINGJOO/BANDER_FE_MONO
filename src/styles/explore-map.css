@@ -1,0 +1,438 @@
+.explore-map-page {
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.explore-map-page__body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+}
+
+.explore-map-page__sidebar {
+  background: #fff;
+  border-right: 1px solid #f0f2f5;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  padding: 20px;
+  width: 385px;
+}
+
+.explore-map-page__explorer {
+  flex-shrink: 0;
+  margin-bottom: 8px;
+  position: relative;
+  z-index: 4;
+}
+
+.explore-map-page__list {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  margin-top: 8px;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.explore-map-card {
+  border-bottom: 1px solid #f0f2f5;
+  color: inherit;
+  display: block;
+  padding: 20px 0;
+  text-decoration: none;
+}
+
+.explore-map-card:focus-visible {
+  outline: 2px solid #f6d155;
+  outline-offset: 2px;
+}
+
+.explore-map-card__row {
+  align-items: flex-start;
+  display: flex;
+  gap: 10px;
+  width: 100%;
+}
+
+.explore-map-card__link {
+  color: inherit;
+  display: flex;
+  flex: 1;
+  gap: 15px;
+  min-width: 0;
+  text-decoration: none;
+}
+
+.explore-map-card__stack {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+.explore-map-card__price-wrap {
+  align-items: baseline;
+  display: inline-flex;
+  gap: 2px;
+  white-space: nowrap;
+}
+
+.explore-map-card__thumb {
+  border-radius: 12px;
+  flex-shrink: 0;
+  height: 65px;
+  object-fit: cover;
+  width: 65px;
+}
+
+.explore-map-card__main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+.explore-map-card__top {
+  display: flex;
+  gap: 10px;
+  justify-content: space-between;
+}
+
+.explore-map-card__text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+}
+
+.explore-map-card__meta {
+  align-items: center;
+  color: #a3a9b5;
+  display: flex;
+  flex-wrap: wrap;
+  font-size: 12px;
+  font-weight: 500;
+  gap: 5px;
+  line-height: 16px;
+}
+
+.explore-map-card__dot {
+  background: #a3a9b5;
+  border-radius: 50%;
+  height: 2px;
+  width: 2px;
+}
+
+.explore-map-card__title {
+  color: #000;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 24px;
+}
+
+.explore-map-card__rating-row {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.explore-map-card__rating-row .home-meta__icon--star {
+  height: 14px;
+  width: 14px;
+}
+
+.explore-map-card__rating {
+  color: #000;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 18px;
+}
+
+.explore-map-card__location {
+  color: #6d7a87;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 18px;
+}
+
+.explore-map-card__bookmark {
+  background: none;
+  border: 0;
+  cursor: pointer;
+  flex-shrink: 0;
+  padding: 0;
+}
+
+.explore-map-card__bookmark svg {
+  display: block;
+  height: 28px;
+  width: 28px;
+}
+
+.explore-map-card__bottom {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.explore-map-card__price {
+  color: #ffa20c;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 24px;
+}
+
+.explore-map-card__price-suffix {
+  color: #a3a9b5;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 18px;
+}
+
+.explore-map-card__tags {
+  align-items: center;
+  color: #a3a9b5;
+  display: flex;
+  font-size: 13px;
+  font-weight: 500;
+  gap: 5px;
+  line-height: 18px;
+}
+
+.explore-map-page__popular {
+  background: #f6f8fa;
+  box-sizing: border-box;
+  flex-shrink: 0;
+  margin: 16px -20px -20px;
+  padding: 20px;
+}
+
+.explore-map-page__popular-title {
+  color: #000;
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 26px;
+  margin: 0 0 16px;
+}
+
+.explore-map-page__popular-scroll {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  scrollbar-width: thin;
+}
+
+.explore-map-page__popular-item {
+  color: inherit;
+  flex-shrink: 0;
+  text-align: center;
+  text-decoration: none;
+  width: 90px;
+}
+
+.explore-map-page__popular-item:focus-visible {
+  outline: 2px solid #f6d155;
+  outline-offset: 4px;
+}
+
+.explore-map-page__popular-ring {
+  align-items: center;
+  background: #fff;
+  border-radius: 50%;
+  box-sizing: border-box;
+  display: flex;
+  height: 90px;
+  justify-content: center;
+  margin: 0 auto 8px;
+  padding: 5px;
+  width: 90px;
+}
+
+.explore-map-page__popular-avatar {
+  background-position: center;
+  background-size: cover;
+  border-radius: 50%;
+  height: 80px;
+  width: 80px;
+}
+
+.explore-map-page__popular-label {
+  color: #000;
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 18px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.explore-map-page__map-wrap {
+  flex: 1;
+  min-height: 480px;
+  min-width: 0;
+  position: relative;
+}
+
+.explore-map-page__map-frame {
+  border: 0;
+  display: block;
+  height: 100%;
+  left: 0;
+  position: absolute;
+  top: 0;
+  width: 100%;
+}
+
+.explore-map-page__pins {
+  height: 100%;
+  left: 0;
+  pointer-events: none;
+  position: absolute;
+  top: 0;
+  width: 100%;
+}
+
+.explore-map-pin {
+  position: absolute;
+  transform: translate(-50%, -100%);
+}
+
+.explore-map-pin--selected {
+  z-index: 2;
+}
+
+/* Figma location_pin (node 6406:73300) — 프레임 55×61, 맵 PNG는 52×58 */
+.explore-map-pin-brand {
+  height: 46px;
+  position: relative;
+  width: 52px;
+}
+
+.explore-map-pin-brand__shadow {
+  height: 5.491px;
+  left: calc(50% - 3px);
+  position: absolute;
+  top: 37.88px;
+  transform: translateX(-50%);
+  width: 19.281px;
+}
+
+.explore-map-pin-brand__shadow img {
+  display: block;
+  height: 100%;
+  object-fit: contain;
+  width: 100%;
+}
+
+.explore-map-pin-brand__body {
+  bottom: 11.1%;
+  left: 19.83%;
+  position: absolute;
+  right: 31.78%;
+  top: 11.19%;
+}
+
+.explore-map-pin-brand__body img {
+  display: block;
+  height: 100%;
+  object-fit: contain;
+  width: 100%;
+}
+
+.explore-map-pin-brand__overlay-wrap {
+  bottom: 11.87%;
+  left: 17.19%;
+  overflow: visible;
+  position: absolute;
+  right: 28.85%;
+  top: 4.83%;
+}
+
+.explore-map-pin-brand__overlay-scale {
+  bottom: -36.54%;
+  left: -39.2%;
+  position: absolute;
+  right: -39.21%;
+  top: -20.88%;
+}
+
+.explore-map-pin-brand__overlay-scale img {
+  display: block;
+  height: 100%;
+  object-fit: contain;
+  width: 100%;
+}
+
+.explore-map-pin-brand__badge {
+  align-items: center;
+  background: #ff1d4e;
+  border: 1px solid #fff;
+  border-radius: 999px;
+  bottom: 43.23%;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  box-sizing: border-box;
+  color: #fff;
+  display: flex;
+  font-size: 10px;
+  font-weight: 700;
+  justify-content: center;
+  left: 61.7%;
+  line-height: 16px;
+  min-height: 16px;
+  padding: 0 6px;
+  position: absolute;
+  right: 1.76%;
+  top: 21.99%;
+}
+
+.explore-map-page__recenter {
+  align-items: center;
+  background: #fff;
+  border: 1px solid #ffa20c;
+  border-radius: 50%;
+  bottom: 24px;
+  box-shadow: 0 3px 5px rgba(0, 0, 0, 0.1);
+  cursor: pointer;
+  display: flex;
+  height: 40px;
+  justify-content: center;
+  position: absolute;
+  right: 20px;
+  width: 40px;
+  z-index: 3;
+}
+
+.explore-map-page__recenter svg {
+  color: #ffa20c;
+  height: 20px;
+  width: 20px;
+}
+
+@media (max-width: 900px) {
+  .explore-map-page__body {
+    flex-direction: column;
+  }
+
+  .explore-map-page__sidebar {
+    border-right: 0;
+    border-bottom: 1px solid #f0f2f5;
+    max-height: 55vh;
+    width: 100%;
+  }
+
+  .explore-map-page__map-wrap {
+    min-height: 360px;
+  }
+}

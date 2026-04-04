@@ -1,0 +1,243 @@
+/* Figma 6458:74015 — 알림 */
+
+.notifications-page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: #ffffff;
+}
+
+.notifications-page__main {
+  flex: 1 0 auto;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 32px 20px 56px;
+}
+
+.notifications {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 852px;
+  margin: 0 auto;
+  font-family: 'Pretendard', system-ui, sans-serif;
+  color: #000000;
+}
+
+.notifications__title {
+  margin: 0 0 20px;
+  font-size: 30px;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+}
+
+.notifications__tabs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 20px;
+  border-bottom: 1px solid #f0f2f5;
+  margin-bottom: 40px;
+}
+
+.notifications__tab {
+  margin: 0;
+  padding: 6px 0 12px;
+  border: none;
+  background: none;
+  font-family: inherit;
+  font-size: 18px;
+  line-height: 26px;
+  cursor: pointer;
+  color: #a3a9b5;
+  font-weight: 600;
+  position: relative;
+}
+
+.notifications__tab--active {
+  color: #000000;
+  font-weight: 700;
+}
+
+.notifications__tab--active::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 2px;
+  background: #000000;
+}
+
+.notifications__tab:focus-visible {
+  outline: 2px solid #2c80ff;
+  outline-offset: 4px;
+}
+
+.notifications__stack {
+  display: flex;
+  flex-direction: column;
+  gap: 60px;
+}
+
+.notifications__section-title {
+  margin: 0 0 20px;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 24px;
+}
+
+.notifications__section--week .notifications__section-title {
+  margin-bottom: 10px;
+}
+
+.notifications__section-list {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.notifications__card {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 20px;
+  border: 1px solid #f0f2f5;
+  border-radius: 15px;
+  background: #ffffff;
+  box-shadow: 0 3px 15px rgba(0, 0, 0, 0.08);
+  text-align: left;
+  width: 100%;
+  box-sizing: border-box;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.notifications__card:hover {
+  border-color: #e5e8ed;
+}
+
+.notifications__card:focus-visible {
+  outline: 2px solid #2c80ff;
+  outline-offset: 2px;
+}
+
+.notifications__card--static {
+  cursor: default;
+}
+
+.notifications__card--static:hover {
+  border-color: #f0f2f5;
+}
+
+.notifications__card-inner {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: flex-start;
+  gap: 15px;
+}
+
+.notifications__icon-wrap {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: #f6f8fa;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #000000;
+}
+
+.notifications__icon-wrap svg {
+  display: block;
+}
+
+.notifications__body {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.notifications__body--tight {
+  gap: 0;
+}
+
+.notifications__message {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 22px;
+  color: #000000;
+}
+
+.notifications__time {
+  margin: 2px 0 0;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 18px;
+  color: #a3a9b5;
+}
+
+.notifications__thumb {
+  flex-shrink: 0;
+  width: 60px;
+  height: 60px;
+  border-radius: 10px;
+  object-fit: cover;
+}
+
+.notifications__cta {
+  align-self: flex-start;
+  height: 40px;
+  min-width: 150px;
+  padding: 0 16px;
+  border: none;
+  border-radius: 10px;
+  background: #eff1f5;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 20px;
+  color: #000000;
+  cursor: pointer;
+}
+
+.notifications__cta:hover {
+  background: #e5e8ed;
+}
+
+.notifications__cta:focus-visible {
+  outline: 2px solid #2c80ff;
+  outline-offset: 2px;
+}
+
+/* Figma 6465:30579 — 알림 없을 때 */
+.notifications__empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 100px 20px 120px;
+  text-align: center;
+}
+
+.notifications__empty-bell {
+  display: block;
+  width: 66px;
+  height: 66px;
+  flex-shrink: 0;
+  color: #c4c9d4;
+}
+
+.notifications__empty-message {
+  margin: 15px 0 0;
+  max-width: 100%;
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 22px;
+  color: #6d7a87;
+}

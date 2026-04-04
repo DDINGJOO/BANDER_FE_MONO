@@ -1,4 +1,9 @@
 import type { LoginResponse } from '../types/authApi';
+import {
+  getDevLoginEmailOverride,
+  getDevLoginPasswordOverride,
+  isDevLoginBypassExplicitlyOff,
+} from './publicEnv';
 
 const DEFAULT_EMAIL = 'dev@bander.local';
 const DEFAULT_PASSWORD = 'bander-dev-2024';
@@ -8,17 +13,16 @@ const DEFAULT_PASSWORD = 'bander-dev-2024';
  * 끄려면 `.env.development.local`에 `REACT_APP_DEV_LOGIN_BYPASS=0`
  */
 export function isDevLoginBypassEnabled() {
-  return (
-    process.env.NODE_ENV === 'development' && process.env.REACT_APP_DEV_LOGIN_BYPASS !== '0'
-  );
+  return process.env.NODE_ENV === 'development' && !isDevLoginBypassExplicitlyOff();
 }
 
 function devLoginEmail() {
-  return process.env.REACT_APP_DEV_LOGIN_EMAIL?.trim() || DEFAULT_EMAIL;
+  return getDevLoginEmailOverride()?.trim() || DEFAULT_EMAIL;
 }
 
 function devLoginPassword() {
-  return process.env.REACT_APP_DEV_LOGIN_PASSWORD ?? DEFAULT_PASSWORD;
+  const override = getDevLoginPasswordOverride();
+  return override !== undefined ? override : DEFAULT_PASSWORD;
 }
 
 /** 로그인 화면에만 표시 — 실제 매칭과 동일한 값 */
@@ -27,7 +31,7 @@ export function getDevLoginHint(): string | null {
     return null;
   }
 
-  return `로컬 개발 전용: ${devLoginEmail()} / ${devLoginPassword()}`;
+  return `로컬 개발 전용 — 이메일: ${devLoginEmail()}, 비밀번호: ${devLoginPassword()}`;
 }
 
 export function tryDevLoginBypass(email: string, password: string): LoginResponse | null {

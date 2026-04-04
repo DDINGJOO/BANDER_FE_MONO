@@ -1,0 +1,190 @@
+/* Figma 6419:86785 — 결제 정보 */
+
+.payment-info-page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: #ffffff;
+}
+
+.payment-info-page__main {
+  flex: 1 0 auto;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 32px 20px 56px;
+}
+
+.payment-info {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 852px;
+  margin: 0 auto;
+  font-family: 'Pretendard', system-ui, sans-serif;
+  color: #000000;
+}
+
+.payment-info__header {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  margin-bottom: 24px;
+}
+
+.payment-info__back {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border: 1px solid #f0f2f5;
+  border-radius: 50%;
+  background: #ffffff;
+  padding: 0;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 3px 15px rgba(0, 0, 0, 0.05);
+}
+
+.payment-info__back-chevron {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transform: rotate(180deg);
+  color: #000000;
+}
+
+.payment-info__back-chevron .signup-profile__chevron {
+  width: 20px;
+  height: 20px;
+}
+
+.payment-info__title {
+  margin: 0;
+  font-size: 30px;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+}
+
+.payment-info__filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px;
+  margin-bottom: 28px;
+}
+
+.payment-info__filter {
+  border: none;
+  padding: 10px 12px;
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 22px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.payment-info__filter--active {
+  border-radius: 25px;
+  background: #000000;
+  color: #ffffff;
+}
+
+.payment-info__filter--inactive {
+  border-radius: 20px;
+  background: #eff1f5;
+  color: #000000;
+}
+
+.payment-info__filter--inactive:hover {
+  background: #e5e8ed;
+}
+
+.payment-info__filter:focus-visible {
+  outline: 2px solid #2c80ff;
+  outline-offset: 2px;
+}
+
+.payment-info__list {
+  display: flex;
+  flex-direction: column;
+}
+
+.payment-info__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 20px 0;
+  border-bottom: 1px solid #eeeeee;
+}
+
+.payment-info__row-main {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.payment-info__row-head {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.payment-info__tag {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 18px;
+}
+
+.payment-info__tag--payment {
+  color: #2c80ff;
+}
+
+.payment-info__tag--refund {
+  color: #ff3a3d;
+}
+
+.payment-info__row-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 22px;
+  color: #000000;
+}
+
+.payment-info__row-date {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 16px;
+  color: #a3a9b5;
+}
+
+.payment-info__amount {
+  flex-shrink: 0;
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 22px;
+  color: #ffa20c;
+  max-width: 45%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: right;
+}
+
+.payment-info__empty {
+  margin: 0;
+  padding: 48px 0;
+  text-align: center;
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 22px;
+  color: #a3a9b5;
+}

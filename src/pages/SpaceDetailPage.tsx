@@ -1,11 +1,16 @@
 import React, { useRef, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { HomeFooter } from '../components/home/HomeFooter';
 import { HomeHeader } from '../components/home/HomeHeader';
 import { HomeSpaceCard } from '../components/home/HomeSpaceCard';
-import { BookmarkIcon, ChevronIcon, StarIcon } from '../components/shared/Icons';
+import { KakaoMapView } from '../components/map/KakaoMapView';
+import { BookmarkIcon, ChevronIcon, HeaderChatIcon, StarIcon } from '../components/shared/Icons';
 import { loadAuthSession } from '../data/authSession';
 import { ROOM_DETAIL_INFO_ROWS, ROOM_DETAIL_RECOMMENDATIONS } from '../data/spaceDetail';
+import { SpaceSummaryFeatureIcon } from '../components/space/SpaceSummaryFeatureIcon';
+import { BanderUsagePolicyModal } from '../components/space/BanderUsagePolicyModal';
+import { CouponDownloadModal } from '../components/space/CouponDownloadModal';
+import { useCouponDownloads } from '../hooks/useCouponDownloads';
 import { useSpaceDetail } from '../hooks/useSpaceDetail';
 
 type DetailCalendarDay = {
@@ -13,6 +18,11 @@ type DetailCalendarDay = {
   highlight?: 'disabled' | 'today';
   muted?: boolean;
 };
+
+type SpaceDetailSubTab = 'basic' | 'detail' | 'reviews';
+
+/** `.space-detail__section-nav--sticky` top(79px) + 탭바(패딩·본문·보더) — 제목이 스티키 바로 아래 보이도록 */
+const SPACE_DETAIL_SECTION_SCROLL_TOP_OFFSET_PX = 130;
 
 const DETAIL_CALENDAR_DAYS: DetailCalendarDay[] = [
   { day: 1, muted: true },
@@ -48,19 +58,65 @@ const DETAIL_CALENDAR_DAYS: DetailCalendarDay[] = [
   { day: 31 },
 ];
 
+function DetailPolicyBlock({ body, title }: { body: string; title: string }) {
+  const lines = body
+    .split(/\n+/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+  return (
+    <div className="space-detail__detail-policy-block">
+      <div className="space-detail__detail-policy-head">
+        <span aria-hidden="true" className="space-detail__detail-policy-sq" />
+        <h3>{title}</h3>
+      </div>
+      {lines.map((line) => (
+        <div className="space-detail__detail-policy-row" key={line}>
+          <span aria-hidden="true" className="space-detail__detail-policy-bar" />
+          <p>{line}</p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export function SpaceDetailPage() {
   const navigate = useNavigate();
   const { slug: slugParam } = useParams();
-  const { detail, slug } = useSpaceDetail(slugParam);
+  const { detail, slug, vendorSlug } = useSpaceDetail(slugParam);
   const authSession = loadAuthSession();
   const isAuthenticated = Boolean(authSession);
   const [phoneVerified, setPhoneVerified] = useState(authSession?.phoneVerified === true);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [selectedBookingDay, setSelectedBookingDay] = useState<number | null>(null);
+  const [activeSubTab, setActiveSubTab] = useState<SpaceDetailSubTab>('basic');
+  const [vendorOperatingOpen, setVendorOperatingOpen] = useState(false);
+  const [summaryOperatingOpen, setSummaryOperatingOpen] = useState(false);
+  const [descriptionExpanded, setDescriptionExpanded] = useState(false);
+  const [couponModalOpen, setCouponModalOpen] = useState(false);
+  const [banderPolicyOpen, setBanderPolicyOpen] = useState(false);
+  const { downloadCoupon, downloadedCouponIds } = useCouponDownloads();
   const galleryRef = useRef<HTMLElement | null>(null);
+  const basicSectionRef = useRef<HTMLElement | null>(null);
+  const detailSectionRef = useRef<HTMLElement | null>(null);
+  const reviewsSectionRef = useRef<HTMLElement | null>(null);
 
   const scrollToGallery = () => {
     galleryRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
+  const scrollToSubSection = (tab: SpaceDetailSubTab) => {
+    const refMap: Record<SpaceDetailSubTab, React.RefObject<HTMLElement | null>> = {
+      basic: basicSectionRef,
+      detail: detailSectionRef,
+      reviews: reviewsSectionRef,
+    };
+    const el = refMap[tab].current;
+    setActiveSubTab(tab);
+    if (!el) {
+      return;
+    }
+    const top = el.getBoundingClientRect().top + window.scrollY - SPACE_DETAIL_SECTION_SCROLL_TOP_OFFSET_PX;
+    window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
   };
 
   const selectedBookingDateLabel = selectedBookingDay
@@ -72,8 +128,9 @@ export function SpaceDetailPage() {
       <HomeHeader authenticated={isAuthenticated} onGuestCta={() => navigate('/login')} variant="icon" />
 
       <section className="space-detail__inner">
-        <div className="space-detail__top">
-          <section ref={galleryRef} aria-label="공간 사진" className="space-detail__gallery">
+        <div className="space-detail__layout">
+          <div className="space-detail__body-col">
+            <section ref={galleryRef} aria-label="공간 사진" className="space-detail__gallery">
             <div className="space-detail__hero-image-wrap">
               <img
                 alt={detail.title}
@@ -85,7 +142,7 @@ export function SpaceDetailPage() {
               <div className="space-detail__thumb-grid">
                 {detail.gallery.slice(1).map((image, index) => (
                   <button
-                    className={`space-detail__thumb ${selectedImageIndex === index + 1 ? 'space-detail__thumb--active' : ''}`}
+                    className={`space-detail__thumb space-detail__thumb--corner-${index} ${selectedImageIndex === index + 1 ? 'space-detail__thumb--active' : ''}`}
                     key={image}
                     onClick={() => setSelectedImageIndex(index + 1)}
                     type="button"
@@ -100,6 +157,365 @@ export function SpaceDetailPage() {
             </div>
           </section>
 
+            <div className="space-detail__content">
+              <div className="space-detail__main">
+                <div className="space-detail__summary">
+                  <div className="space-detail__summary-title-row">
+                    <div className="space-detail__summary-title-main">
+                      <div className="space-detail__eyebrow">
+                        <span>{detail.category}</span>
+                        <span className="space-detail__dot" />
+                        <span>{detail.studioName}</span>
+                      </div>
+                      <h1 className="space-detail__title">{detail.title}</h1>
+                    </div>
+                    <button aria-label="스크랩" className="space-detail__scrap space-detail__scrap--icon" type="button">
+                      <BookmarkIcon />
+                    </button>
+                  </div>
+
+                  {/* Figma 6071:33714 — 거리 · 전체 주소 한 줄 */}
+                  <p className="space-detail__location-figma">
+                    <span>{detail.stationDistance}</span>
+                    <span className="space-detail__dot space-detail__dot--figma-loc" aria-hidden="true" />
+                    <span>{detail.address}</span>
+                  </p>
+
+                  {/* Figma 6071:32899 + 6071:32908 — 별점(좌) · 시작가(우) */}
+                  <div className="space-detail__meta-rating-price">
+                    <div className="space-detail__stars space-detail__stars--figma-summary">
+                      {Array.from({ length: 5 }).map((_, index) => (
+                        <StarIcon key={index} />
+                      ))}
+                      <span>
+                        {detail.rating}({detail.reviewCount})
+                      </span>
+                    </div>
+                    <div className="space-detail__summary-price-teaser">
+                      <span className="space-detail__summary-price-strong">{detail.priceLabel}</span>
+                      <span className="space-detail__summary-price-suffix">{detail.priceTeaserSuffix}</span>
+                    </div>
+                  </div>
+
+                  {/* Figma 6071:32916 — 해시태그 (시설 아이콘 칩과 별도) */}
+                  <ul className="space-detail__summary-hash-tags" aria-label="공간 태그">
+                    {detail.summaryHashTags.map((tag) => (
+                      <li className="space-detail__summary-hash-tag" key={tag}>
+                        {tag}
+                      </li>
+                    ))}
+                  </ul>
+
+                  <hr className="space-detail__rule" />
+
+                  {/* Figma 6071:32854 / Frame 6071:32924 — 요금 2줄 + 운영시간(요일 펼침) */}
+                  <div
+                    className="space-detail__pricing-spec space-detail__pricing-spec--figma-summary"
+                    aria-label="요금 및 운영"
+                  >
+                    {detail.pricingLines.map((line) => (
+                      <div className="space-detail__pricing-spec-row" key={`${line.label}-${line.value}`}>
+                        <span className="space-detail__pricing-spec-label">{line.label}</span>
+                        <span className="space-detail__pricing-spec-value">{line.value}</span>
+                      </div>
+                    ))}
+                    <div className="space-detail__pricing-spec-row">
+                      <span className="space-detail__pricing-spec-label" id="space-detail-hours-label">
+                        운영시간
+                      </span>
+                      <button
+                        aria-expanded={summaryOperatingOpen}
+                        aria-labelledby="space-detail-hours-label"
+                        className={`space-detail__pricing-spec-value space-detail__pricing-spec-value--with-icon space-detail__operating-toggle ${summaryOperatingOpen ? 'space-detail__operating-toggle--open' : ''}`}
+                        onClick={() => setSummaryOperatingOpen((open) => !open)}
+                        type="button"
+                      >
+                        <span className="space-detail__operating-toggle-text">{detail.operatingSummary}</span>
+                        <span aria-hidden="true" className="space-detail__operating-toggle-chevron">
+                          <ChevronIcon />
+                        </span>
+                      </button>
+                    </div>
+                    <div className="space-detail__pricing-spec-row">
+                      <span className="space-detail__pricing-spec-label" id="space-detail-bander-policy-label">
+                        이용정책
+                      </span>
+                      <button
+                        aria-labelledby="space-detail-bander-policy-label"
+                        className="space-detail__pricing-spec-value space-detail__bander-policy-btn"
+                        onClick={() => setBanderPolicyOpen(true)}
+                        type="button"
+                      >
+                        <span>이용정책 확인</span>
+                        <span aria-hidden="true" className="space-detail__bander-policy-btn-chevron">
+                          <ChevronIcon />
+                        </span>
+                      </button>
+                    </div>
+                  </div>
+                  {summaryOperatingOpen ? (
+                    <ul aria-label="요일별 운영시간" className="space-detail__operating-week">
+                      {detail.operatingWeek.map((row) => (
+                        <li
+                          className={`space-detail__operating-week-row ${row.isToday ? 'space-detail__operating-week-row--today' : ''}`}
+                          key={row.weekday}
+                        >
+                          <span className="space-detail__operating-week-day">
+                            {row.weekday}
+                            {row.isToday ? <em className="space-detail__operating-week-today">오늘</em> : null}
+                          </span>
+                          <span className="space-detail__operating-week-hours">{row.hours}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null}
+
+                  {/* 요약 영역 쿠폰 — 예약 페이지와 동일 적용 가능 쿠폰 모달 */}
+                  <button
+                    className="space-detail__coupon-strip"
+                    onClick={() => setCouponModalOpen(true)}
+                    type="button"
+                  >
+                    <span className="space-detail__coupon-strip-label">{detail.couponStripLabel}</span>
+                    <span aria-hidden="true" className="space-detail__coupon-strip-chevron">
+                      <ChevronIcon />
+                    </span>
+                  </button>
+
+                  <hr className="space-detail__rule" />
+
+                  <div className="space-detail__description-block">
+                    <p
+                      className={`space-detail__description space-detail__description--lead ${descriptionExpanded ? '' : 'space-detail__description--lead-clamped'}`}
+                    >
+                      {detail.description}
+                    </p>
+                    <button
+                      aria-expanded={descriptionExpanded}
+                      className="space-detail__description-more"
+                      onClick={() => setDescriptionExpanded((open) => !open)}
+                      type="button"
+                    >
+                      {descriptionExpanded ? '접기' : '더보기'}
+                    </button>
+                  </div>
+
+                  <p className="space-detail__trust-banner">{detail.trustBanner}</p>
+                </div>
+
+                <nav className="space-detail__section-nav space-detail__section-nav--sticky" aria-label="상세 섹션">
+                  <button
+                    className={`space-detail__section-tab ${activeSubTab === 'basic' ? 'space-detail__section-tab--active' : ''}`}
+                    onClick={() => scrollToSubSection('basic')}
+                    type="button"
+                  >
+                    기본 정보
+                  </button>
+                  <button
+                    className={`space-detail__section-tab ${activeSubTab === 'detail' ? 'space-detail__section-tab--active' : ''}`}
+                    onClick={() => scrollToSubSection('detail')}
+                    type="button"
+                  >
+                    상세정보
+                  </button>
+                  <button
+                    className={`space-detail__section-tab ${activeSubTab === 'reviews' ? 'space-detail__section-tab--active' : ''}`}
+                    onClick={() => scrollToSubSection('reviews')}
+                    type="button"
+                  >
+                    후기 {detail.reviewCount}
+                  </button>
+                </nav>
+
+                <section
+                  className="space-detail__section space-detail__section--scroll-target"
+                  id="space-detail-basic"
+                  ref={basicSectionRef}
+                >
+                  <div className="space-detail__section-title-wrap">
+                    <h2>기본 정보</h2>
+                  </div>
+                  <div className="space-detail__info-card">
+                    <div className="space-detail__info-list">
+                      {ROOM_DETAIL_INFO_ROWS.map((row) => (
+                        <div className="space-detail__info-row" key={row.label}>
+                          <span className="space-detail__info-label">{row.label}</span>
+                          <span
+                            className={`space-detail__info-value ${row.label === '주소' ? 'space-detail__info-value--multiline' : ''}`}
+                          >
+                            {row.value}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                    <KakaoMapView
+                      center={detail.mapLocation}
+                      className="space-detail__map space-detail__map--live"
+                      level={4}
+                      markers={[{ ...detail.mapLocation, title: detail.title }]}
+                      title={`${detail.title} 위치 지도`}
+                    />
+                  </div>
+                  <ul className="space-detail__facility-chips" aria-label="편의 시설">
+                    {detail.facilityChips.map((item) => (
+                      <li
+                        aria-label={`${item.label} 지원`}
+                        className="space-detail__facility-chip"
+                        key={item.key ? `${item.key}-${item.label}` : item.label}
+                      >
+                        <span className="space-detail__facility-chip-icon">
+                          {item.key ? (
+                            <SpaceSummaryFeatureIcon featureKey={item.key} />
+                          ) : (
+                            <span aria-hidden="true" className="space-detail__detail-benefit-icon-ph" />
+                          )}
+                        </span>
+                        <span className="space-detail__facility-chip-label">{item.label}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+
+                <section className="space-detail__section">
+                  <h2>업체 정보</h2>
+                  <div className="space-detail__vendor-card">
+                    <div className="space-detail__vendor-top">
+                      {vendorSlug ? (
+                        <Link className="space-detail__vendor-main space-detail__vendor-main--link" to={`/vendors/${vendorSlug}`}>
+                          <div className="space-detail__vendor-avatar" />
+                          <div>
+                            <p className="space-detail__vendor-name">{detail.vendor.name}</p>
+                            <p className="space-detail__vendor-meta">{detail.vendor.spaces}</p>
+                          </div>
+                        </Link>
+                      ) : (
+                        <div className="space-detail__vendor-main">
+                          <div className="space-detail__vendor-avatar" />
+                          <div>
+                            <p className="space-detail__vendor-name">{detail.vendor.name}</p>
+                            <p className="space-detail__vendor-meta">{detail.vendor.spaces}</p>
+                          </div>
+                        </div>
+                      )}
+                      <button
+                        aria-expanded={vendorOperatingOpen}
+                        className={`space-detail__vendor-hours ${vendorOperatingOpen ? 'space-detail__vendor-hours--open' : ''}`}
+                        onClick={() => setVendorOperatingOpen((open) => !open)}
+                        type="button"
+                      >
+                        <span>{detail.operatingSummary}</span>
+                        <span className="space-detail__vendor-hours-icon" aria-hidden="true">
+                          <ChevronIcon />
+                        </span>
+                      </button>
+                    </div>
+                    {vendorOperatingOpen ? (
+                      <ul aria-label="요일별 운영시간" className="space-detail__operating-week space-detail__operating-week--in-card">
+                        {detail.operatingWeek.map((row) => (
+                          <li
+                            className={`space-detail__operating-week-row ${row.isToday ? 'space-detail__operating-week-row--today' : ''}`}
+                            key={`vendor-${row.weekday}`}
+                          >
+                            <span className="space-detail__operating-week-day">
+                              {row.weekday}
+                              {row.isToday ? <em className="space-detail__operating-week-today">오늘</em> : null}
+                            </span>
+                            <span className="space-detail__operating-week-hours">{row.hours}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : null}
+                    <button className="space-detail__chat-button" type="button">
+                      <HeaderChatIcon />
+                      채팅하기
+                    </button>
+                  </div>
+                </section>
+
+                <section
+                  className="space-detail__section space-detail__section--scroll-target space-detail__section--figma-detail"
+                  id="space-detail-detail"
+                  ref={detailSectionRef}
+                >
+                  <h2>상세정보</h2>
+                  {detail.notices.length > 0 ? (
+                    <div className="space-detail__notice-list space-detail__notice-list--under-detail-title">
+                      {detail.notices.map((notice) => (
+                        <article className="space-detail__notice-card" key={notice.title}>
+                          <h3>{notice.title}</h3>
+                          <p>{notice.body}</p>
+                        </article>
+                      ))}
+                    </div>
+                  ) : null}
+                  <div className="space-detail__detail-benefit-strip" aria-label="제공 혜택">
+                    {detail.detailBenefits.map((item) => (
+                      <div className="space-detail__detail-benefit-cell" key={item.label}>
+                        <span className="space-detail__detail-benefit-icon-wrap">
+                          {item.key ? (
+                            <SpaceSummaryFeatureIcon featureKey={item.key} />
+                          ) : (
+                            <span aria-hidden="true" className="space-detail__detail-benefit-icon-ph" />
+                          )}
+                        </span>
+                        <span className="space-detail__detail-benefit-label">{item.label}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="space-detail__detail-policy-stack">
+                    {detail.policies.map((policy) => (
+                      <DetailPolicyBlock body={policy.body} key={policy.title} title={policy.title} />
+                    ))}
+                  </div>
+                </section>
+
+                <section
+                  className="space-detail__section space-detail__section--scroll-target"
+                  id="space-detail-reviews"
+                  ref={reviewsSectionRef}
+                >
+                  <div className="space-detail__section-title-wrap">
+                    <h2>후기 {detail.reviewCount}</h2>
+                    <button className="space-detail__more-link" type="button">
+                      전체보기
+                    </button>
+                  </div>
+                  <div className="space-detail__review-list">
+                    {detail.reviewSummary.map((review) => (
+                      <article className="space-detail__review-card" key={`${review.author}-${review.date}`}>
+                        <div className="space-detail__review-meta-row">
+                          <span className="space-detail__review-avatar-sm" aria-hidden="true" />
+                          <p className="space-detail__review-meta-line">
+                            <span className="space-detail__review-meta-author">{review.author}</span>
+                            <span className="space-detail__review-meta-dot" aria-hidden="true" />
+                            <span className="space-detail__review-meta-date">{review.date}</span>
+                            <span className="space-detail__review-meta-dot" aria-hidden="true" />
+                            <span>전체 별점</span>
+                          </p>
+                        </div>
+                        <p className="space-detail__review-text space-detail__review-text--figma">{review.text}</p>
+                        <div className="space-detail__review-stars space-detail__review-stars--figma">
+                          {Array.from({ length: 5 }).map((_, index) => (
+                            <StarIcon key={index} />
+                          ))}
+                          <span>{review.rating}</span>
+                        </div>
+                        {review.photoCount ? (
+                          <div className="space-detail__review-photos" aria-hidden="true">
+                            {Array.from({ length: review.photoCount }).map((_, index) => (
+                              <div className="space-detail__review-photo-ph" key={`${review.author}-ph-${index}`} />
+                            ))}
+                          </div>
+                        ) : null}
+                      </article>
+                    ))}
+                  </div>
+                </section>
+              </div>
+            </div>
+          </div>
+
+          <div className="space-detail__booking-host">
           <aside className="space-detail__booking-card">
             <div className="space-detail__test-toggle">
               <span>테스트 보기</span>
@@ -192,205 +608,6 @@ export function SpaceDetailPage() {
               </div>
             )}
           </aside>
-        </div>
-
-        <div className="space-detail__content">
-          <div className="space-detail__main">
-            <div className="space-detail__summary">
-              <div className="space-detail__summary-title-row">
-                <div className="space-detail__summary-title-main">
-                  <div className="space-detail__eyebrow">
-                    <span>{detail.category}</span>
-                    <span className="space-detail__dot" />
-                    <span>{detail.studioName}</span>
-                  </div>
-                  <h1 className="space-detail__title">{detail.title}</h1>
-                </div>
-                <button aria-label="스크랩" className="space-detail__scrap space-detail__scrap--icon" type="button">
-                  <BookmarkIcon />
-                </button>
-              </div>
-
-              <p className="space-detail__location space-detail__location--split">
-                <span>{detail.location}</span>
-                <span className="space-detail__dot" aria-hidden="true" />
-                <span>{detail.address}</span>
-              </p>
-
-              <div className="space-detail__rating-row space-detail__rating-row--detail">
-                <div className="space-detail__stars">
-                  {Array.from({ length: 5 }).map((_, index) => (
-                    <StarIcon key={index} />
-                  ))}
-                  <span>
-                    {detail.rating}({detail.reviewCount})
-                  </span>
-                </div>
-              </div>
-
-              <div className="space-detail__tags-distance-row">
-                <div className="space-detail__tags space-detail__tags--block">
-                  {detail.summaryTags.map((tag) => (
-                    <span className="space-detail__tag" key={tag}>
-                      {tag}
-                    </span>
-                  ))}
-                </div>
-                <div className="space-detail__distance-block">
-                  <strong className="space-detail__distance-strong">{detail.stationDistance}</strong>
-                  <span className="space-detail__distance-sub">도보</span>
-                </div>
-              </div>
-
-              <hr className="space-detail__rule" />
-
-              <div className="space-detail__pricing-spec" aria-label="요금 및 운영">
-                {detail.pricingLines.map((line) => (
-                  <div className="space-detail__pricing-spec-row" key={`${line.label}-${line.value}`}>
-                    <span className="space-detail__pricing-spec-label">{line.label}</span>
-                    <span className="space-detail__pricing-spec-value">{line.value}</span>
-                  </div>
-                ))}
-                <div className="space-detail__pricing-spec-row">
-                  <span className="space-detail__pricing-spec-label">운영시간</span>
-                  <span className="space-detail__pricing-spec-value space-detail__pricing-spec-value--with-icon">
-                    {detail.operatingSummary}
-                    <ChevronIcon />
-                  </span>
-                </div>
-              </div>
-
-              <a
-                className="space-detail__map-search"
-                href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(detail.address)}`}
-                rel="noopener noreferrer"
-                target="_blank"
-              >
-                <span className="space-detail__map-search-placeholder">{detail.mapSearchPlaceholder}</span>
-                <span className="space-detail__map-search-icon" aria-hidden="true">
-                  <ChevronIcon />
-                </span>
-              </a>
-
-              <hr className="space-detail__rule" />
-
-              <div className="space-detail__description-block">
-                <p className="space-detail__description space-detail__description--lead">{detail.description}</p>
-                <span className="space-detail__description-pill">{detail.descriptionCategoryLabel}</span>
-              </div>
-
-              <p className="space-detail__trust-banner">{detail.trustBanner}</p>
-            </div>
-
-            <section className="space-detail__section">
-              <div className="space-detail__section-title-wrap">
-                <h2>공지사항</h2>
-              </div>
-              <div className="space-detail__notice-list">
-                {detail.notices.map((notice) => (
-                  <article className="space-detail__notice-card" key={notice.title}>
-                    <h3>{notice.title}</h3>
-                    <p>{notice.body}</p>
-                  </article>
-                ))}
-              </div>
-            </section>
-
-            <section className="space-detail__section">
-              <div className="space-detail__section-title-wrap">
-                <h2>기본 정보</h2>
-              </div>
-              <div className="space-detail__info-card">
-                <div className="space-detail__info-list">
-                  {ROOM_DETAIL_INFO_ROWS.map((row) => (
-                    <div className="space-detail__info-row" key={row.label}>
-                      <span className="space-detail__info-label">{row.label}</span>
-                      <span
-                        className={`space-detail__info-value ${row.label === '주소' ? 'space-detail__info-value--multiline' : ''}`}
-                      >
-                        {row.value}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-                <div className="space-detail__map">
-                  <div className="space-detail__map-pin" />
-                </div>
-              </div>
-            </section>
-
-            <section className="space-detail__section">
-              <h2>업체 정보</h2>
-              <div className="space-detail__vendor-card">
-                <div className="space-detail__vendor-main">
-                  <div className="space-detail__vendor-avatar" />
-                  <div>
-                    <p className="space-detail__vendor-name">{detail.vendor.name}</p>
-                    <p className="space-detail__vendor-meta">{detail.vendor.spaces}</p>
-                  </div>
-                </div>
-                <button className="space-detail__vendor-link" type="button">
-                  상세보기
-                  <ChevronIcon />
-                </button>
-                <button className="space-detail__chat-button" type="button">
-                  채팅하기
-                </button>
-              </div>
-            </section>
-
-            <nav className="space-detail__section-nav" aria-label="상세 섹션">
-              <button className="space-detail__section-tab space-detail__section-tab--active" type="button">
-                기본 정보
-              </button>
-              <button className="space-detail__section-tab" type="button">
-                상세 설명
-              </button>
-              <button className="space-detail__section-tab" type="button">
-                후기 32
-              </button>
-            </nav>
-
-            <section className="space-detail__section">
-              <h2>상세 정보</h2>
-              <div className="space-detail__policy-list">
-                {detail.policies.map((policy) => (
-                  <article className="space-detail__policy-card" key={policy.title}>
-                    <h3>{policy.title}</h3>
-                    <p>{policy.body}</p>
-                  </article>
-                ))}
-              </div>
-            </section>
-
-            <section className="space-detail__section">
-              <div className="space-detail__section-title-wrap">
-                <h2>후기 {detail.reviewSummary.length}</h2>
-                <button className="space-detail__more-link" type="button">
-                  전체보기
-                </button>
-              </div>
-              <div className="space-detail__review-list">
-                {detail.reviewSummary.map((review) => (
-                  <article className="space-detail__review-card" key={`${review.author}-${review.date}`}>
-                    <div className="space-detail__review-head">
-                      <div className="space-detail__review-avatar" />
-                      <div>
-                        <p className="space-detail__review-author">{review.author}</p>
-                        <p className="space-detail__review-date">{review.date} · 전체 별점</p>
-                      </div>
-                    </div>
-                    <div className="space-detail__review-stars">
-                      {Array.from({ length: 5 }).map((_, index) => (
-                        <StarIcon key={index} />
-                      ))}
-                      <span>{review.rating}</span>
-                    </div>
-                    <p className="space-detail__review-text">{review.text}</p>
-                  </article>
-                ))}
-              </div>
-            </section>
           </div>
         </div>
 
@@ -405,6 +622,15 @@ export function SpaceDetailPage() {
           </div>
         </section>
       </section>
+
+      <CouponDownloadModal
+        downloadedCouponIds={downloadedCouponIds}
+        onClose={() => setCouponModalOpen(false)}
+        onDownloadCoupon={downloadCoupon}
+        open={couponModalOpen}
+      />
+
+      <BanderUsagePolicyModal onClose={() => setBanderPolicyOpen(false)} open={banderPolicyOpen} />
 
       <HomeFooter />
     </main>

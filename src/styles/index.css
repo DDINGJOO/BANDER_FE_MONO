@@ -1,6 +1,33 @@
 @import './brand.css';
 @import './home.css';
 @import './search.css';
+@import './explore-map.css';
 @import './space-detail.css';
 @import './space-reservation.css';
+@import './vendor-detail.css';
+@import './bander-usage-policy-modal.css';
 @import './auth.css';
+@import './profile-edit.css';
+@import './account-settings.css';
+@import './change-password-modal.css';
+@import './notification-settings.css';
+@import './payment-info.css';
+@import './notifications.css';
+@import './my-reservations.css';
+@import './reservation-detail.css';
+@import './review-write.css';
+@import './my-reviews.css';
+@import './review-view-modal.css';
+
+.kakao-map__fallback {
+  align-items: center;
+  background: #f6f8fb;
+  color: #6d7a87;
+  display: flex;
+  font-size: 14px;
+  height: 100%;
+  justify-content: center;
+  line-height: 20px;
+  padding: 12px;
+  text-align: center;
+}

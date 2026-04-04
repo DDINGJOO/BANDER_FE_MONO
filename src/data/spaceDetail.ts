@@ -1,8 +1,10 @@
-import type { SpaceNoticeItem, SpacePricingLine } from '../types/space';
+import type {
+  SpaceDetailBenefitItem,
+  SpaceNoticeItem,
+  SpaceOperatingDay,
+  SpacePricingLine,
+} from '../types/space';
 import { HOME_SPACE_CARDS } from './home';
-
-/** Figma 룸 상세(6071:32854) 지도 검색 입력 플레이스홀더 */
-export const SPACE_DETAIL_MAP_SEARCH_PLACEHOLDER = '원하는 장소를 검색해보세요.';
 
 /** 메인 컬럼 안내 배너 (Figma: 착한 가격…) */
 export const SPACE_DETAIL_TRUST_BANNER = '착한 가격, 믿을만한 곳';
@@ -12,13 +14,53 @@ export const SPACE_DETAIL_PRICING_LINES: SpacePricingLine[] = [
   { label: '야간·주말', value: '10분 1,200원' },
 ];
 
+/** Figma 6071:32916 — 상단 요약 해시태그 행 */
+export const SPACE_DETAIL_SUMMARY_HASH_TAGS = ['#피아노', '#합주실', '#당일예약', '#24시'] as const;
+
+/** Figma 6372:36353 — 요약 영역 쿠폰 진입 바 (룸 상세 메인 프레임) */
+export const SPACE_DETAIL_COUPON_STRIP_LABEL = '적용 가능 쿠폰 3';
+
+/** Figma 6071:32908 — 별점 행 우측 가격 보조 텍스트 */
+export const SPACE_DETAIL_SUMMARY_PRICE_SUFFIX = '/60분';
+
 export const SPACE_DETAIL_OPERATING_SUMMARY = '오늘(금) 06:00 - 23:00';
 
-/** 역에서 도보 거리 배지 (Figma 메타) */
-export const SPACE_DETAIL_STATION_DISTANCE = '200m';
+/** 화살표 펼침 시 요일별 운영시간 (요약·업체 카드 공통) */
+export const SPACE_DETAIL_OPERATING_WEEK: SpaceOperatingDay[] = [
+  { hours: '06:00 - 23:00', weekday: '월' },
+  { hours: '06:00 - 23:00', weekday: '화' },
+  { hours: '07:00 - 23:00', weekday: '수' },
+  { hours: '06:00 - 23:00', weekday: '목' },
+  { hours: '06:00 - 23:00', isToday: true, weekday: '금' },
+  { hours: '08:00 - 22:00', weekday: '토' },
+  { hours: '휴무', weekday: '일' },
+];
 
-/** 주소 카드 보조 줄 (Figma: 상수역 … 563m) */
-export const SPACE_DETAIL_ADDRESS_TRANSIT = '상수역 1번 출구에서 563m';
+/** 역에서 도보 거리 배지 — 기본 정보 주소 보조 줄과 동일 수치 */
+export const SPACE_DETAIL_STATION_DISTANCE = '482m';
+
+/** 주소 카드 보조 줄 — 요약 `482m` 배지·기본정보 주소 2행과 동일 문구 */
+export const SPACE_DETAIL_ADDRESS_TRANSIT = '홍대입구역 9번 출구에서 482m';
+
+const ROOM_DETAIL_STREET_ADDRESS = '서울시 마포구 동교로12길 24 지하 1층';
+
+/** 기본 정보 — 지도 아래 4칩 (예시 카드와 동일 문구) */
+export const SPACE_DETAIL_FACILITY_CHIPS: SpaceDetailBenefitItem[] = [
+  { key: 'parking', label: '주차가능' },
+  { key: 'booking', label: '예약가능' },
+  { key: 'hvac', label: '냉난방' },
+  { key: 'wifi', label: '와이파이' },
+];
+
+/** Figma 6071:33033 — 상세정보 혜택 6칩 (디자인 문구 그대로) */
+export const SPACE_DETAIL_DETAIL_STRIP: SpaceDetailBenefitItem[] = [
+  { label: '커피' },
+  { key: 'wifi', label: '인터넷' },
+  { label: '고속충전기' },
+  { label: '모니터' },
+  { label: '정수기' },
+  { key: 'parking', label: '주차가능' },
+];
 
 export const SPACE_DETAIL_NOTICES: SpaceNoticeItem[] = [
   {
@@ -27,11 +69,12 @@ export const SPACE_DETAIL_NOTICES: SpaceNoticeItem[] = [
   },
 ];
 
+/** `{{STUDIO}}`는 목록 카드의 스튜디오명으로 치환 (예시 페이지 카피 통일) */
 export const ROOM_DETAIL_DATA = {
-  address: '서울시 마포구 독막로9길 31 지하 1층',
+  address: ROOM_DETAIL_STREET_ADDRESS,
   category: '합주실',
   description:
-    '유스뮤직의 그랜드 피아노를 보유한 룸입니다. 최고 사양의 그랜드 피아노와 완벽한 방음, 쾌적한 실내로 유스뮤직을 즐겨주세요! 유스뮤직의 그랜드 피아노를 보유한 룸입니다. 최고 사양의 그랜드 피아노와 완벽한 방음, 쾌적한 실내로 유스뮤직을 즐겨주세요!',
+    '{{STUDIO}}의 그랜드 피아노를 보유한 룸입니다. 최고 사양의 그랜드 피아노와 완벽한 방음, 쾌적한 실내에서 연습과 합주를 즐겨 주세요!',
   gallery: [
     'https://www.figma.com/api/mcp/asset/faf24acb-5b97-4dc9-b496-b8cfd2bf7e18',
     'https://www.figma.com/api/mcp/asset/dbac413c-ce1b-4204-8349-58d93f3e31cb',
@@ -39,22 +82,23 @@ export const ROOM_DETAIL_DATA = {
     'https://www.figma.com/api/mcp/asset/890bf1d4-4704-428f-8db7-e76f9adf6a27',
     'https://www.figma.com/api/mcp/asset/34569b09-a2a7-4e61-8869-29c0db88dc25',
   ],
-  location: '서울 마포구 동교동',
+  location: '서울 마포구 서교동',
+  mapLocation: { lat: 37.55678, lng: 126.92492 },
   policies: [
     {
       body:
-        '입장 10분 전부터 입실이 가능합니다. 공간 내부에서는 실내화를 착용해 주세요. 다음 사용자를 위해 퇴실 전 간단한 정리와 장비 위치 복구를 부탁드립니다. 음식물 반입은 냄새가 적고 간단한 스낵 위주로만 가능합니다.',
-      title: '유의사항',
+        '입장 10분 전부터 입실이 가능합니다.\n공간 내부에서는 실내화를 착용해 주세요.\n다음 사용자를 위해 퇴실 전 간단한 정리와 장비 위치 복구를 부탁드립니다.\n음식물 반입은 냄새가 적고 간단한 스낵 위주로만 가능합니다.',
+      title: '시설 안내',
     },
     {
       body:
-        '기본 수용 인원은 2명이며 최대 6명까지 이용할 수 있습니다. 외부 악기 반입 가능하며, 추가 장비 사용 시 옵션 금액이 발생할 수 있습니다. 당일 예약도 가능하지만 운영 시간 내에서만 승인됩니다.',
-      title: '이용 안내',
+        '기본 수용 인원은 2명이며 최대 6명까지 이용할 수 있습니다.\n외부 악기 반입 가능하며, 추가 장비 사용 시 옵션 금액이 발생할 수 있습니다.\n당일 예약도 가능하지만 운영 시간 내에서만 승인됩니다.',
+      title: '예약 시 주의사항',
     },
     {
       body:
-        '예약 취소는 이용 시작 24시간 전까지 가능합니다. 예약 확정 이후 시간 변경은 채팅 문의를 통해 조율해 주세요. 현장 상황에 따라 일부 장비 구성은 변경될 수 있습니다.',
-      title: '환불 및 변경',
+        '예약 취소는 이용 시작 24시간 전까지 가능합니다.\n예약 확정 이후 시간 변경은 채팅 문의를 통해 조율해 주세요.\n현장 상황에 따라 일부 장비 구성은 변경될 수 있습니다.',
+      title: '환불규정 안내',
     },
   ],
   priceLabel: '10,000원~',
@@ -62,18 +106,19 @@ export const ROOM_DETAIL_DATA = {
   reviewCount: 412,
   reviewSummary: [
     {
-      author: 'neowmeow',
-      date: '2025.02.27',
-      rating: '4.8',
+      author: 'mixlab',
+      date: '2025.02.08',
+      rating: '5.0',
       text:
-        '피아노 상태가 좋고 방음도 안정적이어서 연습에 집중하기 좋았습니다. 관리가 깔끔하고 조명도 편안해서 재방문 의사가 있어요.',
+        '장비 구성이 명확해서 합주 리허설용으로 좋았습니다. 다음에도 같은 공간으로 재예약할 예정입니다.',
     },
     {
-      author: 'BandSoul33',
-      date: '2025.02.20',
-      rating: '4.9',
+      author: 'neowmeow',
+      date: '2025.02.27',
+      photoCount: 3,
+      rating: '4.8',
       text:
-        '시설 설명과 실제 상태 차이가 거의 없었고, 예약 응답도 빨랐습니다. 장비 컨디션이 좋아 합주 리허설용으로 추천할 만합니다.',
+        '그랜드 피아노 터치감과 방음이 좋아서 마음껏 연습할 수 있었어요. 예약도 간편하고 가격 대비 만족스러웠습니다. 주차 공간이 조금 아쉬웠어요.',
     },
     {
       author: 'mellowkeys',
@@ -83,11 +128,10 @@ export const ROOM_DETAIL_DATA = {
         '그랜드 피아노 터치감이 좋았고 실내 소음도 적었습니다. 위치도 접근성이 괜찮아서 다음에도 같은 룸으로 예약하고 싶습니다.',
     },
   ],
-  studioName: '유스뮤직',
-  summaryTags: ['주차가능', '예약가능', '냉난방', '와이파이'],
+  studioName: '업비트스튜디오',
   title: 'A룸 그랜드 피아노 대관',
   vendor: {
-    name: '유스뮤직',
+    name: '업비트스튜디오',
     spaces: '15개의 공간',
   },
   descriptionCategoryLabel: '전체',
@@ -96,10 +140,10 @@ export const ROOM_DETAIL_DATA = {
 export const ROOM_DETAIL_INFO_ROWS = [
   {
     label: '주소',
-    value: '서울시 마포구 독막로9길 31 지하 1층\n상수역 1번 출구에서 563m',
+    value: `${ROOM_DETAIL_STREET_ADDRESS}\n${SPACE_DETAIL_ADDRESS_TRANSIT}`,
   },
-  { label: '오는 길', value: '상수역 1번 출구에서 우측으로 이동 (푸글렌 서울)' },
-  { label: '영업시간', value: '오늘(금) 06:00 - 23:00' },
+  { label: '오는 길', value: '홍대입구역 9번 출구에서 연트럴파크 방면 도보 7분' },
+  { label: '영업시간', value: '07:00 ~ 23:00' },
   { label: '전화번호', value: '0507-1111-1234' },
   { label: '가격', value: '09:00~17:00 : 10,000원/60분' },
   { label: '인원', value: '기본 2명 (최대 6명)' },

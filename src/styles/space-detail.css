@@ -9,30 +9,42 @@
   padding: 30px 0 120px;
 }
 
-.space-detail__top {
+.space-detail__layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 356px;
   gap: 60px;
-  align-items: start;
+  align-items: stretch;
 }
 
+.space-detail__body-col {
+  min-width: 0;
+}
+
+.space-detail__booking-host {
+  min-width: 0;
+}
+
+/* Figma 6071:32874 — 좌 대형 + 우 2×2, 15px 외곡선·10px 거터 */
 .space-detail__gallery {
   display: grid;
-  grid-template-columns: 1.2fr 1fr;
-  gap: 11px;
+  grid-template-columns: minmax(0, 535fr) minmax(0, 524fr);
+  grid-template-rows: 1fr 1fr;
+  gap: 10px;
+  align-items: stretch;
   min-height: 458px;
 }
 
 .space-detail__hero-image-wrap,
 .space-detail__thumb {
   border: 0;
-  border-radius: 14px;
   overflow: hidden;
   background: #f5f7fb;
 }
 
 .space-detail__hero-image-wrap {
+  grid-row: 1 / -1;
   min-height: 458px;
+  border-radius: 15px 0 0 15px;
 }
 
 .space-detail__hero-image,
@@ -51,8 +63,17 @@
 
 .space-detail__thumb {
   min-height: 224px;
+  border-radius: 0;
   cursor: pointer;
   box-shadow: inset 0 0 0 1px transparent;
+}
+
+.space-detail__thumb--corner-1 {
+  border-top-right-radius: 15px;
+}
+
+.space-detail__thumb--corner-3 {
+  border-bottom-right-radius: 15px;
 }
 
 .space-detail__thumb--active {
@@ -317,6 +338,22 @@
   padding-bottom: 8px;
 }
 
+/* Figma 6071:32886 — 아이브로·타이틀 */
+.space-detail__summary .space-detail__eyebrow {
+  gap: 5px;
+  color: #a3a9b5;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 18px;
+}
+
+.space-detail__summary .space-detail__title {
+  margin-top: 2px;
+  font-size: 25px;
+  font-weight: 700;
+  line-height: 32px;
+}
+
 .space-detail__summary-title-row {
   display: flex;
   align-items: flex-start;
@@ -329,14 +366,15 @@
   flex: 1 1 auto;
 }
 
+/* Figma 6071:32897 — scrap 28×28 */
 .space-detail__scrap--icon {
   flex: 0 0 auto;
-  width: 40px;
-  height: 40px;
-  margin-top: 2px;
+  width: 28px;
+  height: 28px;
+  margin-top: 4px;
   padding: 0;
   border: 0;
-  border-radius: 10px;
+  border-radius: 8px;
   background: #f3f5f8;
   color: var(--color-black);
   cursor: pointer;
@@ -346,8 +384,8 @@
 }
 
 .space-detail__scrap--icon svg {
-  width: 22px;
-  height: 22px;
+  width: 18px;
+  height: 18px;
 }
 
 .space-detail__scrap--icon svg path:first-child {
@@ -367,17 +405,69 @@
   line-height: 20px;
 }
 
-.space-detail__tags-distance-row {
+/* Figma 6071:33714 — 거리 · 주소 */
+.space-detail__location-figma {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin: 10px 0 0;
+  color: #6d7a87;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 18px;
+}
+
+.space-detail__dot--figma-loc {
+  flex-shrink: 0;
+  width: 2px;
+  height: 2px;
+  border-radius: 999px;
+  background: #6d7a87;
+}
+
+/* Figma 6071:32899 + 6071:32908 */
+.space-detail__meta-rating-price {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
-  margin-top: 10px;
-  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 8px;
+  width: 100%;
 }
 
-.space-detail__tags-distance-row .space-detail__tags--block {
-  margin: 0;
+.space-detail__summary-price-teaser {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.space-detail__summary-price-strong {
+  color: #ffa20c;
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 30px;
+}
+
+.space-detail__summary-price-suffix {
+  color: #a3a9b5;
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 22px;
+}
+
+.space-detail__stars--figma-summary .home-meta__icon--star {
+  width: 18px;
+  height: 18px;
+}
+
+.space-detail__distance-row {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  margin-top: 10px;
 }
 
 .space-detail__distance-block {
@@ -399,6 +489,55 @@
   font-size: 14px;
   font-weight: 500;
   line-height: 22px;
+}
+
+/* 기본 정보(지도) 블록 아래 — Figma 편의 아이콘 행 */
+.space-detail__facility-chips {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  gap: 12px 14px;
+  margin: 24px 0 0;
+  padding: 20px 0 0;
+  border-top: 1px solid #f0f2f5;
+  list-style: none;
+}
+
+.space-detail__facility-chip {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  min-width: 64px;
+  padding: 10px 12px 8px;
+  border-radius: 12px;
+  border: 1px solid #edf1f6;
+  background: var(--color-white);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.space-detail__facility-chip-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: var(--color-surface);
+  color: var(--color-black);
+}
+
+.space-detail__facility-chip-icon svg {
+  display: block;
+}
+
+.space-detail__facility-chip-label {
+  color: var(--color-muted-strong);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 14px;
+  text-align: center;
+  white-space: nowrap;
 }
 
 .space-detail__booking-pricing-bar {
@@ -480,8 +619,7 @@
 .space-detail__rating-row,
 .space-detail__price-row,
 .space-detail__section-title-wrap,
-.space-detail__vendor-main,
-.space-detail__review-head {
+.space-detail__vendor-main {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -502,14 +640,12 @@
   line-height: 18px;
 }
 
-.space-detail__stars .home-meta__icon--star,
-.space-detail__review-stars .home-meta__icon--star {
+.space-detail__stars .home-meta__icon--star {
   width: 16px;
   height: 16px;
 }
 
 .space-detail__scrap,
-.space-detail__vendor-link,
 .space-detail__more-link {
   display: inline-flex;
   align-items: center;
@@ -612,8 +748,7 @@
 
 .space-detail__info-value,
 .space-detail__description,
-.space-detail__policy-card p,
-.space-detail__review-text {
+.space-detail__policy-card p {
   color: var(--color-muted-strong);
   font-size: 14px;
   line-height: 22px;
@@ -628,6 +763,15 @@
     linear-gradient(135deg, rgba(255, 255, 255, 0.55) 20%, transparent 20.5%),
     linear-gradient(45deg, rgba(242, 192, 111, 0.45) 10%, transparent 10.5%),
     linear-gradient(120deg, rgba(164, 182, 201, 0.42) 24%, transparent 24.5%);
+}
+
+.space-detail__map--live {
+  background: #e8ecf1;
+}
+
+.space-detail__map--live::before,
+.space-detail__map--live::after {
+  display: none;
 }
 
 .space-detail__map::before,
@@ -679,11 +823,68 @@
 
 .space-detail__vendor-card {
   margin-top: 18px;
-  padding: 16px;
+  padding: 15px;
+}
+
+.space-detail__vendor-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 50px;
 }
 
 .space-detail__vendor-main {
   justify-content: flex-start;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.space-detail__vendor-main--link {
+  text-decoration: none;
+  color: inherit;
+  cursor: pointer;
+}
+
+.space-detail__vendor-main--link:hover .space-detail__vendor-name {
+  text-decoration: underline;
+}
+
+.space-detail__vendor-hours {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--color-muted-strong);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 18px;
+  cursor: pointer;
+  max-width: 42%;
+  text-align: right;
+}
+
+.space-detail__vendor-hours span:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.space-detail__vendor-hours-icon {
+  display: inline-flex;
+  flex-shrink: 0;
+  color: var(--color-muted);
+  opacity: 0.75;
+  transition: transform 0.2s ease;
+}
+
+.space-detail__vendor-hours-icon .signup-profile__chevron {
+  width: 14px;
+  height: 14px;
 }
 
 .space-detail__vendor-avatar,
@@ -714,6 +915,10 @@
 }
 
 .space-detail__chat-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
   width: 100%;
   min-height: 40px;
   margin-top: 16px;
@@ -727,6 +932,12 @@
   cursor: pointer;
 }
 
+.space-detail__chat-button svg {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
 .space-detail__section-nav {
   display: flex;
   align-items: center;
@@ -735,6 +946,20 @@
   padding: 12px 0;
   border-bottom: 1px solid var(--color-line);
   border-top: 1px solid var(--color-line);
+}
+
+/* 요약 아래, 스크롤 시 헤더 아래 고정 */
+.space-detail__section-nav--sticky {
+  position: sticky;
+  top: 79px;
+  z-index: 6;
+  margin-top: 24px;
+  background: var(--color-white);
+}
+
+/* 탭 스크롤·해시 이동 시 제목이 스티키 탭 아래에 오도록 (TS 오프셋과 맞출 것) */
+.space-detail__section--scroll-target {
+  scroll-margin-top: 130px;
 }
 
 .space-detail__section-tab {
@@ -789,27 +1014,91 @@
   padding: 18px;
 }
 
-.space-detail__review-head {
-  justify-content: flex-start;
+/* Figma 후기: 16px 아바타 + 한 줄 메타 → 본문 → 별점(14) → 사진 그리드 */
+.space-detail__review-meta-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
 }
 
-.space-detail__review-date {
-  margin-top: 2px;
+.space-detail__review-avatar-sm {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #dfe7f2 0%, #c5d3e8 100%);
+}
+
+.space-detail__review-meta-line {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0 4px;
+  margin: 0;
+  min-width: 0;
+  color: var(--color-muted-strong);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 18px;
+}
+
+.space-detail__review-meta-author {
+  color: var(--color-black);
+  font-weight: 600;
+}
+
+.space-detail__review-meta-date {
+  color: var(--color-muted-strong);
+}
+
+.space-detail__review-meta-dot {
+  width: 2px;
+  height: 2px;
+  border-radius: 999px;
+  background: var(--color-gray-4);
+  flex-shrink: 0;
+}
+
+.space-detail__review-text--figma {
+  margin: 10px 0 0;
+  color: var(--color-black);
+  font-size: 15px;
+  font-weight: 400;
+  line-height: 22px;
 }
 
 .space-detail__review-stars {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  margin-top: 14px;
+  gap: 2px;
+  margin-top: 10px;
   color: var(--color-black);
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
-  line-height: 18px;
+  line-height: 14px;
 }
 
-.space-detail__review-text {
-  margin: 12px 0 0;
+.space-detail__review-stars--figma .home-meta__icon--star {
+  width: 14px;
+  height: 14px;
+}
+
+.space-detail__review-photos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.space-detail__review-photo-ph {
+  width: 140px;
+  height: 140px;
+  flex-shrink: 0;
+  border-radius: 8px;
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.5) 0%, transparent 50%),
+    linear-gradient(135deg, #e8ecf2 0%, #d4dce8 45%, #c5cedd 100%);
 }
 
 .space-detail__section--recommend {
@@ -827,6 +1116,8 @@
 
 .space-detail__thumb-stack {
   position: relative;
+  grid-column: 2;
+  grid-row: 1 / -1;
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -854,10 +1145,6 @@
   background: #fffdf5;
 }
 
-.space-detail__tags--block {
-  justify-content: flex-start;
-}
-
 .space-detail__rule {
   margin: 22px 0;
   border: 0;
@@ -870,6 +1157,69 @@
   gap: 10px;
 }
 
+/* Figma 6071:32916 */
+.space-detail__summary-hash-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.space-detail__summary-hash-tag {
+  display: inline-flex;
+  align-items: center;
+  height: 28px;
+  padding: 7px 8px;
+  border-radius: 5px;
+  background: #eff2f5;
+  color: #6d7a87;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 16px;
+}
+
+/* Figma 6372:36353 */
+.space-detail__coupon-strip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  margin-top: 10px;
+  padding: 15px;
+  border: 1px solid #f6d155;
+  border-radius: 10px;
+  background: #fffbee;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
+
+.space-detail__coupon-strip:focus-visible {
+  outline: 2px solid rgba(246, 209, 85, 0.7);
+  outline-offset: 2px;
+}
+
+.space-detail__coupon-strip-label {
+  flex: 1;
+  min-width: 0;
+  color: var(--color-black);
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 22px;
+}
+
+.space-detail__coupon-strip-chevron {
+  flex-shrink: 0;
+  display: inline-flex;
+}
+
+.space-detail__coupon-strip-chevron .signup-profile__chevron {
+  display: block;
+  transform: rotate(-90deg);
+}
+
 .space-detail__pricing-spec-row {
   display: grid;
   grid-template-columns: 84px minmax(0, 1fr);
@@ -877,6 +1227,12 @@
   align-items: center;
   font-size: 15px;
   line-height: 22px;
+}
+
+/* Figma 6071:32924 — 라벨 52px, 값 간격 50px */
+.space-detail__pricing-spec--figma-summary .space-detail__pricing-spec-row {
+  grid-template-columns: 52px minmax(0, 1fr);
+  gap: 50px;
 }
 
 .space-detail__pricing-spec-label {
@@ -900,6 +1256,142 @@
   opacity: 0.55;
 }
 
+.space-detail__operating-toggle {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  min-width: 0;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.space-detail__operating-toggle-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.space-detail__operating-toggle-chevron {
+  display: inline-flex;
+  flex-shrink: 0;
+  transition: transform 0.2s ease;
+}
+
+.space-detail__operating-toggle-chevron .signup-profile__chevron {
+  opacity: 0.55;
+}
+
+.space-detail__operating-toggle--open .space-detail__operating-toggle-chevron {
+  transform: rotate(180deg);
+}
+
+/* Figma 6426:24854 — 룸 요약 영역 이용정책 진입 */
+.space-detail__bander-policy-btn {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--color-muted-strong);
+  font-weight: 500;
+}
+
+.space-detail__bander-policy-btn:hover {
+  color: var(--color-black);
+}
+
+.space-detail__bander-policy-btn-chevron {
+  display: inline-flex;
+  flex-shrink: 0;
+}
+
+.space-detail__bander-policy-btn-chevron .signup-profile__chevron {
+  width: 14px;
+  height: 14px;
+  transform: rotate(-90deg);
+  opacity: 0.55;
+}
+
+.space-detail__operating-week {
+  margin: 12px 0 0;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid #edf1f6;
+  background: #f9fafc;
+  list-style: none;
+}
+
+.space-detail__operating-week--in-card {
+  margin: 14px 0 0;
+}
+
+.space-detail__operating-week-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 0;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 20px;
+  color: var(--color-muted-strong);
+  border-bottom: 1px solid #eef1f6;
+}
+
+.space-detail__operating-week-row:last-child {
+  border-bottom: 0;
+  padding-bottom: 2px;
+}
+
+.space-detail__operating-week-row--today {
+  color: var(--color-black);
+  font-weight: 600;
+}
+
+.space-detail__operating-week-day {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.space-detail__operating-week-today {
+  font-style: normal;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 16px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(246, 209, 85, 0.35);
+  color: var(--color-black);
+}
+
+.space-detail__operating-week-hours {
+  flex-shrink: 0;
+  color: var(--color-muted-strong);
+  font-weight: 500;
+}
+
+.space-detail__operating-week-row--today .space-detail__operating-week-hours {
+  color: var(--color-black);
+  font-weight: 600;
+}
+
+.space-detail__vendor-hours--open .space-detail__vendor-hours-icon {
+  transform: rotate(180deg);
+}
+
 .space-detail__trust-banner {
   margin: 20px 0 0;
   padding: 14px 16px;
@@ -912,13 +1404,14 @@
   line-height: 22px;
 }
 
+/* Figma 6372:36353 input — 장소 검색 (외부 지도 링크) */
 .space-detail__map-search {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
   min-height: 50px;
-  margin-top: 18px;
+  margin-top: 20px;
   padding: 0 15px;
   border-radius: 10px;
   border: 1px solid var(--color-line);
@@ -957,24 +1450,54 @@
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 12px;
+  gap: 10px;
+}
+
+.space-detail__description-block .space-detail__description {
+  margin: 0;
 }
 
 .space-detail__description--lead {
   margin: 0;
+  color: var(--color-black);
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 24px;
+  white-space: pre-wrap;
 }
 
-.space-detail__description-pill {
+/* Figma 6372:36352 — 접힘 시 미리보기 (대략 4줄) */
+.space-detail__description--lead-clamped {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 4;
+  overflow: hidden;
+}
+
+/* Figma 6071:33746 tag(28)_light gray */
+.space-detail__description-more {
+  box-sizing: border-box;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
+  width: 80px;
   min-height: 30px;
-  padding: 6px 14px;
-  border-radius: 999px;
-  background: var(--color-surface);
-  color: var(--color-muted-strong);
-  font-size: 13px;
-  font-weight: 600;
-  line-height: 18px;
+  margin: 0;
+  padding: 7px 15px;
+  border: 0;
+  border-radius: 5px;
+  background: #eff2f5;
+  color: var(--color-black);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 16px;
+  cursor: pointer;
+}
+
+.space-detail__description-more:focus-visible {
+  outline: 2px solid rgba(0, 0, 0, 0.2);
+  outline-offset: 2px;
 }
 
 .space-detail__notice-list {
@@ -1005,6 +1528,125 @@
   margin: 0;
   color: var(--color-muted-strong);
   font-size: 14px;
+  line-height: 22px;
+}
+
+.space-detail__notice-list--under-detail-title {
+  margin-top: 14px;
+}
+
+/* Figma 6071:33033 — 상세정보 본문 */
+.space-detail__section--figma-detail > h2 {
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 26px;
+}
+
+.space-detail__detail-benefit-strip {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 6px 8px;
+  margin-top: 18px;
+  padding: 14px 10px;
+  border: 1px solid #edf1f6;
+  border-radius: 15px;
+  background: var(--color-white);
+  box-shadow: 0 3px 15px rgba(0, 0, 0, 0.04);
+}
+
+.space-detail__detail-benefit-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  text-align: center;
+}
+
+.space-detail__detail-benefit-icon-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-black);
+}
+
+.space-detail__detail-benefit-icon-ph {
+  display: block;
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  border: 1.5px dashed #c5cedd;
+  background: #f6f8fa;
+}
+
+.space-detail__detail-benefit-label {
+  color: var(--color-black);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 18px;
+}
+
+.space-detail__detail-policy-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.space-detail__detail-policy-block {
+  padding: 20px;
+  border-radius: 12px;
+  background: #f6f8fa;
+}
+
+.space-detail__detail-policy-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.space-detail__detail-policy-sq {
+  flex-shrink: 0;
+  width: 6px;
+  height: 6px;
+  border-radius: 1px;
+  background: #000;
+}
+
+.space-detail__detail-policy-head h3 {
+  margin: 0;
+  color: var(--color-black);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 18px;
+}
+
+.space-detail__detail-policy-row {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.space-detail__detail-policy-row + .space-detail__detail-policy-row {
+  margin-top: 8px;
+}
+
+.space-detail__detail-policy-bar {
+  flex-shrink: 0;
+  width: 2px;
+  height: 11px;
+  margin-top: 5px;
+  border-radius: 1px;
+  background: #6d7a87;
+  opacity: 0.45;
+}
+
+.space-detail__detail-policy-row p {
+  margin: 0;
+  color: #6d7a87;
+  font-size: 14px;
+  font-weight: 400;
   line-height: 22px;
 }
 

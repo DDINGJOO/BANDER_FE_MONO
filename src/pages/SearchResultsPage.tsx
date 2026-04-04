@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { HomeFooter } from '../components/home/HomeFooter';
 import { HomeHeader } from '../components/home/HomeHeader';
 import { HomeSpaceExplorer } from '../components/home/HomeSpaceExplorer';
@@ -8,9 +8,14 @@ import { HEADER_SEARCH_KEYWORD_SUGGESTIONS } from '../config/searchSuggestions';
 import { loadAuthSession } from '../data/authSession';
 
 const SEARCH_VENDOR_RESULTS = [
-  { name: '유스뮤직', spaces: '15개의 공간', tone: 'linear-gradient(135deg, #7f1315, #e26447)' },
-  { name: '방구석 뮤지션의 합주실', spaces: '15개의 공간', tone: 'linear-gradient(135deg, #6b4d24, #c5a071)' },
-  { name: '챗츠뮤직', spaces: '15개의 공간', tone: 'linear-gradient(135deg, #bcbcbc, #ececec)' },
+  { name: '유스뮤직', slug: 'youth-music', spaces: '15개의 공간', tone: 'linear-gradient(135deg, #7f1315, #e26447)' },
+  {
+    name: '방구석 뮤지션의 합주실',
+    slug: 'banggu-musician',
+    spaces: '15개의 공간',
+    tone: 'linear-gradient(135deg, #6b4d24, #c5a071)',
+  },
+  { name: '챗츠뮤직', slug: 'chats-music', spaces: '15개의 공간', tone: 'linear-gradient(135deg, #bcbcbc, #ececec)' },
 ];
 
 const SEARCH_COMMUNITY_RESULTS = [
@@ -202,13 +207,13 @@ export function SearchResultsPage() {
         {activeTab === 'vendor' ? (
           <div className="search-results__vendor-grid">
             {SEARCH_VENDOR_RESULTS.map((vendor) => (
-              <article className="search-results__vendor-card" key={vendor.name}>
+              <Link className="search-results__vendor-card search-results__vendor-card--link" key={vendor.slug} to={`/vendors/${vendor.slug}`}>
                 <div className="search-results__vendor-avatar" style={{ background: vendor.tone }} />
                 <div className="search-results__vendor-body">
                   <h2 className="search-results__vendor-name">{vendor.name}</h2>
                   <p className="search-results__vendor-meta">{vendor.spaces}</p>
                 </div>
-              </article>
+              </Link>
             ))}
           </div>
         ) : null}

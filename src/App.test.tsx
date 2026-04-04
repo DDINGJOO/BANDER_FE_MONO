@@ -208,7 +208,7 @@ test('renders the authenticated header preview on the home-auth route', () => {
   expect(screen.getAllByRole('link', { name: /예약/ })[0]).toBeInTheDocument();
   expect(screen.getByRole('button', { name: '장바구니' })).toBeInTheDocument();
   expect(screen.getByRole('button', { name: '찜 목록' })).toBeInTheDocument();
-  expect(screen.getByRole('button', { name: '알림' })).toBeInTheDocument();
+  expect(screen.getByRole('link', { name: '알림' })).toBeInTheDocument();
   expect(screen.getByRole('button', { name: '프로필 메뉴' })).toBeInTheDocument();
 });
 
@@ -251,7 +251,7 @@ test('moves to the room detail page when clicking a space card', async () => {
   expect(
     await screen.findByRole('heading', { level: 1, name: 'A룸 그랜드 피아노 대관' })
   ).toBeInTheDocument();
-  expect(screen.getByText('유스뮤직')).toBeInTheDocument();
+  expect(screen.getAllByText('업비트스튜디오').length).toBeGreaterThanOrEqual(1);
   expect(screen.getByText('업체 정보')).toBeInTheDocument();
   expect(screen.getByText(/휴대폰 본인인증이 필요해요/)).toBeInTheDocument();
 
@@ -274,10 +274,9 @@ test('moves to the room detail page when clicking a space card', async () => {
     );
   expect(firstBookableSlot).toBeTruthy();
   fireEvent.mouseDown(firstBookableSlot as HTMLButtonElement);
+  expect(screen.getByRole('button', { name: payButtonMatcher })).toBeDisabled();
 
   fireEvent.click(screen.getByRole('button', { name: /전체동의/ }));
-  expect(screen.getByRole('button', { name: payButtonMatcher })).toBeDisabled();
-  fireEvent.click(screen.getByRole('button', { name: 'tosspay' }));
   expect(screen.getByRole('button', { name: payButtonMatcher })).toBeEnabled();
 });
 

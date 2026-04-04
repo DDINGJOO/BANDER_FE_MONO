@@ -2,12 +2,26 @@ import React, { useMemo, useRef, useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { HomeHeader } from '../components/home/HomeHeader';
+import { CouponDownloadModal } from '../components/space/CouponDownloadModal';
 import { ChevronIcon } from '../components/shared/Icons';
 import { loadAuthSession } from '../data/authSession';
+import { COUPON_ITEMS } from '../data/couponDownloadModal';
 import { HOME_SPACE_CARDS } from '../data/home';
+import { useCouponDownloads } from '../hooks/useCouponDownloads';
 
 const TOSS_PAY_IMAGE =
   'https://www.figma.com/api/mcp/asset/2eae63a4-d92c-4d34-9e5c-985a8b6f3ade';
+
+/** Figma 6225:45288 — 시간 선택 카드 캘린더 아이콘 */
+function ReservationCalendarIcon() {
+  return (
+    <svg aria-hidden="true" className="space-reservation__calendar-icon" fill="none" viewBox="0 0 16 16" width="20" height="20">
+      <path d="M2.5 6.5h11" stroke="currentColor" strokeLinecap="round" strokeWidth="1.2" />
+      <rect height="11.5" rx="2" stroke="currentColor" strokeWidth="1.2" width="11.5" x="2.25" y="2.75" />
+      <path d="M5 1.5v2M11 1.5v2" stroke="currentColor" strokeLinecap="round" strokeWidth="1.2" />
+    </svg>
+  );
+}
 
 const TIME_COLUMNS = Array.from({ length: 24 }, (_, hour) => {
   const firstLabel = `${String(hour).padStart(2, '0')}:00`;
@@ -65,30 +79,6 @@ const RESERVATION_OPTION_ITEMS = [
   },
 ] as const;
 
-const COUPON_ITEMS = [
-  {
-    description: '사용가능 : A룸 그랜드 피아노 대관 외 3',
-    id: 'coupon-3000',
-    subtitle: '[유스뮤직 전용]',
-    terms: ['조건 : 최대 10,000원 이상 결제 시', '기한 : 2025.09.13까지'],
-    title: '3,000원 할인',
-  },
-  {
-    description: '',
-    id: 'coupon-5',
-    subtitle: '[유스뮤직 전용]',
-    terms: ['조건 : 최대 10,000원 이상 결제 시', '기한 : 2025.09.13까지'],
-    title: '5% 할인',
-  },
-  {
-    description: '최대 10,000원 할인 가능',
-    id: 'coupon-10',
-    subtitle: '평일 낮시간 전용 할인 쿠폰',
-    terms: ['조건 : 월~금 사용 가능 / 60분 이상 예약', '기한 : 2025.09.13까지'],
-    title: '10% 할인',
-  },
-] as const;
-
 type PaymentResultState = 'failed' | 'success' | null;
 
 function formatReservationDate(dateParam: string | null) {
@@ -122,10 +112,8 @@ export function SpaceReservationPage() {
   });
   const [optionsOpen, setOptionsOpen] = useState(false);
   const [couponModalOpen, setCouponModalOpen] = useState(false);
+  const { downloadCoupon, downloadedCouponIds } = useCouponDownloads();
   const [paymentResult, setPaymentResult] = useState<PaymentResultState>(null);
-  const [paymentResultMode, setPaymentResultMode] = useState<'failed' | 'success'>('success');
-  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<'tosspay' | null>(null);
-  const [downloadedCouponIds, setDownloadedCouponIds] = useState<string[]>([]);
   const [canScrollTimelineNext, setCanScrollTimelineNext] = useState(true);
   const [canScrollTimelinePrev, setCanScrollTimelinePrev] = useState(false);
   const [selectedOptionCounts, setSelectedOptionCounts] = useState<Record<string, number>>({
@@ -218,16 +206,14 @@ export function SpaceReservationPage() {
   const selectedOptionSummary = RESERVATION_OPTION_ITEMS.filter(
     (item) => selectedOptionCounts[item.key] > 0
   )
-    .map((item) => `${item.name} x${selectedOptionCounts[item.key]}`)
+    .map((item) => `${item.name} X ${selectedOptionCounts[item.key]}`)
     .join(', ');
   const hasSelectedOptions = RESERVATION_OPTION_ITEMS.some(
     (item) => (selectedOptionCounts[item.key] ?? 0) > 0
   );
-  const allCouponsDownloaded = COUPON_ITEMS.every((item) => downloadedCouponIds.includes(item.id));
   const requiredAgreementsChecked =
     agreements.collection && agreements.thirdParty && agreements.paymentAgency;
-  const canSubmitPayment =
-    requiredAgreementsChecked && selectedTimes.length > 0 && selectedPaymentMethod === 'tosspay';
+  const canSubmitPayment = requiredAgreementsChecked && selectedTimes.length > 0;
   const modalRoot = typeof document !== 'undefined' ? document.body : null;
 
   const setAllAgreements = (checked: boolean) => {
@@ -332,8 +318,10 @@ export function SpaceReservationPage() {
 
       <section className="space-reservation__shell">
         <div className="space-reservation__header">
-          <button className="space-reservation__back" onClick={() => navigate(-1)} type="button">
-            ‹
+          <button className="space-reservation__back" onClick={() => navigate(-1)} type="button" aria-label="뒤로">
+            <span className="space-reservation__back-icon">
+              <ChevronIcon />
+            </span>
           </button>
           <h1>예약하기</h1>
         </div>
@@ -347,35 +335,44 @@ export function SpaceReservationPage() {
             </div>
           </div>
           <div className="space-reservation__summary-grid">
-            <div>
-              <span>예약 날짜</span>
-              <strong>{reservationDateLabel}</strong>
+            <div className="space-reservation__summary-grid-col">
+              <div>
+                <span>예약 날짜</span>
+                <strong>{reservationDateLabel}</strong>
+              </div>
+              <div>
+                <span>예약 시간</span>
+                <strong>{selectedTimeRange}</strong>
+              </div>
+              <div>
+                <span>예약 인원</span>
+                <strong>2명</strong>
+              </div>
             </div>
-            <div>
-              <span>상품 옵션</span>
-              <strong>{selectedOptionSummary || '-'}</strong>
-            </div>
-            <div>
-              <span>예약 시간</span>
-              <strong>{selectedTimeRange}</strong>
-            </div>
-            <div>
-              <span>가격</span>
-              <strong>{totalPrice.toLocaleString()}원</strong>
-            </div>
-            <div>
-              <span>예약 인원</span>
-              <strong>1명</strong>
+            <div className="space-reservation__summary-grid-col">
+              <div>
+                <span>상품 옵션</span>
+                <strong>{selectedOptionSummary || '-'}</strong>
+              </div>
+              <div>
+                <span>가격</span>
+                <strong>{totalPrice.toLocaleString()}원</strong>
+              </div>
             </div>
           </div>
         </div>
 
-        <section className="space-reservation__section">
-          <div className="space-reservation__section-title">
-            <h2>시간 선택</h2>
-            <button type="button">{selectedTimeRange}</button>
+        <section className="space-reservation__section space-reservation__section--time">
+          <div className="space-reservation__time-section-head">
+            <div className="space-reservation__time-section-head-main">
+              <ReservationCalendarIcon />
+              <h2 className="space-reservation__time-section-title">시간 선택</h2>
+            </div>
+            <button className="space-reservation__time-section-range" type="button">
+              {selectedTimeRange}
+            </button>
           </div>
-          <p className="space-reservation__section-caption">최소 30분 단위로 선택</p>
+          <p className="space-reservation__timeline-lead">최소 30분 단위로 선택</p>
           <div className="space-reservation__timeline">
             <button
               aria-label="이전 시간대로 이동"
@@ -439,26 +436,23 @@ export function SpaceReservationPage() {
             </button>
           </div>
           <div className="space-reservation__legend">
-            <span>예약 가능</span>
-            <span>예약 불가</span>
-            <span>선택</span>
+            <span className="space-reservation__legend-item">
+              <span className="space-reservation__legend-swatch space-reservation__legend-swatch--available" />
+              예약 가능
+            </span>
+            <span className="space-reservation__legend-item">
+              <span className="space-reservation__legend-swatch space-reservation__legend-swatch--blocked" />
+              예약 불가
+            </span>
+            <span className="space-reservation__legend-item">
+              <span className="space-reservation__legend-swatch space-reservation__legend-swatch--selected" />
+              선택
+            </span>
           </div>
         </section>
 
         <section className="space-reservation__section">
           <h2>예약자 정보</h2>
-          <div className="space-reservation__test-toggle">
-            <span>결제 결과 테스트</span>
-            <button
-              className="space-reservation__test-toggle-button"
-              onClick={() =>
-                setPaymentResultMode((current) => (current === 'success' ? 'failed' : 'success'))
-              }
-              type="button"
-            >
-              {paymentResultMode === 'success' ? '성공 모드' : '실패 모드'}
-            </button>
-          </div>
           <div className="space-reservation__field-list">
             <button className="space-reservation__select" onClick={() => setOptionsOpen(true)} type="button">
               <span>{selectedOptionSummary || '상품 옵션 선택'}</span>
@@ -474,7 +468,11 @@ export function SpaceReservationPage() {
             </label>
             <label className="space-reservation__field">
               <span>추가 요청사항</span>
-              <textarea placeholder="추가 요청사항을 입력해주세요." />
+              <textarea
+                defaultValue={
+                  '일렉기타 앰프는 마샬로 부탁드립니다.\n환기 잘되는 방으로 부탁드려요'
+                }
+              />
             </label>
           </div>
         </section>
@@ -484,7 +482,7 @@ export function SpaceReservationPage() {
           <div className="space-reservation__discount-list">
             <button className="space-reservation__discount-input" onClick={() => setCouponModalOpen(true)} type="button">
               <span>쿠폰</span>
-              <span>적용 가능 2장</span>
+              <span className="space-reservation__discount-input-value">적용 가능 {COUPON_ITEMS.length}장</span>
               <ChevronIcon />
             </button>
             <div className="space-reservation__discount-input">
@@ -500,44 +498,75 @@ export function SpaceReservationPage() {
 
         <section className="space-reservation__section">
           <h2>결제수단</h2>
-          <div className="space-reservation__payment-methods">
-            <button
-              className={`space-reservation__payment-method ${selectedPaymentMethod === 'tosspay' ? 'space-reservation__payment-method--selected' : ''}`}
-              onClick={() => setSelectedPaymentMethod('tosspay')}
-              type="button"
-            >
-              <img alt="tosspay" className="space-reservation__payment-method-image" src={TOSS_PAY_IMAGE} />
-            </button>
+          <p className="space-reservation__payment-only-note">토스페이먼츠로 결제합니다.</p>
+          <div className="space-reservation__payment-methods space-reservation__payment-methods--single" role="group" aria-label="결제수단">
+            <div className="space-reservation__payment-method space-reservation__payment-method--only">
+              <img alt="토스페이" className="space-reservation__payment-method-image" src={TOSS_PAY_IMAGE} />
+            </div>
           </div>
         </section>
 
         <section className="space-reservation__section">
           <h2>결제정보</h2>
           <div className="space-reservation__payment-summary">
-            <div><span>공간 대여금</span><strong>{basePrice.toLocaleString()}원</strong></div>
-            <div><span>상품금액</span><strong>{optionTotal.toLocaleString()}원</strong></div>
-            <div><span>포인트</span><strong>- 0원</strong></div>
-            <div><span>쿠폰</span><strong>- 0원</strong></div>
-            <div className="space-reservation__payment-total"><span>총 결제 금액</span><strong>{totalPrice.toLocaleString()}원</strong></div>
+            <div className="space-reservation__payment-summary-rows">
+              <div>
+                <span>공간 금액</span>
+                <strong>{basePrice.toLocaleString()}원</strong>
+              </div>
+              <div>
+                <span>옵션 금액</span>
+                <strong>{optionTotal.toLocaleString()}원</strong>
+              </div>
+              <div>
+                <span>포인트</span>
+                <strong>- 0원</strong>
+              </div>
+              <div>
+                <span>쿠폰</span>
+                <strong>- 0원</strong>
+              </div>
+            </div>
+            <div className="space-reservation__payment-total">
+              <span>총 결제 금액</span>
+              <strong className="space-reservation__payment-total-price">{totalPrice.toLocaleString()}원</strong>
+            </div>
           </div>
+          <button
+            className="space-reservation__payment-agreement-all"
+            onClick={() => setAllAgreements(!agreements.all)}
+            type="button"
+          >
+            <span
+              className={`space-reservation__payment-agreement-all-check ${agreements.all ? 'space-reservation__payment-agreement-all-check--active' : ''}`}
+            >
+              ✓
+            </span>
+            <span>약관 전체 동의</span>
+            <span className="space-reservation__payment-agreement-all-chevron" aria-hidden="true">
+              <ChevronIcon />
+            </span>
+          </button>
         </section>
       </section>
 
       <div className="space-reservation__bottom-bar">
         <div className="space-reservation__bottom-main">
           <button className="space-reservation__bottom-summary" type="button">
-            <span>결제정보</span>
-            <strong>{totalPrice.toLocaleString()}원</strong>
-            <span className="space-reservation__bottom-summary-arrow">
-              <ChevronIcon />
+            <span className="space-reservation__bottom-summary-title">결제정보</span>
+            <span className="space-reservation__bottom-summary-right">
+              <strong>{totalPrice.toLocaleString()}원</strong>
+              <span className="space-reservation__bottom-summary-arrow">
+                <ChevronIcon />
+              </span>
             </span>
           </button>
-        <button
-          className="space-reservation__submit"
-          disabled={!canSubmitPayment}
-          onClick={() => setPaymentResult(paymentResultMode)}
-          type="button"
-        >
+          <button
+            className="space-reservation__submit"
+            disabled={!canSubmitPayment}
+            onClick={() => setPaymentResult('success')}
+            type="button"
+          >
             총 {totalPrice.toLocaleString()}원 결제하기
           </button>
         </div>
@@ -656,65 +685,12 @@ export function SpaceReservationPage() {
           )
         : null}
 
-      {couponModalOpen && modalRoot
-        ? createPortal(
-            <div className="space-reservation__modal">
-              <div className="space-reservation__modal-backdrop" onClick={() => setCouponModalOpen(false)} />
-              <div className="space-reservation__modal-dialog space-reservation__modal-dialog--coupon">
-                <div className="space-reservation__modal-header">
-                  <h2>적용 가능 쿠폰 3</h2>
-                  <button onClick={() => setCouponModalOpen(false)} type="button">
-                    ×
-                  </button>
-                </div>
-                <div className="space-reservation__coupon-list">
-                  {COUPON_ITEMS.map((coupon) => {
-                    const downloaded = downloadedCouponIds.includes(coupon.id);
-
-                    return (
-                      <div className="space-reservation__coupon-card" key={coupon.id}>
-                        <div className="space-reservation__coupon-copy">
-                          <p className="space-reservation__coupon-subtitle">{coupon.subtitle}</p>
-                          <p className="space-reservation__coupon-title">{coupon.title}</p>
-                          {coupon.description ? (
-                            <p className="space-reservation__coupon-description">{coupon.description}</p>
-                          ) : null}
-                          <div className="space-reservation__coupon-terms">
-                            {coupon.terms.map((term) => (
-                              <p key={term}>{term}</p>
-                            ))}
-                          </div>
-                        </div>
-                        <button
-                          aria-label={downloaded ? `${coupon.title} 다운로드 완료` : `${coupon.title} 다운로드`}
-                          className={`space-reservation__coupon-action ${downloaded ? 'space-reservation__coupon-action--done' : ''}`}
-                          onClick={() => {
-                            if (downloaded) {
-                              return;
-                            }
-                            setDownloadedCouponIds((current) => [...current, coupon.id]);
-                          }}
-                          type="button"
-                        >
-                          {downloaded ? '✓' : '↓'}
-                        </button>
-                      </div>
-                    );
-                  })}
-                </div>
-                <button
-                  className="space-reservation__modal-submit"
-                  disabled={allCouponsDownloaded}
-                  onClick={() => setCouponModalOpen(false)}
-                  type="button"
-                >
-                  다운로드 완료
-                </button>
-              </div>
-            </div>,
-            modalRoot
-          )
-        : null}
+      <CouponDownloadModal
+        downloadedCouponIds={downloadedCouponIds}
+        onClose={() => setCouponModalOpen(false)}
+        onDownloadCoupon={downloadCoupon}
+        open={couponModalOpen}
+      />
 
       {paymentResult && modalRoot
         ? createPortal(
