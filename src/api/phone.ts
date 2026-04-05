@@ -10,14 +10,14 @@ export type VerifyCodeResponse = {
   verificationToken: string;
 };
 
-export function sendPhoneCode(phoneNumber: string, purpose: string = 'ACCOUNT') {
+export function sendPhoneCode(phoneNumber: string, purpose: string = 'CHANGE_PHONE') {
   return postJson<SendCodeResponse>('/api/v1/auth/phone/send-code', {
     phoneNumber,
     purpose,
   });
 }
 
-export function verifyPhoneCode(phoneNumber: string, code: string, purpose: string = 'ACCOUNT') {
+export function verifyPhoneCode(phoneNumber: string, code: string, purpose: string = 'CHANGE_PHONE') {
   return postJson<VerifyCodeResponse>('/api/v1/auth/phone/verify-code', {
     phoneNumber,
     code,

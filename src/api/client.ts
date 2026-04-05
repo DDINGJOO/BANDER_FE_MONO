@@ -1,5 +1,5 @@
-import { getApiBaseUrl, getGatewayAuthToken } from '../config/publicEnv';
-import { clearAuthSession, loadAuthSession } from '../data/authSession';
+import { getApiBaseUrl } from '../config/publicEnv';
+import { clearAuthSession } from '../data/authSession';
 
 export type ApiErrorPayload = {
   code?: string;
@@ -30,13 +30,6 @@ function buildHeaders(init?: RequestInit) {
   if (!headers.has('Content-Type')) {
     headers.set('Content-Type', 'application/json');
   }
-
-  const authSession = loadAuthSession();
-  if (authSession?.gatewayContextToken) {
-    headers.set('X-Gateway-Context', authSession.gatewayContextToken);
-    headers.set('X-Gateway-Auth', getGatewayAuthToken());
-  }
-
   return headers;
 }
 

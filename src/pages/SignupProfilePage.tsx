@@ -122,11 +122,14 @@ export function SignupProfilePage() {
           selectedImageFile.type,
           selectedImageFile.size,
         );
-        await fetch(grant.uploadUrl, {
+        const uploadResp = await fetch(grant.uploadUrl, {
           method: 'PUT',
           body: selectedImageFile,
           headers: { 'Content-Type': selectedImageFile.type },
         });
+        if (!uploadResp.ok) {
+          throw new Error('이미지 업로드에 실패했습니다.');
+        }
         profileImageRef = grant.profileImageRef;
       } catch {
         // fall back to default if upload fails

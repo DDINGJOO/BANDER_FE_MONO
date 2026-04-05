@@ -1,4 +1,3 @@
-import { loadAuthSession } from '../data/authSession';
 import { getJson, patchJson, postJson, requestVoid } from './client';
 
 // --- Profile ---
@@ -72,11 +71,8 @@ export function changePassword(currentPassword: string, newPassword: string) {
 // --- Deactivate ---
 
 export function deactivateAccount(password?: string) {
-  const session = loadAuthSession();
-  const nonce = session?.gatewayContextToken ?? '';
   return requestVoid('/api/v1/users/me/deactivate', {
     body: password ? JSON.stringify({ password }) : undefined,
-    headers: { 'X-Nonce': nonce, 'Content-Type': 'application/json' },
     method: 'POST',
   });
 }
@@ -84,10 +80,7 @@ export function deactivateAccount(password?: string) {
 // --- Logout ---
 
 export function logout() {
-  const session = loadAuthSession();
-  const nonce = session?.gatewayContextToken ?? '';
   return requestVoid('/api/v1/auth/logout', {
-    headers: { 'X-Nonce': nonce },
     method: 'POST',
   });
 }

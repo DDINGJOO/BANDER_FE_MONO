@@ -75,7 +75,7 @@ export function ProfileEditPage() {
 
   const initialNickname = PROFILE_EDIT_DEFAULTS.nickname;
   /** 서버(또는 최초 로드) 기준 닉네임 — 수정 여부 판단용 */
-  const [savedNickname] = useState(initialNickname);
+  const [savedNickname, setSavedNickname] = useState(initialNickname);
   const [nickname, setNickname] = useState(initialNickname);
   /** 마지막으로 중복확인 통과한 문자열(초기는 저장값과 동일 = 별도 확인 없이 제출 가능) */
   const [checkedNickname, setCheckedNickname] = useState(initialNickname);
@@ -96,6 +96,8 @@ export function ProfileEditPage() {
   const regionRef = useRef<HTMLDivElement>(null);
   /** Figma 6200:9477 — 변경 전에는 수정완료 비활성(회색) */
   const [formDirty, setFormDirty] = useState(false);
+  /** 서버에서 받은 원본 gender 문자열 — PREFER_NOT_TO_SAY 보존용 */
+  const [serverGender, setServerGender] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitLoading, setSubmitLoading] = useState(false);
   const [submitError, setSubmitError] = useState('');
@@ -184,10 +186,16 @@ export function ProfileEditPage() {
       .then((profile) => {
         if (cancelled) return;
         setNickname(profile.nickname ?? '');
+        setSavedNickname(profile.nickname ?? '');
+        setCheckedNickname(profile.nickname ?? '');
         setBio(profile.bio ?? '');
         setPhotoUrl(resolveProfileImageUrl(profile.profileImageRef));
         if (profile.gender) {
-          setGender(profile.gender === 'MALE' ? 'male' : profile.gender === 'FEMALE' ? 'female' : 'male');
+          setServerGender(profile.gender);
+          const genderMap: Record<string, ProfileEditGender> = { MALE: 'male', FEMALE: 'female' };
+          if (genderMap[profile.gender]) {
+            setGender(genderMap[profile.gender]);
+          }
         }
         if (profile.regionCode) {
           setRegion(profile.regionCode);
@@ -493,18 +501,22 @@ export function ProfileEditPage() {
                       selectedFile.size,
                     );
                     // PUT to presigned URL
-                    await fetch(grant.uploadUrl, {
+                    const uploadResp = await fetch(grant.uploadUrl, {
                       method: 'PUT',
                       headers: { 'Content-Type': selectedFile.type },
                       body: selectedFile,
                     });
+                    if (!uploadResp.ok) {
+                      throw new Error('이미지 업로드에 실패했습니다.');
+                    }
                     imageRef = grant.profileImageRef;
                   }
 
+                  const mappedGender = gender === 'male' ? 'MALE' : 'FEMALE';
                   await updateMyProfile({
                     nickname: nickTrim,
                     bio: bio || undefined,
-                    gender: gender === 'male' ? 'MALE' : 'FEMALE',
+                    gender: mappedGender !== serverGender ? mappedGender : undefined,
                     regionCode: region,
                     genres: genres.join(',') || undefined,
                     instruments: instruments.join(',') || undefined,

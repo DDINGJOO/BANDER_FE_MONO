@@ -32,7 +32,11 @@ export function OAuthCallbackPage() {
             gatewayContextToken: result.gatewayContextToken,
             userId: result.userId,
           });
-          navigate('/', { replace: true });
+          if (result.newUser) {
+            navigate('/signup/profile', { replace: true });
+          } else {
+            navigate('/', { replace: true });
+          }
         })
         .catch((err) => {
           setError(err instanceof Error ? err.message : '소셜 로그인에 실패했습니다.');
