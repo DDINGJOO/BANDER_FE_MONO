@@ -109,6 +109,30 @@
   line-height: 16px;
 }
 
+.vendor-detail__chat-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 44px;
+  margin-top: 16px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--color-main-yellow);
+  color: var(--color-black);
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 22px;
+  cursor: pointer;
+}
+
+.vendor-detail__chat-button svg {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
 .vendor-detail__rule {
   margin: 24px 0 0;
   border: 0;

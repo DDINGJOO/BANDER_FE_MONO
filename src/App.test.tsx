@@ -1,6 +1,6 @@
 import React from 'react';
 import { act } from 'react';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import App from './App';
 
@@ -200,6 +200,115 @@ test('navigates from main hero search to search results', () => {
   expect(screen.getByRole('heading', { name: /그랜드 피아노.*검색 결과/ })).toBeInTheDocument();
 });
 
+test('navigates to the community page when clicking the header community link', () => {
+  renderAt('/');
+
+  fireEvent.click(screen.getByRole('link', { name: '커뮤니티' }));
+
+  expect(screen.getByRole('heading', { name: '전체 커뮤니티' })).toBeInTheDocument();
+});
+
+test('renders my mini-feed page', () => {
+  renderAt('/my-minifeed');
+
+  expect(screen.getByRole('heading', { level: 1, name: '내 미니피드' })).toBeInTheDocument();
+  expect(screen.getByRole('tab', { name: '작성한 글' })).toHaveAttribute('aria-selected', 'true');
+  expect(screen.getByText('5개의 게시글')).toBeInTheDocument();
+});
+
+test('my mini-feed commented tab matches Figma (6419:81316)', () => {
+  renderAt('/my-minifeed?tab=commented');
+
+  expect(screen.getByRole('tab', { name: '댓글단 글' })).toHaveAttribute('aria-selected', 'true');
+  expect(screen.getByRole('tab', { name: '작성한 글' })).toHaveAttribute('aria-selected', 'false');
+  expect(screen.getByText('5개의 게시글')).toBeInTheDocument();
+});
+
+test('renders the community write page', () => {
+  renderAt('/community/write');
+
+  expect(screen.getByRole('heading', { level: 1, name: '글쓰기' })).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: '작성완료' })).toBeDisabled();
+});
+
+test('community FAB opens the write page', () => {
+  renderAt('/community');
+
+  fireEvent.click(screen.getByRole('button', { name: '글쓰기' }));
+
+  expect(screen.getByRole('heading', { level: 1, name: '글쓰기' })).toBeInTheDocument();
+});
+
+test('renders the community post detail page for a demo slug', () => {
+  renderAt('/community/post/vocal-effector-help');
+
+  expect(
+    screen.getByRole('heading', { level: 1, name: '보컬용 이펙터 추천 좀 해주세요!' }),
+  ).toBeInTheDocument();
+  expect(screen.getByRole('heading', { name: '댓글 5' })).toBeInTheDocument();
+  expect(screen.getByRole('link', { name: '목록으로' })).toHaveAttribute('href', '/community');
+});
+
+test('community post detail opens reply-delete modal and decrements count on confirm', () => {
+  renderAt('/community/post/vocal-effector-help');
+
+  fireEvent.click(screen.getAllByRole('button', { name: '답글 삭제' })[0]);
+
+  expect(screen.getByRole('alertdialog')).toBeInTheDocument();
+  expect(screen.getByText('해당 답글을 삭제하시겠어요?')).toBeInTheDocument();
+
+  fireEvent.click(screen.getByRole('button', { name: '삭제' }));
+
+  expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
+  expect(screen.getByRole('heading', { name: '댓글 4' })).toBeInTheDocument();
+});
+
+test('community post detail opens post report confirm then report modal from 게시글 신고', () => {
+  renderAt('/community/post/vocal-effector-help');
+
+  fireEvent.click(screen.getByRole('button', { name: '게시글 신고' }));
+
+  const confirm = screen.getByRole('alertdialog');
+  expect(within(confirm).getByText('게시글 신고')).toBeInTheDocument();
+  expect(within(confirm).getByText('선택하신 게시글을 신고하시겠어요?')).toBeInTheDocument();
+
+  fireEvent.click(within(confirm).getByRole('button', { name: '신고' }));
+
+  expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
+  const dialog = screen.getByRole('dialog');
+  expect(dialog).toBeInTheDocument();
+  expect(within(dialog).getByText('어떤 문제가 있나요?')).toBeInTheDocument();
+});
+
+test('community post detail opens report modal from comment 신고하기', () => {
+  renderAt('/community/post/vocal-effector-help');
+
+  fireEvent.click(screen.getAllByRole('button', { name: '신고하기' })[0]);
+
+  const dialog = screen.getByRole('dialog');
+  expect(dialog).toBeInTheDocument();
+  expect(screen.getByText('어떤 문제가 있나요?')).toBeInTheDocument();
+  expect(
+    screen.getByPlaceholderText(
+      '신고 사유를 상세히 남겨 주시면 내용 확인 시 많은 도움이 됩니다.',
+    ),
+  ).toBeInTheDocument();
+
+  const submitInDialog = () =>
+    screen.getAllByRole('button', { name: '신고하기' }).find((el) => dialog.contains(el));
+
+  expect(submitInDialog()).toBeDisabled();
+
+  fireEvent.change(
+    screen.getByPlaceholderText(
+      '신고 사유를 상세히 남겨 주시면 내용 확인 시 많은 도움이 됩니다.',
+    ),
+    { target: { value: '부적절한 내용' } },
+  );
+
+  expect(submitInDialog()).not.toBeDisabled();
+});
+
 test('renders the authenticated header preview on the home-auth route', () => {
   renderAt('/home-auth');
 
@@ -236,7 +345,7 @@ test('switches search result tabs and opens the community sort menu', async () =
   expect(screen.getByText('유스뮤직')).toBeInTheDocument();
 
   fireEvent.click(screen.getByRole('button', { name: '커뮤니티' }));
-  expect(screen.getByText('3개의 게시글')).toBeInTheDocument();
+  expect(screen.getByText('7개의 게시글')).toBeInTheDocument();
   expect(screen.getByText('서울 지역 연습실습실 가격 비교 정리했습니다 🎵')).toBeInTheDocument();
 
   fireEvent.click(screen.getByRole('button', { name: '최신순' }));

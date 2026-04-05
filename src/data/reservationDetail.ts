@@ -1,6 +1,9 @@
 /**
  * Figma: 6225:16537 승인대기 · 6419:79716 예약확정 · 6419:79947 이용완료
+ * 백엔드 계약: {@link import('./schemas/reservations').ReservationDetailResponseDto}
  */
+
+import { buildChatHref } from '../lib/chatRoutes';
 
 export type ReservationDetailVariant = 'pending' | 'confirmed' | 'completed';
 
@@ -59,4 +62,12 @@ export const RESERVATION_REFUND_POLICY = {
 
 export function reservationDetailHref(variant: ReservationDetailVariant) {
   return `/reservation-detail?status=${variant}`;
+}
+
+/** 예약 상세와 동일 데모 컨텍스트의 채팅방 */
+export function reservationDetailChatHref(): string {
+  return buildChatHref({
+    space: 'a-room-grand-piano-rental',
+    vendor: 'youth-music',
+  });
 }

@@ -203,6 +203,10 @@
   line-height: 26px;
 }
 
+.home-header__nav a.home-header__nav-link--active {
+  font-weight: 700;
+}
+
 .home-header__reservation-link {
   display: inline-flex;
   align-items: center;
@@ -272,6 +276,11 @@
   cursor: pointer;
   text-decoration: none;
   box-sizing: border-box;
+}
+
+.home-header__icon-button--chat-on {
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.06);
 }
 
 .home-header__icon-button--alert::after {

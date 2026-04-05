@@ -2,11 +2,17 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { HomeFooter } from '../components/home/HomeFooter';
 import { HomeHeader } from '../components/home/HomeHeader';
+import { ReservationCancelModal } from '../components/reservations/ReservationCancelModal';
 import { ReviewViewModal } from '../components/reviews/ReviewViewModal';
 import { REVIEW_VIEW_MODAL_DEFAULT } from '../data/reviewViewModal';
 import { ChevronIcon } from '../components/shared/Icons';
 import { HEADER_SEARCH_KEYWORD_SUGGESTIONS } from '../config/searchSuggestions';
 import { loadAuthSession } from '../data/authSession';
+import {
+  RESERVATION_CANCEL_ALERT_DEFAULT,
+  RESERVATION_CANCEL_LEAD_LINES,
+  RESERVATION_CANCEL_NOTICE_DEFAULT,
+} from '../data/reservationCancelModal';
 import {
   reservationsForTab,
   type MyReservation,
@@ -143,6 +149,8 @@ export function MyReservationsPage() {
   const isAuthenticated = Boolean(loadAuthSession());
   const [tab, setTab] = useState<MyReservationTab>('upcoming');
   const [reviewViewOpen, setReviewViewOpen] = useState(false);
+  const [cancelModalOpen, setCancelModalOpen] = useState(false);
+  const [cancelToast, setCancelToast] = useState(false);
   const [headerSearchOpen, setHeaderSearchOpen] = useState(false);
   const [headerSearchQuery, setHeaderSearchQuery] = useState('');
   const headerSearchRef = useRef<HTMLDivElement | null>(null);
@@ -201,6 +209,11 @@ export function MyReservationsPage() {
 
       <div className="my-reservations-page__main">
         <div className="my-reservations">
+          {cancelToast ? (
+            <p className="my-reservations__flash" role="status">
+              취소 요청이 접수되었습니다. 실제 환불은 정책에 따라 처리됩니다.
+            </p>
+          ) : null}
           <header className="my-reservations__header">
             <button
               type="button"
@@ -250,6 +263,9 @@ export function MyReservationsPage() {
                     if (row.action === 'viewMyReview') {
                       setReviewViewOpen(true);
                     }
+                    if (row.action === 'cancel') {
+                      setCancelModalOpen(true);
+                    }
                   }}
                 />
               ))}
@@ -264,6 +280,20 @@ export function MyReservationsPage() {
         content={REVIEW_VIEW_MODAL_DEFAULT}
         open={reviewViewOpen}
         onClose={() => setReviewViewOpen(false)}
+      />
+
+      <ReservationCancelModal
+        alertText={RESERVATION_CANCEL_ALERT_DEFAULT}
+        dividerAfterRowIndex={1}
+        leadLines={RESERVATION_CANCEL_LEAD_LINES}
+        noticeRows={RESERVATION_CANCEL_NOTICE_DEFAULT}
+        onClose={() => setCancelModalOpen(false)}
+        onConfirm={() => {
+          setCancelModalOpen(false);
+          setCancelToast(true);
+          window.setTimeout(() => setCancelToast(false), 6000);
+        }}
+        open={cancelModalOpen}
       />
     </main>
   );

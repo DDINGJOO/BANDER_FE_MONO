@@ -1,26 +1,17 @@
 /**
  * Figma 6419:81164 — 내 리뷰
+ * 목록 API: {@link import('./schemas/reviews').MyReviewListItemDto} — GET /api/v1/users/me/reviews
  */
 
-export type MyReviewStar = 'full' | 'half' | 'empty';
+import type { MyReviewListItemDto } from './schemas/reviews';
+
+export type MyReviewStar = MyReviewListItemDto['stars'][number];
 
 export type MyReviewDeleteAction = 'delete' | 'disabled';
 
-export type MyReview = {
-  id: string;
-  authorDisplayName: string;
-  dateLabel: string;
+export type MyReview = Omit<MyReviewListItemDto, 'bodyParagraphs' | 'stars'> & {
   bodyParagraphs: [string, string];
   stars: [MyReviewStar, MyReviewStar, MyReviewStar, MyReviewStar, MyReviewStar];
-  ratingLabel: string;
-  imageUrls: string[];
-  space: {
-    vendorName: string;
-    roomTitle: string;
-    thumbUrl: string;
-    spacePath: string;
-  };
-  deleteAction: MyReviewDeleteAction;
 };
 
 function review(

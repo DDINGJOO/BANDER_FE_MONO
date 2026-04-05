@@ -4,10 +4,11 @@ import { HomeFooter } from '../components/home/HomeFooter';
 import { HomeHeader } from '../components/home/HomeHeader';
 import { KakaoMapView } from '../components/map/KakaoMapView';
 import { BanderUsagePolicyModal } from '../components/space/BanderUsagePolicyModal';
-import { ChevronIcon, StarIcon } from '../components/shared/Icons';
+import { ChevronIcon, HeaderChatIcon, StarIcon } from '../components/shared/Icons';
 import { VendorBasicInfoSection } from '../components/vendor/VendorBasicInfoSection';
 import { loadAuthSession } from '../data/authSession';
-import { getVendorDetail } from '../data/vendorDetail';
+import { useVendorDetail } from '../hooks/useVendorDetail';
+import { buildChatHref } from '../lib/chatRoutes';
 
 function VendorStarRow({ rating }: { rating: number }) {
   const rounded = Math.round(rating * 2) / 2;
@@ -43,7 +44,7 @@ function VendorStarRow({ rating }: { rating: number }) {
 export function VendorDetailPage() {
   const navigate = useNavigate();
   const { slug } = useParams();
-  const vendor = getVendorDetail(slug);
+  const { vendor, loading } = useVendorDetail(slug);
   const isAuthenticated = Boolean(loadAuthSession());
   const [descExpanded, setDescExpanded] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -101,6 +102,21 @@ export function VendorDetailPage() {
               </li>
             ))}
           </ul>
+          <button
+            className="vendor-detail__chat-button"
+            type="button"
+            onClick={() => {
+              const dest = buildChatHref({ vendor: slug });
+              if (!isAuthenticated) {
+                navigate(`/login?returnTo=${encodeURIComponent(dest)}`);
+                return;
+              }
+              navigate(dest);
+            }}
+          >
+            <HeaderChatIcon />
+            채팅하기
+          </button>
         </header>
 
         <hr className="vendor-detail__rule" />

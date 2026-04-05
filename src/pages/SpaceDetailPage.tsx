@@ -12,6 +12,7 @@ import { BanderUsagePolicyModal } from '../components/space/BanderUsagePolicyMod
 import { CouponDownloadModal } from '../components/space/CouponDownloadModal';
 import { useCouponDownloads } from '../hooks/useCouponDownloads';
 import { useSpaceDetail } from '../hooks/useSpaceDetail';
+import { buildChatHref } from '../lib/chatRoutes';
 
 type DetailCalendarDay = {
   day: number;
@@ -425,7 +426,21 @@ export function SpaceDetailPage() {
                         ))}
                       </ul>
                     ) : null}
-                    <button className="space-detail__chat-button" type="button">
+                    <button
+                      className="space-detail__chat-button"
+                      type="button"
+                      onClick={() => {
+                        const dest = buildChatHref({
+                          space: slug || undefined,
+                          vendor: vendorSlug ?? undefined,
+                        });
+                        if (!isAuthenticated) {
+                          navigate(`/login?returnTo=${encodeURIComponent(dest)}`);
+                          return;
+                        }
+                        navigate(dest);
+                      }}
+                    >
                       <HeaderChatIcon />
                       채팅하기
                     </button>

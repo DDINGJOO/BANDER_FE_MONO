@@ -5,6 +5,10 @@ import { HomeHeader } from '../components/home/HomeHeader';
 import { HomeSpaceExplorer } from '../components/home/HomeSpaceExplorer';
 import { ChevronIcon } from '../components/shared/Icons';
 import { HEADER_SEARCH_KEYWORD_SUGGESTIONS } from '../config/searchSuggestions';
+import {
+  COMMUNITY_FEED_ITEMS,
+  COMMUNITY_SORT_OPTIONS,
+} from '../data/communityFeed';
 import { loadAuthSession } from '../data/authSession';
 
 const SEARCH_VENDOR_RESULTS = [
@@ -18,36 +22,10 @@ const SEARCH_VENDOR_RESULTS = [
   { name: '챗츠뮤직', slug: 'chats-music', spaces: '15개의 공간', tone: 'linear-gradient(135deg, #bcbcbc, #ececec)' },
 ];
 
-const SEARCH_COMMUNITY_RESULTS = [
-  {
-    category: '정보공유',
-    excerpt:
-      '20평 규모 복층형 사운드랩 한층 형태 공간이지만, 다른 공간과 공간은 완전히 분리되어있고, 야간 할인 카드로 있어서 시간대 별로 저렴하게 가능해요!',
-    likes: 4,
-    thumbnail: 'linear-gradient(135deg, #80aab4, #d4861f)',
-    title: '서울 지역 연습실습실 가격 비교 정리했습니다 🎵',
-  },
-  {
-    category: '공간리뷰',
-    excerpt:
-      '인테리어도 만족스러웠고 음향 구성도 잘 되어 있었습니다. 직접 보고 느낀 상세한 관리가 잘 되어 있어서 장비 컨디션도 좋게 느꼈어요.',
-    likes: 5,
-    thumbnail: 'linear-gradient(135deg, #1b2f5d, #07131f)',
-    title: '홍대 합주실 예약 후기 - 가성비 괜찮은 편입니다',
-  },
-  {
-    category: '공간문의',
-    excerpt:
-      '최근 공간 기본 사양 표기에 관심이 생겨서 이것저것 알아보고 있습니다. 특히 공조와 음향 관련해 모델명까지 다 나온 곳들도 종종 있더라고요.',
-    likes: 2,
-    title: '공간 임대/프린트 출력 있으면 본 계신가요?',
-  },
-];
-
 type SearchTab = 'community' | 'space' | 'vendor';
 
 const SEARCH_SORT_OPTIONS: Record<SearchTab, string[]> = {
-  community: ['최신순', '인기순', '정확도순', '댓글 많은 순', '좋아요 많은 순'],
+  community: [...COMMUNITY_SORT_OPTIONS],
   space: ['가까운순', '정확도순', '예약 많은 순', '가격 높은 순', '가격 낮은 순'],
   vendor: ['가까운순', '정확도순', '예약 많은 순', '가격 높은 순', '가격 낮은 순'],
 };
@@ -113,7 +91,11 @@ export function SearchResultsPage() {
   };
 
   const resultCountLabel =
-    activeTab === 'space' ? '4개의 공간' : activeTab === 'vendor' ? '3개의 업체' : '3개의 게시글';
+    activeTab === 'space'
+      ? '4개의 공간'
+      : activeTab === 'vendor'
+        ? '3개의 업체'
+        : `${COMMUNITY_FEED_ITEMS.length}개의 게시글`;
 
   return (
     <main className="search-results-page">
@@ -220,7 +202,7 @@ export function SearchResultsPage() {
 
         {activeTab === 'community' ? (
           <div className="search-results__community-list">
-            {SEARCH_COMMUNITY_RESULTS.map((item) => (
+            {COMMUNITY_FEED_ITEMS.map((item) => (
               <article className="search-results__community-card" key={item.title}>
                 <div className="search-results__community-copy">
                   <span className="search-results__community-category">{item.category}</span>

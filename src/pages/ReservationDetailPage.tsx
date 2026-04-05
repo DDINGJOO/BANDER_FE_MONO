@@ -2,16 +2,23 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { HomeFooter } from '../components/home/HomeFooter';
 import { HomeHeader } from '../components/home/HomeHeader';
+import { ReservationCancelModal } from '../components/reservations/ReservationCancelModal';
 import { ChevronIcon } from '../components/shared/Icons';
 import { HEADER_SEARCH_KEYWORD_SUGGESTIONS } from '../config/searchSuggestions';
 import { loadAuthSession } from '../data/authSession';
 import {
   parseReservationDetailVariant,
+  reservationDetailChatHref,
   RESERVATION_DETAIL,
   RESERVATION_DETAIL_MAP_IMAGE,
   RESERVATION_REFUND_POLICY,
   type ReservationDetailVariant,
 } from '../data/reservationDetail';
+import {
+  RESERVATION_CANCEL_ALERT_DEFAULT,
+  RESERVATION_CANCEL_LEAD_LINES,
+  RESERVATION_CANCEL_NOTICE_DEFAULT,
+} from '../data/reservationCancelModal';
 
 function ChatGlyph20() {
   return (
@@ -72,6 +79,7 @@ export function ReservationDetailPage() {
   const [headerSearchOpen, setHeaderSearchOpen] = useState(false);
   const [headerSearchQuery, setHeaderSearchQuery] = useState('');
   const headerSearchRef = useRef<HTMLDivElement | null>(null);
+  const [cancelModalOpen, setCancelModalOpen] = useState(false);
 
   const d = RESERVATION_DETAIL;
   const badge = badgeForVariant(variant);
@@ -168,7 +176,18 @@ export function ReservationDetailPage() {
                 <p className="res-detail__address-line">{d.address}</p>
               </div>
             </div>
-            <button type="button" className="res-detail__chat">
+            <button
+              type="button"
+              className="res-detail__chat"
+              onClick={() => {
+                const dest = reservationDetailChatHref();
+                if (!isAuthenticated) {
+                  navigate(`/login?returnTo=${encodeURIComponent(dest)}`);
+                  return;
+                }
+                navigate(dest);
+              }}
+            >
               <span className="res-detail__chat-icon" aria-hidden>
                 <ChatGlyph20 />
               </span>
@@ -331,7 +350,9 @@ export function ReservationDetailPage() {
               onClick={() => {
                 if (variant === 'completed') {
                   navigate('/review/write');
+                  return;
                 }
+                setCancelModalOpen(true);
               }}
             >
               {cta.label}
@@ -363,6 +384,19 @@ export function ReservationDetailPage() {
       </div>
 
       <HomeFooter />
+
+      <ReservationCancelModal
+        alertText={RESERVATION_CANCEL_ALERT_DEFAULT}
+        dividerAfterRowIndex={1}
+        leadLines={RESERVATION_CANCEL_LEAD_LINES}
+        noticeRows={RESERVATION_CANCEL_NOTICE_DEFAULT}
+        onClose={() => setCancelModalOpen(false)}
+        onConfirm={() => {
+          setCancelModalOpen(false);
+          navigate('/my-reservations');
+        }}
+        open={cancelModalOpen}
+      />
     </main>
   );
 }

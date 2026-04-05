@@ -1,0 +1,194 @@
+/* Figma 6419:80535 예약취소 — 500×586 */
+
+.res-cancel-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  box-sizing: border-box;
+}
+
+.res-cancel-modal__backdrop {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  padding: 0;
+  background: rgba(0, 0, 0, 0.45);
+  cursor: pointer;
+}
+
+.res-cancel-modal__dialog {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 500px;
+  display: flex;
+  flex-direction: column;
+  border-radius: 15px;
+  background: #ffffff;
+  box-shadow: 0 8px 40px rgba(31, 44, 69, 0.2);
+  overflow: hidden;
+  font-family: 'Pretendard', system-ui, sans-serif;
+}
+
+.res-cancel-modal__header {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 15px 20px;
+  border-bottom: 1px solid #f0f2f5;
+  border-radius: 10px 10px 0 0;
+}
+
+.res-cancel-modal__title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 26px;
+  color: #000000;
+}
+
+.res-cancel-modal__close {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  margin: -8px -10px -8px 0;
+  padding: 0;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: #000000;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.res-cancel-modal__close:hover {
+  background: #f6f8fa;
+}
+
+.res-cancel-modal__body-white {
+  padding: 0 20px 8px;
+}
+
+.res-cancel-modal__alert {
+  display: flex;
+  align-items: flex-start;
+  gap: 5px;
+  margin-top: 20px;
+  padding: 12px;
+  border-radius: 10px;
+  background: rgba(255, 58, 61, 0.1);
+}
+
+.res-cancel-modal__alert-icon {
+  flex-shrink: 0;
+  display: flex;
+  margin-top: 3px;
+}
+
+.res-cancel-modal__alert-text {
+  margin: 0;
+  flex: 1;
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 22px;
+  color: #ff3a3d;
+}
+
+.res-cancel-modal__lead {
+  margin-top: 24px;
+}
+
+.res-cancel-modal__lead-line {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 28px;
+  color: #000000;
+}
+
+.res-cancel-modal__body-gray {
+  margin-top: 8px;
+  padding: 20px;
+  background: #f6f8fa;
+  border-radius: 0 0 0 0;
+}
+
+.res-cancel-modal__notice-title {
+  margin: 0 0 15px;
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 26px;
+  color: #000000;
+}
+
+.res-cancel-modal__notice-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.res-cancel-modal__notice-rule {
+  border: 0;
+  border-top: 1px solid #e5eaf0;
+  margin: 0;
+  width: 100%;
+}
+
+.res-cancel-modal__notice-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 22px;
+  color: #6d7a87;
+}
+
+.res-cancel-modal__notice-label {
+  color: #6d7a87;
+}
+
+.res-cancel-modal__notice-value {
+  text-align: right;
+  color: #6d7a87;
+}
+
+.res-cancel-modal__notice-row--emphasis .res-cancel-modal__notice-label,
+.res-cancel-modal__notice-row--emphasis .res-cancel-modal__notice-value {
+  color: #000000;
+}
+
+.res-cancel-modal__notice-row--emphasis .res-cancel-modal__notice-value {
+  font-weight: 600;
+}
+
+.res-cancel-modal__footer {
+  padding: 20px;
+  background: #ffffff;
+}
+
+.res-cancel-modal__submit {
+  width: 100%;
+  min-height: 56px;
+  border: 0;
+  border-radius: 10px;
+  background: #ff3a3d;
+  color: #ffffff;
+  font-family: 'Pretendard', system-ui, sans-serif;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 22px;
+  cursor: pointer;
+}
+
+.res-cancel-modal__submit:hover {
+  filter: brightness(0.96);
+}

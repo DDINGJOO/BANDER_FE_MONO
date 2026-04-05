@@ -1,3 +1,4 @@
+/** 백엔드 계약: {@link import('./schemas/vendor').VendorDetailResponseDto} — GET /api/v1/vendors/{slug} */
 import type { VendorBasicInfoRow } from '../types/vendorBasicInfo';
 import { HOME_SPACE_CARDS } from './home';
 import {

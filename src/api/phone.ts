@@ -1,4 +1,4 @@
-import { postJson } from './client';
+import { patchJson, postJson } from './client';
 
 export type SendCodeResponse = {
   expiresInSeconds: number;
@@ -22,5 +22,12 @@ export function verifyPhoneCode(phoneNumber: string, code: string, purpose: stri
     phoneNumber,
     code,
     purpose,
+  });
+}
+
+export function updatePhone(phoneNumber: string, verificationToken: string) {
+  return patchJson<void>('/api/v1/users/me/phone', {
+    phoneNumber,
+    verificationToken,
   });
 }

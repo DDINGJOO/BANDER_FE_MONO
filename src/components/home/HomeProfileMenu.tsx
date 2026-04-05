@@ -135,7 +135,7 @@ function ProfileMenuUserHeader({ model, onLogoutClick, onRequestClose }: HomePro
 
 function ProfileMenuMiniFeedCta() {
   return (
-    <Link className="home-profile-menu__minifeed" to="/">
+    <Link className="home-profile-menu__minifeed" to="/my-minifeed">
       <span className="home-profile-menu__minifeed-label">내 미니피드 보기</span>
       <span aria-hidden="true" className="home-profile-menu__minifeed-go">
         <ChevronIcon />

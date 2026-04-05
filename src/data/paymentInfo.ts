@@ -1,15 +1,11 @@
 /** Figma 6419:86785 — 결제 내역 데모 (API 연동 시 교체) */
-export type PaymentHistoryKind = 'payment' | 'refund';
 
-export type PaymentHistoryEntry = {
-  amountWon: number;
-  dateLabel: string;
-  id: string;
-  kind: PaymentHistoryKind;
-  title: string;
-};
+import type { PaymentHistoryItemDto } from './schemas/payment';
 
-export const PAYMENT_HISTORY_ENTRIES: readonly PaymentHistoryEntry[] = [
+export type PaymentHistoryEntry = PaymentHistoryItemDto;
+export type PaymentHistoryKind = PaymentHistoryEntry['kind'];
+
+export const PAYMENT_HISTORY_ENTRIES: PaymentHistoryEntry[] = [
   {
     id: '1',
     kind: 'payment',

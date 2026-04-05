@@ -1,45 +1,21 @@
 /** Figma 6163:38225 이용전 · 6419:79193 이용후 · 6419:79488 취소 */
 
 import { reservationDetailHref } from './reservationDetail';
+import type {
+  MyReservationActionDto,
+  MyReservationDetailRowDto,
+  MyReservationListItemDto,
+  MyReservationStatusDto,
+  MyReservationTabDto,
+} from './schemas/reservations';
 
-export type MyReservationTab = 'upcoming' | 'past' | 'canceled';
+export type MyReservationTab = MyReservationTabDto;
+export type MyReservationStatus = MyReservationStatusDto;
+export type MyReservationAction = MyReservationActionDto;
+export type MyReservationDetailRow = MyReservationDetailRowDto;
 
-export type MyReservationStatus =
-  | 'confirmed'
-  | 'pending'
-  | 'completed'
-  | 'canceledUser'
-  | 'canceledVendor';
-
-/**
- * 이용전: 예약취소 버튼 · 이용후: 리뷰 · 취소 탭: 없음 (6419:79488)
- */
-export type MyReservationAction =
-  | 'cancel'
-  | 'writeReview'
-  | 'viewMyReview'
-  | 'none';
-
-export type MyReservationDetailRow = { label: string; value: string };
-
-export type MyReservation = {
-  id: string;
-  tab: MyReservationTab;
-  status: MyReservationStatus;
-  reservationNo: string;
-  /** 비우면 우측은 셰브론만 (Figma 이용후 1번 카드) */
-  headlineRight?: string;
-  headlineAccent?: 'primary' | 'muted';
-  spaceTitle: string;
-  vendorName: string;
-  thumbUrl: string;
-  /** 취소 탭 등 가변 행이 있으면 이걸로 하단 렌더 (6419:79488) */
-  detailRows?: MyReservationDetailRow[];
-  dateTimeLine?: string;
-  durationLine?: string;
-  detailPath: string;
-  action: MyReservationAction;
-};
+/** GET /api/v1/users/me/reservations 한 행과 동일 계약 */
+export type MyReservation = MyReservationListItemDto;
 
 export const MY_RESERVATIONS: MyReservation[] = [
   {

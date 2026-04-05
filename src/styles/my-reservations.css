@@ -23,6 +23,18 @@
   color: #000000;
 }
 
+.my-reservations__flash {
+  margin: 0 0 16px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: #eef6ff;
+  border: 1px solid #cfe8ff;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.45;
+  color: #1a3d5c;
+}
+
 .my-reservations__header {
   display: flex;
   align-items: center;

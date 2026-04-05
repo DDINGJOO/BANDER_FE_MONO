@@ -1,7 +1,9 @@
 /**
  * 프로필 수정(/profile/edit) 전용 기본값.
- * 회원가입 `signupDraft` / `SignupProfilePage` 플로우와 분리 — 가입 시 받은 값은 추후 API(예: GET /me)로 채웁니다.
+ * API: GET/PATCH /api/v1/users/me/profile — {@link import('./schemas/user').UserProfileResponseDto}
  */
+import type { UserProfileResponseDto } from './schemas/user';
+
 export type ProfileEditGender = 'female' | 'male';
 
 export type ProfileEditFormDefaults = {
@@ -23,6 +25,18 @@ export const PROFILE_EDIT_DEFAULTS: ProfileEditFormDefaults = {
   nickname: '뮤지션J',
   region: '서울특별시',
 };
+
+/** 백엔드 프로필 DTO → 폼 기본값 (성별·region 매핑은 백엔드 enum과 합의) */
+export function profileEditDefaultsFromUserProfile(dto: UserProfileResponseDto): ProfileEditFormDefaults {
+  return {
+    nickname: dto.nickname,
+    bio: dto.bio,
+    gender: 'female',
+    genres: dto.genreIds?.length ? [...dto.genreIds] : [],
+    instruments: dto.instrumentIds?.length ? [...dto.instrumentIds] : [],
+    region: dto.regionLabel ?? dto.regionCode ?? '',
+  };
+}
 
 export function formatProfileGenresDisplay(genres: string[]): string {
   if (genres.length === 0) {

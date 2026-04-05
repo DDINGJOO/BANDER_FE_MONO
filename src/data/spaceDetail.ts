@@ -1,3 +1,4 @@
+/** 백엔드 계약: {@link import('./schemas/space').SpaceDetailResponseDto} — GET /api/v1/spaces/{slug} */
 import type {
   SpaceDetailBenefitItem,
   SpaceNoticeItem,

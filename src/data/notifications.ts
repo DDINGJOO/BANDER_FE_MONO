@@ -1,13 +1,20 @@
 /** Figma 6458:74015 — 알림 센터 데모 데이터 (API 연동 시 교체) */
 
+import type {
+  NotificationCategoryDto,
+  NotificationIconKindDto,
+  NotificationSectionDto,
+} from './schemas/notifications';
+
 export type NotificationTabFilter = 'all' | 'activity' | 'news';
 
-export type NotificationTimeSection = 'today' | 'week';
+export type NotificationTimeSection = NotificationSectionDto;
 
-export type NotificationIconKind = 'like' | 'bell' | 'comment' | 'gift';
+export type NotificationIconKind = NotificationIconKindDto;
 
+/** GET /api/v1/notifications 아이템 — `read`는 API 연동 후 사용 */
 export type AppNotification = {
-  category: 'activity' | 'news';
+  category: NotificationCategoryDto;
   icon: NotificationIconKind;
   id: string;
   message: string;
@@ -15,6 +22,7 @@ export type AppNotification = {
   timeLabel: string;
   thumbUrl?: string;
   cta?: { href: string; label: string };
+  read?: boolean;
 };
 
 /** 썸네일은 안정적인 외부 플레이스홀더 (Figma MCP 에셋 만료 방지) */
