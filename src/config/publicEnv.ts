@@ -51,6 +51,11 @@ export function getSentryDsn(): string | undefined {
   return optionalEnv('REACT_APP_SENTRY_DSN');
 }
 
+/** CloudFront CDN base URL for media files */
+export function getCdnBaseUrl(): string {
+  return optionalEnv('REACT_APP_CDN_BASE_URL') ?? '';
+}
+
 /* --- 로컬 개발 로그인 백도어 (`devLogin.ts`) --- */
 
 export function isDevLoginBypassExplicitlyOff(): boolean {

@@ -46,6 +46,7 @@ export async function requestJson<T>(path: string, init?: RequestInit): Promise<
   try {
     response = await fetch(`${getApiBaseUrl()}${path}`, {
       ...init,
+      credentials: 'include',
       headers: buildHeaders(init),
     });
   } catch (error) {
@@ -74,6 +75,38 @@ export async function requestJson<T>(path: string, init?: RequestInit): Promise<
   return payload.data;
 }
 
+export async function requestVoid(path: string, init?: RequestInit): Promise<void> {
+  let response: Response;
+
+  try {
+    response = await fetch(`${getApiBaseUrl()}${path}`, {
+      ...init,
+      credentials: 'include',
+      headers: buildHeaders(init),
+    });
+  } catch (error) {
+    throw new ApiError('네트워크 오류가 발생했습니다. 잠시 후 다시 시도해주세요.', 0);
+  }
+
+  if (response.status === 401) {
+    clearAuthSession();
+  }
+
+  if (!response.ok) {
+    let payload: ApiResponse<unknown> | null = null;
+    try {
+      payload = (await response.json()) as ApiResponse<unknown>;
+    } catch {
+      payload = null;
+    }
+    throw new ApiError(
+      payload?.error?.message ?? '요청 처리에 실패했습니다.',
+      response.status,
+      payload?.error?.code
+    );
+  }
+}
+
 export function postJson<T>(path: string, body: unknown) {
   return requestJson<T>(path, {
     body: JSON.stringify(body),
@@ -84,5 +117,18 @@ export function postJson<T>(path: string, body: unknown) {
 export function getJson<T>(path: string) {
   return requestJson<T>(path, {
     method: 'GET',
+  });
+}
+
+export function patchJson<T>(path: string, body: unknown) {
+  return requestJson<T>(path, {
+    body: JSON.stringify(body),
+    method: 'PATCH',
+  });
+}
+
+export function deleteJson<T>(path: string) {
+  return requestJson<T>(path, {
+    method: 'DELETE',
   });
 }
