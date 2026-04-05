@@ -22,12 +22,21 @@ import { MyReviewsPage } from './pages/MyReviewsPage';
 import { NotificationSettingsPage } from './pages/NotificationSettingsPage';
 import { PaymentInfoPage } from './pages/PaymentInfoPage';
 import { NotificationsPage } from './pages/NotificationsPage';
+import { ChatPage } from './pages/ChatPage';
+import { CommunityPage } from './pages/CommunityPage';
+import { CommunityPostDetailPage } from './pages/CommunityPostDetailPage';
+import { CommunityWritePage } from './pages/CommunityWritePage';
+import { MyMiniFeedPage } from './pages/MyMiniFeedPage';
+import { OAuthCallbackPage } from './pages/OAuthCallbackPage';
 
 function App() {
   return (
     <Routes>
       <Route element={<MainPage />} path="/" />
       <Route element={<MainPage previewAuthenticated />} path="/home-auth" />
+      <Route element={<CommunityWritePage />} path="/community/write" />
+      <Route element={<CommunityPostDetailPage />} path="/community/post/:slug" />
+      <Route element={<CommunityPage />} path="/community" />
       <Route element={<SearchResultsPage />} path="/search" />
       <Route element={<ExploreMapPage />} path="/search/map" />
       <Route element={<VendorDetailPage />} path="/vendors/:slug" />
@@ -40,14 +49,17 @@ function App() {
       <Route element={<SignupProfilePage />} path="/signup/profile" />
       <Route element={<SignupTermsPage />} path="/signup/terms" />
       <Route element={<ProfileEditPage />} path="/profile/edit" />
+      <Route element={<MyMiniFeedPage />} path="/my-minifeed" />
       <Route element={<AccountSettingsPage />} path="/account/settings" />
       <Route element={<NotificationSettingsPage />} path="/notification-settings" />
       <Route element={<PaymentInfoPage />} path="/payment-info" />
       <Route element={<NotificationsPage />} path="/notifications" />
+      <Route element={<ChatPage />} path="/chat" />
       <Route element={<MyReservationsPage />} path="/my-reservations" />
       <Route element={<ReservationDetailPage />} path="/reservation-detail" />
       <Route element={<ReviewWritePage />} path="/review/write" />
       <Route element={<MyReviewsPage />} path="/my-reviews" />
+      <Route element={<OAuthCallbackPage />} path="/auth/callback" />
       <Route element={<Navigate replace to="/" />} path="*" />
     </Routes>
   );

@@ -6,6 +6,7 @@ import { Button, InlineAlert, TextField } from '../components/ui';
 import { BrandMark } from '../components/shared/BrandMark';
 import { AppleIcon, CheckIcon, GoogleIcon, KakaoIcon } from '../components/shared/Icons';
 import { saveAuthSession } from '../data/authSession';
+import { startOAuth } from '../config/oauth';
 
 function safeReturnPath(raw: string | null) {
   if (!raw) {
@@ -127,15 +128,30 @@ export function LoginPage() {
             </div>
 
             <div className="login-social__buttons">
-              <a aria-label="카카오로 로그인" className="login-social__button" href="#kakao-login">
+              <button
+                aria-label="카카오로 로그인"
+                className="login-social__button"
+                onClick={() => startOAuth('KAKAO')}
+                type="button"
+              >
                 <KakaoIcon />
-              </a>
-              <a aria-label="구글로 로그인" className="login-social__button" href="#google-login">
+              </button>
+              <button
+                aria-label="구글로 로그인"
+                className="login-social__button"
+                onClick={() => startOAuth('GOOGLE')}
+                type="button"
+              >
                 <GoogleIcon />
-              </a>
-              <a aria-label="애플로 로그인" className="login-social__button" href="#apple-login">
+              </button>
+              <button
+                aria-label="애플로 로그인"
+                className="login-social__button"
+                onClick={() => startOAuth('APPLE')}
+                type="button"
+              >
                 <AppleIcon />
-              </a>
+              </button>
             </div>
           </div>
         </div>

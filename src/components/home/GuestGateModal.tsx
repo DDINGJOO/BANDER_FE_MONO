@@ -1,4 +1,5 @@
 import React from 'react';
+import { startOAuth } from '../../config/oauth';
 import { AppleIcon, GoogleIcon, KakaoIcon } from '../shared/Icons';
 
 type GuestGateModalProps = {
@@ -24,9 +25,15 @@ export function GuestGateModal({ onClose, onProceed, open }: GuestGateModalProps
           </p>
         </div>
         <div className="home-guest-modal__socials">
-          <KakaoIcon />
-          <GoogleIcon />
-          <AppleIcon />
+          <button aria-label="카카오로 로그인" className="login-social__button" onClick={() => startOAuth('KAKAO')} type="button">
+            <KakaoIcon />
+          </button>
+          <button aria-label="구글로 로그인" className="login-social__button" onClick={() => startOAuth('GOOGLE')} type="button">
+            <GoogleIcon />
+          </button>
+          <button aria-label="애플로 로그인" className="login-social__button" onClick={() => startOAuth('APPLE')} type="button">
+            <AppleIcon />
+          </button>
         </div>
         <button className="home-guest-modal__button" onClick={onProceed} type="button">
           로그인/회원가입 하기

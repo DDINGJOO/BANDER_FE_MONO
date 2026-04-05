@@ -105,6 +105,27 @@ export function completePasswordReset(
   });
 }
 
+export type ProfileImageUploadResponse = {
+  profileImageRef: string;
+  uploadUrl: string;
+  publicUrl: string;
+  expiresAt: string;
+};
+
+export function requestProfileImageUpload(
+  signupCompletionToken: string,
+  fileName: string,
+  contentType: string,
+  contentLength: number
+) {
+  return postJson<ProfileImageUploadResponse>('/api/v1/auth/signup/profile-image/upload', {
+    signupCompletionToken,
+    fileName,
+    contentType,
+    contentLength,
+  });
+}
+
 export function login(email: string, password: string) {
   const bypass = tryDevLoginBypass(email, password);
   if (bypass) {

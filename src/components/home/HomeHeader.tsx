@@ -1,12 +1,14 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { clearAuthSession } from '../../data/authSession';
+import { logout as apiLogout } from '../../api/users';
 import { resolveHomeProfileMenuModel, type HomeProfileMenuModel } from '../../types/homeProfileMenu';
 import { BrandMark } from '../shared/BrandMark';
 import {
   ChevronIcon,
   HeaderAlarmIcon,
   HeaderCartIcon,
+  HeaderChatIcon,
   HeaderWishlistIcon,
   SearchIcon,
 } from '../shared/Icons';
@@ -47,6 +49,9 @@ export function HomeHeader(props: HomeHeaderProps) {
   const { authenticated, onGuestCta, profileMenu: profileMenuPartial } = props;
   const bar = isSearchBar(props);
   const navigate = useNavigate();
+  const location = useLocation();
+  const chatPageActive = location.pathname.startsWith('/chat');
+  const communityPageActive = location.pathname.startsWith('/community');
   const profileRootRef = useRef<HTMLDivElement | null>(null);
   const [profileOpen, setProfileOpen] = useState(false);
   const [logoutOpen, setLogoutOpen] = useState(false);
@@ -166,7 +171,13 @@ export function HomeHeader(props: HomeHeaderProps) {
           <nav className={`home-header__nav ${authenticated ? 'home-header__nav--authenticated' : ''}`}>
             {authenticated ? (
               <>
-                <Link to={{ hash: 'community', pathname: '/' }}>커뮤니티</Link>
+                <Link
+                  aria-current={communityPageActive ? 'page' : undefined}
+                  className={communityPageActive ? 'home-header__nav-link--active' : undefined}
+                  to="/community"
+                >
+                  커뮤니티
+                </Link>
                 <Link to="/search/map">탐색</Link>
                 <Link className="home-header__reservation-link" to="/my-reservations">
                   <span>예약</span>
@@ -175,7 +186,13 @@ export function HomeHeader(props: HomeHeaderProps) {
               </>
             ) : (
               <>
-                <Link to={{ hash: 'hot-posts', pathname: '/' }}>커뮤니티</Link>
+                <Link
+                  aria-current={communityPageActive ? 'page' : undefined}
+                  className={communityPageActive ? 'home-header__nav-link--active' : undefined}
+                  to="/community"
+                >
+                  커뮤니티
+                </Link>
                 <Link to={{ hash: 'spaces', pathname: '/' }}>탐색</Link>
                 <Link to={{ hash: 'reviews', pathname: '/' }}>후기</Link>
               </>
@@ -192,6 +209,14 @@ export function HomeHeader(props: HomeHeaderProps) {
             <button aria-label="찜 목록" className="home-header__icon-button" type="button">
               <HeaderWishlistIcon />
             </button>
+            <Link
+              aria-current={chatPageActive ? 'page' : undefined}
+              aria-label="채팅"
+              className={`home-header__icon-button${chatPageActive ? ' home-header__icon-button--chat-on' : ''}`}
+              to="/chat"
+            >
+              <HeaderChatIcon />
+            </Link>
             <Link
               aria-label="알림"
               className="home-header__icon-button home-header__icon-button--alert"
@@ -238,7 +263,12 @@ export function HomeHeader(props: HomeHeaderProps) {
 
       <LogoutConfirmModal
         onCancel={() => setLogoutOpen(false)}
-        onConfirm={() => {
+        onConfirm={async () => {
+          try {
+            await apiLogout();
+          } catch {
+            // logout may fail if session already expired, proceed anyway
+          }
           clearAuthSession();
           setLogoutOpen(false);
           navigate(0);
