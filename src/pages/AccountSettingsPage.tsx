@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { deactivateAccount, getMyAccount } from '../api/users';
-import { sendPhoneCode, verifyPhoneCode } from '../api/phone';
+import { sendPhoneCode, updatePhone, verifyPhoneCode } from '../api/phone';
 import { getLinkedProviders, socialUnlink } from '../api/social';
 import { startOAuth } from '../config/oauth';
 import { ApiError } from '../api/client';
@@ -288,6 +288,7 @@ export function AccountSettingsPage() {
                       try {
                         const result = await verifyPhoneCode(phone, phoneCode);
                         if (result.verified) {
+                          await updatePhone(phone, result.verificationToken);
                           setPhoneStep('verified');
                         } else {
                           setPhoneError('인증번호가 올바르지 않습니다.');
