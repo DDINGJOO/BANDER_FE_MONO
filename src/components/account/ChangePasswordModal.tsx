@@ -1,5 +1,7 @@
 import { useEffect, useId, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { ApiError } from '../../api/client';
+import { changePassword } from '../../api/users';
 
 export type ChangePasswordModalProps = {
   onClose: () => void;
@@ -66,16 +68,32 @@ export function ChangePasswordModal({
     };
   }, [open]);
 
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
+
   const canSubmit =
     current.trim().length > 0 &&
     next.trim().length > 0 &&
     confirm === next &&
     next.length > 0;
 
-  const handleSubmit = () => {
-    if (!canSubmit) return;
-    onSubmitSuccess?.();
-    onClose();
+  const handleSubmit = async () => {
+    if (!canSubmit || submitting) return;
+    setSubmitting(true);
+    setError('');
+    try {
+      await changePassword(current, next);
+      onSubmitSuccess?.();
+      onClose();
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setError(err.message);
+      } else {
+        setError('비밀번호 변경에 실패했습니다.');
+      }
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   if (!open) return null;
@@ -139,16 +157,17 @@ export function ChangePasswordModal({
               onChange={(e) => setConfirm(e.target.value)}
             />
           </div>
+          {error ? <p className="change-pw-modal__error" style={{ color: '#e74c3c', fontSize: '13px', marginTop: '8px', padding: '0 24px' }}>{error}</p> : null}
         </div>
 
         <footer className="change-pw-modal__footer">
           <button
             type="button"
-            className={`change-pw-modal__submit${canSubmit ? ' change-pw-modal__submit--active' : ''}`}
-            disabled={!canSubmit}
+            className={`change-pw-modal__submit${canSubmit && !submitting ? ' change-pw-modal__submit--active' : ''}`}
+            disabled={!canSubmit || submitting}
             onClick={handleSubmit}
           >
-            변경완료
+            {submitting ? '변경 중...' : '변경완료'}
           </button>
         </footer>
       </div>

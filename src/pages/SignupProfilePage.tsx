@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { getNicknameAvailability } from '../api/auth';
+import { getNicknameAvailability, requestProfileImageUpload } from '../api/auth';
 import { BrandMark } from '../components/shared/BrandMark';
 import {
   AvailabilityIcon,
@@ -20,6 +20,7 @@ export function SignupProfilePage() {
   const [nickname, setNickname] = useState('활기찬다람쥐');
   const [region, setRegion] = useState('서울특별시');
   const [profileImageUrl, setProfileImageUrl] = useState('');
+  const [selectedImageFile, setSelectedImageFile] = useState<File | null>(null);
   const [nicknameAvailability, setNicknameAvailability] = useState<'idle' | 'checking' | 'available' | 'unavailable'>('idle');
   const [isRegionOpen, setIsRegionOpen] = useState(false);
   const regionMenuRef = useRef<HTMLDivElement | null>(null);
@@ -99,7 +100,7 @@ export function SignupProfilePage() {
     };
   }, [normalizedNickname]);
 
-  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!canContinue) {
       return;
@@ -111,11 +112,32 @@ export function SignupProfilePage() {
       return;
     }
 
+    let profileImageRef = DEFAULT_PROFILE_IMAGE_REF;
+
+    if (selectedImageFile) {
+      try {
+        const grant = await requestProfileImageUpload(
+          draft.signupCompletionToken,
+          selectedImageFile.name,
+          selectedImageFile.type,
+          selectedImageFile.size,
+        );
+        await fetch(grant.uploadUrl, {
+          method: 'PUT',
+          body: selectedImageFile,
+          headers: { 'Content-Type': selectedImageFile.type },
+        });
+        profileImageRef = grant.profileImageRef;
+      } catch {
+        // fall back to default if upload fails
+      }
+    }
+
     saveSignupDraft({
       ...draft,
       gender: gender === 'male' ? 'MALE' : gender === 'female' ? 'FEMALE' : 'PREFER_NOT_TO_SAY',
       nickname: normalizedNickname,
-      profileImageRef: DEFAULT_PROFILE_IMAGE_REF,
+      profileImageRef,
       regionCode: region.trim(),
     });
     navigate('/signup/terms');
@@ -128,6 +150,7 @@ export function SignupProfilePage() {
       return;
     }
 
+    setSelectedImageFile(file);
     const nextUrl = URL.createObjectURL(file);
     setProfileImageUrl((current) => {
       if ((current || '').startsWith('blob:')) {

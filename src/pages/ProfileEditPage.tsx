@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { ApiError } from "../api/client";
+import { checkNicknameAvailability, getMyProfile, requestProfileImageUploadForEdit, updateMyProfile } from "../api/users";
+import { resolveProfileImageUrl } from "../config/media";
 import { HomeFooter } from "../components/home/HomeFooter";
 import { HomeHeader } from "../components/home/HomeHeader";
 import { ChevronIcon, SelectedCheckIcon } from "../components/shared/Icons";
@@ -93,6 +96,10 @@ export function ProfileEditPage() {
   const regionRef = useRef<HTMLDivElement>(null);
   /** Figma 6200:9477 — 변경 전에는 수정완료 비활성(회색) */
   const [formDirty, setFormDirty] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [submitLoading, setSubmitLoading] = useState(false);
+  const [submitError, setSubmitError] = useState('');
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
   const savedTrim = savedNickname.trim();
   const nickTrim = nickname.trim();
@@ -157,6 +164,7 @@ export function ProfileEditPage() {
     const file = e.target.files?.[0];
     if (!file) return;
     setFormDirty(true);
+    setSelectedFile(file);
     const url = URL.createObjectURL(file);
     setPhotoUrl((prev) => {
       if (prev.startsWith("blob:")) URL.revokeObjectURL(prev);
@@ -170,10 +178,47 @@ export function ProfileEditPage() {
     };
   }, [photoUrl]);
 
-  const onDuplicateCheck = () => {
+  useEffect(() => {
+    let cancelled = false;
+    getMyProfile()
+      .then((profile) => {
+        if (cancelled) return;
+        setNickname(profile.nickname ?? '');
+        setBio(profile.bio ?? '');
+        setPhotoUrl(resolveProfileImageUrl(profile.profileImageRef));
+        if (profile.gender) {
+          setGender(profile.gender === 'MALE' ? 'male' : profile.gender === 'FEMALE' ? 'female' : 'male');
+        }
+        if (profile.regionCode) {
+          setRegion(profile.regionCode);
+        }
+        if (profile.genres) {
+          setGenres(profile.genres.split(',').map(s => s.trim()).filter(Boolean));
+        }
+        if (profile.instruments) {
+          setInstruments(profile.instruments.split(',').map(s => s.trim()).filter(Boolean));
+        }
+        setLoading(false);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, []);
+
+  const onDuplicateCheck = async () => {
     if (!nickTrim) return;
-    // TODO: API 중복 검사 — 성공 시에만 setCheckedNickname 호출
-    setCheckedNickname(nickTrim);
+    try {
+      const result = await checkNicknameAvailability(nickTrim);
+      if (result.available) {
+        setCheckedNickname(nickTrim);
+      } else {
+        setSubmitError('이미 사용 중인 닉네임입니다.');
+      }
+    } catch {
+      setSubmitError('닉네임 확인에 실패했습니다.');
+    }
   };
 
   return (
@@ -428,12 +473,56 @@ export function ProfileEditPage() {
           </div>
 
           <div className="profile-edit__submit-wrap">
+            {submitError ? <p style={{ color: '#e74c3c', fontSize: '13px', textAlign: 'center', marginBottom: '8px' }}>{submitError}</p> : null}
             <button
               type="button"
-              className={`profile-edit__submit${canSubmit ? " profile-edit__submit--active" : ""}`}
-              disabled={!canSubmit}
+              className={`profile-edit__submit${canSubmit && !submitLoading ? " profile-edit__submit--active" : ""}`}
+              disabled={!canSubmit || submitLoading}
+              onClick={async () => {
+                if (!canSubmit || submitLoading) return;
+                setSubmitLoading(true);
+                setSubmitError('');
+                try {
+                  let imageRef: string | undefined;
+
+                  // Upload new image if selected
+                  if (selectedFile) {
+                    const grant = await requestProfileImageUploadForEdit(
+                      selectedFile.name,
+                      selectedFile.type,
+                      selectedFile.size,
+                    );
+                    // PUT to presigned URL
+                    await fetch(grant.uploadUrl, {
+                      method: 'PUT',
+                      headers: { 'Content-Type': selectedFile.type },
+                      body: selectedFile,
+                    });
+                    imageRef = grant.profileImageRef;
+                  }
+
+                  await updateMyProfile({
+                    nickname: nickTrim,
+                    bio: bio || undefined,
+                    gender: gender === 'male' ? 'MALE' : 'FEMALE',
+                    regionCode: region,
+                    genres: genres.join(',') || undefined,
+                    instruments: instruments.join(',') || undefined,
+                    profileImageRef: imageRef,
+                  });
+                  navigate(-1);
+                } catch (err) {
+                  if (err instanceof ApiError) {
+                    setSubmitError(err.message);
+                  } else {
+                    setSubmitError('프로필 수정에 실패했습니다.');
+                  }
+                } finally {
+                  setSubmitLoading(false);
+                }
+              }}
             >
-              수정완료
+              {submitLoading ? '저장 중...' : '수정완료'}
             </button>
           </div>
 
