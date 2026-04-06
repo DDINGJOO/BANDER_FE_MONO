@@ -13,11 +13,9 @@ import {
   RESERVATION_CANCEL_LEAD_LINES,
   RESERVATION_CANCEL_NOTICE_DEFAULT,
 } from '../data/reservationCancelModal';
-import {
-  reservationsForTab,
-  type MyReservation,
-  type MyReservationTab,
-} from '../data/myReservations';
+import { reservationsForTab, type MyReservation, type MyReservationTab } from '../data/myReservations';
+import { getMyBookings, type MyBookingItem } from '../api/bookings';
+import { isMockMode } from '../config/publicEnv';
 
 const TAB_LABELS: Record<MyReservationTab, string> = {
   upcoming: '이용전',
@@ -25,52 +23,78 @@ const TAB_LABELS: Record<MyReservationTab, string> = {
   canceled: '취소',
 };
 
-function statusPillLabel(status: MyReservation['status']) {
-  if (status === 'confirmed') return '예약확정';
-  if (status === 'pending') return '예약대기';
-  if (status === 'completed') return '이용완료';
-  if (status === 'canceledUser') return '예약취소';
+const TAB_API_MAP: Record<MyReservationTab, string> = {
+  upcoming: 'UPCOMING',
+  past: 'PAST',
+  canceled: 'CANCELED',
+};
+
+type BookingStatus = MyBookingItem['status'];
+
+function statusPillLabel(status: BookingStatus) {
+  if (status === 'CONFIRMED') return '예약확정';
+  if (status === 'PENDING') return '예약대기';
+  if (status === 'COMPLETED') return '이용완료';
+  if (status === 'CANCELED_USER') return '예약취소';
   return '업체예약취소';
 }
 
-function actionButtonLabel(action: MyReservation['action']) {
+function statusPillClass(status: BookingStatus) {
+  if (status === 'CONFIRMED') return 'my-res-card__pill--confirmed';
+  if (status === 'CANCELED_USER' || status === 'CANCELED_VENDOR') {
+    return 'my-res-card__pill--canceled';
+  }
+  return 'my-res-card__pill--muted';
+}
+
+function formatDateRange(startsAt: string, endsAt: string) {
+  const start = new Date(startsAt);
+  const end = new Date(endsAt);
+  const weekday = ['일', '월', '화', '수', '목', '금', '토'][start.getDay()];
+  const dateStr = `${String(start.getFullYear()).slice(2)}.${String(start.getMonth() + 1).padStart(2, '0')}.${String(start.getDate()).padStart(2, '0')} (${weekday})`;
+  const startTime = `${String(start.getHours()).padStart(2, '0')}:${String(start.getMinutes()).padStart(2, '0')}`;
+  const endTime = `${String(end.getHours()).padStart(2, '0')}:${String(end.getMinutes()).padStart(2, '0')}`;
+  const durationMs = end.getTime() - start.getTime();
+  const durationHours = durationMs / (1000 * 60 * 60);
+  return {
+    dateTimeLine: `${dateStr} ${startTime} ~ ${endTime} `,
+    durationLine: `총 ${durationHours}시간 이용`,
+  };
+}
+
+function bookingAction(status: BookingStatus): 'cancel' | 'writeReview' | 'viewMyReview' | 'none' {
+  if (status === 'CONFIRMED' || status === 'PENDING') return 'cancel';
+  if (status === 'COMPLETED') return 'writeReview';
+  return 'none';
+}
+
+function actionButtonLabel(action: 'cancel' | 'writeReview' | 'viewMyReview' | 'none') {
   if (action === 'cancel') return '예약취소';
   if (action === 'writeReview') return '리뷰쓰기';
   if (action === 'viewMyReview') return '내가 쓴 리뷰보기';
   return '';
 }
 
-function statusPillClass(status: MyReservation['status']) {
-  if (status === 'confirmed') return 'my-res-card__pill--confirmed';
-  if (status === 'canceledUser' || status === 'canceledVendor') {
-    return 'my-res-card__pill--canceled';
-  }
-  return 'my-res-card__pill--muted';
-}
+type CardItem = {
+  bookingId: number;
+  status: BookingStatus;
+  action: 'cancel' | 'writeReview' | 'viewMyReview' | 'none';
+  thumbUrl: string;
+  spaceTitle: string;
+  vendorName: string;
+  dateTimeLine: string;
+  durationLine: string;
+  detailPath: string;
+};
 
 function ReservationCard({
   item,
   onAction,
 }: {
-  item: MyReservation;
-  onAction?: (item: MyReservation) => void;
+  item: CardItem;
+  onAction?: (item: CardItem) => void;
 }) {
-  const headline =
-    item.headlineRight != null && item.headlineRight !== ''
-      ? item.headlineRight
-      : null;
-  const headlineMuted = item.headlineAccent === 'muted';
   const showAction = item.action !== 'none';
-  const detailRows =
-    item.detailRows && item.detailRows.length > 0
-      ? item.detailRows
-      : [
-          {
-            label: '일자/시간',
-            value: item.dateTimeLine ?? '',
-          },
-          { label: '예약시간', value: item.durationLine ?? '' },
-        ];
 
   return (
     <article className="my-res-card">
@@ -81,16 +105,8 @@ function ReservationCard({
               <span className={`my-res-card__pill ${statusPillClass(item.status)}`}>
                 {statusPillLabel(item.status)}
               </span>
-              <span className="my-res-card__no">{item.reservationNo}</span>
             </div>
             <div className="my-res-card__meta-right">
-              {headline ? (
-                <p
-                  className={`my-res-card__headline${headlineMuted ? ' my-res-card__headline--muted' : ' my-res-card__headline--primary'}`}
-                >
-                  {headline}
-                </p>
-              ) : null}
               <span className="my-res-card__chevron" aria-hidden>
                 <ChevronIcon />
               </span>
@@ -102,12 +118,14 @@ function ReservationCard({
         >
           <Link className="my-res-card__info-link" to={item.detailPath}>
             <div className="my-res-card__info">
-              <img
-                alt=""
-                className="my-res-card__thumb"
-                src={item.thumbUrl}
-                loading="lazy"
-              />
+              {item.thumbUrl ? (
+                <img
+                  alt=""
+                  className="my-res-card__thumb"
+                  src={item.thumbUrl}
+                  loading="lazy"
+                />
+              ) : null}
               <div className="my-res-card__text">
                 <p className="my-res-card__space-title">{item.spaceTitle}</p>
                 <p className="my-res-card__vendor">{item.vendorName}</p>
@@ -128,15 +146,14 @@ function ReservationCard({
       <Link className="my-res-card__bottom-link" to={item.detailPath}>
         <div className="my-res-card__bottom">
           <div className="my-res-card__details">
-            {detailRows.map((row, idx) => (
-              <div
-                className="my-res-card__detail-row"
-                key={`${item.id}-d${idx}`}
-              >
-                <span className="my-res-card__detail-label">{row.label}</span>
-                <span className="my-res-card__detail-value">{row.value}</span>
-              </div>
-            ))}
+            <div className="my-res-card__detail-row" key={`${item.bookingId}-d0`}>
+              <span className="my-res-card__detail-label">일자/시간</span>
+              <span className="my-res-card__detail-value">{item.dateTimeLine}</span>
+            </div>
+            <div className="my-res-card__detail-row" key={`${item.bookingId}-d1`}>
+              <span className="my-res-card__detail-label">예약시간</span>
+              <span className="my-res-card__detail-value">{item.durationLine}</span>
+            </div>
           </div>
         </div>
       </Link>
@@ -144,10 +161,28 @@ function ReservationCard({
   );
 }
 
+function toCardItem(booking: MyBookingItem): CardItem {
+  const { dateTimeLine, durationLine } = formatDateRange(booking.startsAt, booking.endsAt);
+  return {
+    bookingId: booking.bookingId,
+    status: booking.status,
+    action: bookingAction(booking.status),
+    thumbUrl: booking.thumbnailUrl ?? '',
+    spaceTitle: booking.roomName,
+    vendorName: booking.studioName,
+    dateTimeLine,
+    durationLine,
+    detailPath: `/reservation-detail?bookingId=${booking.bookingId}`,
+  };
+}
+
 export function MyReservationsPage() {
   const navigate = useNavigate();
   const isAuthenticated = Boolean(loadAuthSession());
   const [tab, setTab] = useState<MyReservationTab>('upcoming');
+  const [bookings, setBookings] = useState<CardItem[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [selectedBookingId, setSelectedBookingId] = useState<number | null>(null);
   const [reviewViewOpen, setReviewViewOpen] = useState(false);
   const [cancelModalOpen, setCancelModalOpen] = useState(false);
   const [cancelToast, setCancelToast] = useState(false);
@@ -178,7 +213,42 @@ export function MyReservationsPage() {
     return () => document.removeEventListener('mousedown', onPointerDown);
   }, []);
 
-  const list = reservationsForTab(tab);
+  useEffect(() => {
+    if (isMockMode()) {
+      const mockItems = reservationsForTab(tab).map((r: MyReservation, index: number): CardItem => ({
+        bookingId: index,
+        status: r.status === 'confirmed' ? 'CONFIRMED'
+          : r.status === 'pending' ? 'PENDING'
+          : r.status === 'completed' ? 'COMPLETED'
+          : r.status === 'canceledUser' ? 'CANCELED_USER'
+          : 'CANCELED_VENDOR',
+        action: r.action === 'cancel' ? 'cancel'
+          : r.action === 'writeReview' ? 'writeReview'
+          : r.action === 'viewMyReview' ? 'viewMyReview'
+          : 'none',
+        thumbUrl: r.thumbUrl ?? '',
+        spaceTitle: r.spaceTitle,
+        vendorName: r.vendorName,
+        dateTimeLine: r.dateTimeLine ?? '',
+        durationLine: r.durationLine ?? '',
+        detailPath: r.detailPath,
+      }));
+      setBookings(mockItems);
+      return;
+    }
+
+    setLoading(true);
+    getMyBookings({ tab: TAB_API_MAP[tab], size: 20 })
+      .then((page) => {
+        setBookings(page.items.map(toCardItem));
+      })
+      .catch(() => {
+        setBookings([]);
+      })
+      .finally(() => {
+        setLoading(false);
+      });
+  }, [tab]);
 
   return (
     <main className="my-reservations-page">
@@ -248,13 +318,13 @@ export function MyReservationsPage() {
             ))}
           </div>
 
-          {list.length === 0 ? (
+          {loading ? null : bookings.length === 0 ? (
             <p className="my-reservations__empty">예약 내역이 없습니다.</p>
           ) : (
             <div className="my-reservations__list">
-              {list.map((item) => (
+              {bookings.map((item) => (
                 <ReservationCard
-                  key={item.id}
+                  key={item.bookingId}
                   item={item}
                   onAction={(row) => {
                     if (row.action === 'writeReview') {
@@ -264,6 +334,7 @@ export function MyReservationsPage() {
                       setReviewViewOpen(true);
                     }
                     if (row.action === 'cancel') {
+                      setSelectedBookingId(row.bookingId);
                       setCancelModalOpen(true);
                     }
                   }}
@@ -287,9 +358,20 @@ export function MyReservationsPage() {
         dividerAfterRowIndex={1}
         leadLines={RESERVATION_CANCEL_LEAD_LINES}
         noticeRows={RESERVATION_CANCEL_NOTICE_DEFAULT}
-        onClose={() => setCancelModalOpen(false)}
-        onConfirm={() => {
+        onClose={() => {
           setCancelModalOpen(false);
+          setSelectedBookingId(null);
+        }}
+        onConfirm={() => {
+          if (selectedBookingId != null) {
+            import('../api/bookings').then(({ cancelBooking }) => {
+              cancelBooking(selectedBookingId, { cancelReason: '고객 취소' }).then(() => {
+                setBookings((prev) => prev.filter((b) => b.bookingId !== selectedBookingId));
+              }).catch(() => undefined);
+            });
+          }
+          setCancelModalOpen(false);
+          setSelectedBookingId(null);
           setCancelToast(true);
           window.setTimeout(() => setCancelToast(false), 6000);
         }}

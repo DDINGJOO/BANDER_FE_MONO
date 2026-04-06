@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { fetchSpaceDetail, type SpaceDetailDto } from '../api/spaces';
+import { isMockMode } from '../config/publicEnv';
 import { HOME_SPACE_CARDS } from '../data/home';
 import {
   ROOM_DETAIL_DATA,
@@ -21,43 +22,40 @@ import type { SpaceDetailBenefitItem, SpaceSummaryFeatureKey } from '../types/sp
 const VALID_FEATURE_KEYS = new Set<string>(['parking', 'booking', 'hvac', 'wifi']);
 
 function mapApiToViewModel(dto: SpaceDetailDto) {
-  const facilityChips: SpaceDetailBenefitItem[] = (dto.facilityChips.length > 0 ? dto.facilityChips : SPACE_DETAIL_FACILITY_CHIPS)
-    .map((chip) => {
-      const k = 'key' in chip ? chip.key : undefined;
-      return {
-        key: k && VALID_FEATURE_KEYS.has(k) ? k as SpaceSummaryFeatureKey : undefined,
-        label: chip.label,
-      };
-    });
+  const facilityChips: SpaceDetailBenefitItem[] = dto.facilityChips.map((chip) => {
+    const k = 'key' in chip ? chip.key : undefined;
+    return {
+      key: k && VALID_FEATURE_KEYS.has(k) ? k as SpaceSummaryFeatureKey : undefined,
+      label: chip.label,
+    };
+  });
 
-  const detailBenefits: SpaceDetailBenefitItem[] = dto.detailBenefitChips.length > 0
-    ? dto.detailBenefitChips.map((chip) => ({
-        key: undefined,
-        label: chip.label,
-      }))
-    : SPACE_DETAIL_DETAIL_STRIP;
+  const detailBenefits: SpaceDetailBenefitItem[] = dto.detailBenefitChips.map((chip) => ({
+    key: undefined,
+    label: chip.label,
+  }));
 
   return {
     ...dto,
-    gallery: dto.galleryUrls.length > 0 ? dto.galleryUrls : ROOM_DETAIL_DATA.gallery,
+    gallery: dto.galleryUrls,
     studioName: dto.studioName,
     category: dto.category ?? '합주실',
-    summaryHashTags: dto.hashTags.length > 0 ? dto.hashTags : [...SPACE_DETAIL_SUMMARY_HASH_TAGS],
-    pricingLines: dto.pricingLines.length > 0 ? dto.pricingLines : SPACE_DETAIL_PRICING_LINES,
-    operatingSummary: dto.operatingSummary ?? SPACE_DETAIL_OPERATING_SUMMARY,
-    operatingWeek: dto.operatingWeek.length > 0 ? dto.operatingWeek : SPACE_DETAIL_OPERATING_WEEK,
+    summaryHashTags: dto.hashTags,
+    pricingLines: dto.pricingLines,
+    operatingSummary: dto.operatingSummary ?? '',
+    operatingWeek: dto.operatingWeek,
     facilityChips,
     detailBenefits,
-    notices: dto.notices.length > 0 ? dto.notices : SPACE_DETAIL_NOTICES,
+    notices: dto.notices,
     policies: dto.policies,
-    couponStripLabel: dto.couponStripLabel ?? SPACE_DETAIL_COUPON_STRIP_LABEL,
-    trustBanner: dto.trustBanner ?? SPACE_DETAIL_TRUST_BANNER,
-    priceTeaserSuffix: dto.priceSuffix ?? SPACE_DETAIL_SUMMARY_PRICE_SUFFIX,
-    stationDistance: dto.stationDistanceLabel ?? SPACE_DETAIL_STATION_DISTANCE,
+    couponStripLabel: dto.couponStripLabel ?? '',
+    trustBanner: dto.trustBanner ?? '',
+    priceTeaserSuffix: dto.priceSuffix ?? '',
+    stationDistance: dto.stationDistanceLabel ?? '',
     address: dto.address ?? '',
     location: dto.location ?? '',
-    mapLocation: ROOM_DETAIL_DATA.mapLocation,
-    reviewSummary: ROOM_DETAIL_DATA.reviewSummary,
+    mapLocation: { lat: 0, lng: 0 },
+    reviewSummary: [] as Array<{ author: string; date: string; rating: string; text: string; photoCount?: number }>,
     vendor: {
       name: dto.vendor?.name ?? dto.studioName,
       spaces: dto.vendor?.spaces ?? '',
@@ -103,6 +101,8 @@ function buildMockDetail(slug: string | undefined) {
 export function useSpaceDetail(slug: string | undefined) {
   const [apiData, setApiData] = useState<SpaceDetailDto | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+  const mock = isMockMode();
 
   useEffect(() => {
     if (!slug) {
@@ -110,8 +110,14 @@ export function useSpaceDetail(slug: string | undefined) {
       return;
     }
 
+    if (mock) {
+      setLoading(false);
+      return;
+    }
+
     let cancelled = false;
     setLoading(true);
+    setError(null);
 
     fetchSpaceDetail(slug)
       .then((data) => {
@@ -119,8 +125,10 @@ export function useSpaceDetail(slug: string | undefined) {
           setApiData(data);
         }
       })
-      .catch(() => {
-        // API 실패 시 mock fallback — 개발 중 안전망
+      .catch((err: unknown) => {
+        if (!cancelled) {
+          setError(err instanceof Error ? err : new Error('Failed to load space'));
+        }
       })
       .finally(() => {
         if (!cancelled) {
@@ -131,20 +139,15 @@ export function useSpaceDetail(slug: string | undefined) {
     return () => {
       cancelled = true;
     };
-  }, [slug]);
+  }, [slug, mock]);
 
   return useMemo(() => {
-    if (apiData) {
-      const detail = mapApiToViewModel(apiData);
-      const vendorSlug = apiData.vendorSlug ?? null;
-      const path = slug ? `/spaces/${slug}` : '';
-      const spaceCard =
-        HOME_SPACE_CARDS.find((item) => item.detailPath === path) ?? HOME_SPACE_CARDS[1];
-
-      return { detail, slug: slug ?? '', spaceCard, vendorSlug, loading };
+    if (mock) {
+      return { ...buildMockDetail(slug), loading, error };
     }
 
-    // mock fallback
-    return { ...buildMockDetail(slug), loading };
-  }, [slug, apiData, loading]);
+    const detail = apiData ? mapApiToViewModel(apiData) : null;
+    const vendorSlug = apiData?.vendorSlug ?? null;
+    return { detail, slug: slug ?? '', vendorSlug, loading, error };
+  }, [slug, apiData, loading, error, mock]);
 }
