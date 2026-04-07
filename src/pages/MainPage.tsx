@@ -9,15 +9,11 @@ import { HomeReviewCard } from '../components/home/HomeReviewCard';
 import { HomeSpaceCard } from '../components/home/HomeSpaceCard';
 import { HomeSpaceExplorer } from '../components/home/HomeSpaceExplorer';
 import { loadAuthSession } from '../data/authSession';
-import {
-  HOME_CATEGORY_BUBBLES,
-  HOME_HOT_POSTS,
-  HOME_REVIEW_CARDS,
-  HOME_SPACE_CARDS,
-} from '../data/home';
+import { useHomeFeed } from '../hooks/useHomeFeed';
 
 export function MainPage({ previewAuthenticated = false }: { previewAuthenticated?: boolean }) {
   const navigate = useNavigate();
+  const { hotPosts, recommendedSpaces, reviewCards, categoryBubbles, loading } = useHomeFeed();
   const isAuthenticated = previewAuthenticated || Boolean(loadAuthSession());
   const [guestModalOpen, setGuestModalOpen] = useState(false);
   const [headerSearchOpen, setHeaderSearchOpen] = useState(false);
@@ -88,7 +84,7 @@ export function MainPage({ previewAuthenticated = false }: { previewAuthenticate
       </section>
 
       <section className="home-search">
-        <HomeSpaceExplorer variant="hero" />
+        <HomeSpaceExplorer spaces={recommendedSpaces} variant="hero" />
       </section>
 
       <section className="home-section" id="hot-posts">
@@ -99,7 +95,7 @@ export function MainPage({ previewAuthenticated = false }: { previewAuthenticate
         </div>
         <div className="home-post-carousel">
           <div className="home-post-carousel__track" ref={hotPostsScrollRef}>
-            {HOME_HOT_POSTS.map((post) => (
+            {hotPosts.map((post) => (
               <HomePostCard key={post.title} {...post} />
             ))}
           </div>
@@ -118,14 +114,14 @@ export function MainPage({ previewAuthenticated = false }: { previewAuthenticate
         <div className="home-section__heading home-section__heading--stack">
           <h2>이런 공간은 어떠신가요?</h2>
         </div>
-        <HomeSpaceExplorer />
+        <HomeSpaceExplorer spaces={recommendedSpaces} />
       </section>
 
       <section className="home-bubbles">
         <div className="home-bubbles__inner">
           <h2>밴더 인기 합주실</h2>
           <div className="home-bubbles__list">
-            {HOME_CATEGORY_BUBBLES.map((item) => (
+            {categoryBubbles.map((item) => (
               <div className="home-bubble" key={item.label}>
                 <div
                   className="home-bubble__circle"
@@ -140,7 +136,7 @@ export function MainPage({ previewAuthenticated = false }: { previewAuthenticate
 
       <section className="home-section home-section--popular-spaces" id="popular-spaces">
         <div className="home-space-grid">
-          {HOME_SPACE_CARDS.slice(0, 8).map((space) => (
+          {recommendedSpaces.slice(0, 8).map((space) => (
             <HomeSpaceCard key={space.title} {...space} />
           ))}
         </div>
@@ -162,7 +158,7 @@ export function MainPage({ previewAuthenticated = false }: { previewAuthenticate
           <p>게스트도 후기와 정보를 충분히 보고 공간을 비교할 수 있습니다.</p>
         </div>
         <div className="home-review-grid">
-          {HOME_REVIEW_CARDS.map((review) => (
+          {reviewCards.map((review) => (
             <HomeReviewCard key={`${review.author}-${review.date}`} {...review} />
           ))}
         </div>

@@ -8,7 +8,6 @@ import {
   HOME_FILTER_REGION_COLUMNS,
   HOME_FILTER_REGION_DISTRICTS,
   HOME_FILTER_SPACE_OPTIONS,
-  HOME_SPACE_CARDS,
 } from '../../data/home';
 
 type ExplorerPanel = 'date' | 'keyword' | 'people' | 'region' | 'space' | null;
@@ -30,9 +29,21 @@ type CalendarCell = {
   year: number;
 };
 
+type SpaceCardData = {
+  title: string;
+  subtitle: string;
+  studio: string;
+  location: string;
+  price: string;
+  rating: string;
+  image: string;
+  detailPath?: string;
+};
+
 type HomeSpaceExplorerProps = {
   headerContent?: React.ReactNode;
   resultLimit?: number;
+  spaces?: SpaceCardData[];
   variant?: ExplorerVariant;
 };
 
@@ -99,13 +110,14 @@ function summarizeSelection(values: string[], emptyLabel: string) {
 export function HomeSpaceExplorer({
   headerContent,
   resultLimit,
+  spaces = [],
   variant = 'section',
 }: HomeSpaceExplorerProps) {
   const navigate = useNavigate();
   const isHero = variant === 'hero';
   const labelModeHero = variant === 'hero';
   const visibleCards =
-    typeof resultLimit === 'number' ? HOME_SPACE_CARDS.slice(0, resultLimit) : HOME_SPACE_CARDS;
+    typeof resultLimit === 'number' ? spaces.slice(0, resultLimit) : spaces;
   const explorerRef = useRef<HTMLDivElement | null>(null);
   const [openPanel, setOpenPanel] = useState<ExplorerPanel>(null);
   const [heroSearchQuery, setHeroSearchQuery] = useState('');

@@ -80,6 +80,7 @@ export type SpaceVendorInfoDto = { name: string; spaces: string | null };
 
 export type SpaceDetailDto = {
   id: string;
+  studioId: string | null;
   slug: string;
   title: string;
   category: string | null;
@@ -105,6 +106,8 @@ export type SpaceDetailDto = {
   couponStripLabel: string | null;
   trustBanner: string | null;
   vendor: SpaceVendorInfoDto;
+  latitude: number | null;
+  longitude: number | null;
 };
 
 export function fetchSpaceDetail(slug: string) {

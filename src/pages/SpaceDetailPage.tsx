@@ -311,7 +311,7 @@ export function SpaceDetailPage() {
                     </button>
                   </div>
 
-                  <p className="space-detail__trust-banner">{detail.trustBanner}</p>
+                  {detail.trustBanner ? <p className="space-detail__trust-banner">{detail.trustBanner}</p> : null}
                 </div>
 
                 <nav className="space-detail__section-nav space-detail__section-nav--sticky" aria-label="상세 섹션">

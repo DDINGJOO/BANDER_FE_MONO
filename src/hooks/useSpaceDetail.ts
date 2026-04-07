@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { getJson } from '../api/client';
 import { fetchSpaceDetail, type SpaceDetailDto } from '../api/spaces';
 import { isMockMode } from '../config/publicEnv';
 import { HOME_SPACE_CARDS } from '../data/home';
@@ -48,14 +49,15 @@ function mapApiToViewModel(dto: SpaceDetailDto) {
     detailBenefits,
     notices: dto.notices,
     policies: dto.policies,
-    couponStripLabel: dto.couponStripLabel ?? '',
-    trustBanner: dto.trustBanner ?? '',
+    couponStripLabel: dto.couponStripLabel || '사용 가능한 쿠폰',
+    trustBanner: dto.trustBanner || null,
     priceTeaserSuffix: dto.priceSuffix ?? '',
     stationDistance: dto.stationDistanceLabel ?? '',
     address: dto.address ?? '',
     location: dto.location ?? '',
-    mapLocation: { lat: 0, lng: 0 },
+    mapLocation: { lat: dto.latitude ?? 0, lng: dto.longitude ?? 0 },
     reviewSummary: [] as Array<{ author: string; date: string; rating: string; text: string; photoCount?: number }>,
+    studioId: dto.studioId ?? null,
     vendor: {
       name: dto.vendor?.name ?? dto.studioName,
       spaces: dto.vendor?.spaces ?? '',
@@ -98,8 +100,17 @@ function buildMockDetail(slug: string | undefined) {
   return { detail, slug: slug ?? '', spaceCard, vendorSlug };
 }
 
+type ReviewItem = { reviewId: string; userId: string; rating: number; content: string; createdAt: string };
+type ReviewApiResponse = { items: ReviewItem[] };
+
+function formatReviewDate(iso: string) {
+  const d = new Date(iso);
+  return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`;
+}
+
 export function useSpaceDetail(slug: string | undefined) {
   const [apiData, setApiData] = useState<SpaceDetailDto | null>(null);
+  const [reviews, setReviews] = useState<Array<{ author: string; date: string; rating: string; text: string; photoCount?: number }>>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   const mock = isMockMode();
@@ -120,9 +131,28 @@ export function useSpaceDetail(slug: string | undefined) {
     setError(null);
 
     fetchSpaceDetail(slug)
-      .then((data) => {
-        if (!cancelled) {
-          setApiData(data);
+      .then(async (data) => {
+        if (cancelled) return;
+        setApiData(data);
+
+        // Fetch reviews for this room using studioId
+        const studioId = data.studioId;
+        if (studioId) {
+          try {
+            const reviewData = await getJson<ReviewApiResponse>(
+              `/api/v1/spaces/${encodeURIComponent(studioId)}/reviews`
+            );
+            if (!cancelled && reviewData?.items) {
+              setReviews(reviewData.items.map((r) => ({
+                author: '[BACKEND] 사용자',
+                date: formatReviewDate(r.createdAt),
+                rating: String(r.rating),
+                text: r.content,
+              })));
+            }
+          } catch {
+            // Reviews are optional
+          }
         }
       })
       .catch((err: unknown) => {
@@ -147,7 +177,10 @@ export function useSpaceDetail(slug: string | undefined) {
     }
 
     const detail = apiData ? mapApiToViewModel(apiData) : null;
+    if (detail) {
+      detail.reviewSummary = reviews;
+    }
     const vendorSlug = apiData?.vendorSlug ?? null;
     return { detail, slug: slug ?? '', vendorSlug, loading, error };
-  }, [slug, apiData, loading, error, mock]);
+  }, [slug, apiData, reviews, loading, error, mock]);
 }
