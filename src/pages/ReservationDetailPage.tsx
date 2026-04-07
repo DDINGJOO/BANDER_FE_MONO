@@ -7,11 +7,11 @@ import { ChevronIcon } from '../components/shared/Icons';
 import { HEADER_SEARCH_KEYWORD_SUGGESTIONS } from '../config/searchSuggestions';
 import { loadAuthSession } from '../data/authSession';
 import {
-  parseReservationDetailVariant,
-  reservationDetailChatHref,
   RESERVATION_DETAIL,
   RESERVATION_DETAIL_MAP_IMAGE,
   RESERVATION_REFUND_POLICY,
+  parseReservationDetailVariant,
+  reservationDetailChatHref,
   type ReservationDetailVariant,
 } from '../data/reservationDetail';
 import {
@@ -19,6 +19,8 @@ import {
   RESERVATION_CANCEL_LEAD_LINES,
   RESERVATION_CANCEL_NOTICE_DEFAULT,
 } from '../data/reservationCancelModal';
+import { getBookingDetail, cancelBooking, type BookingDetailResponse } from '../api/bookings';
+import { isMockMode } from '../config/publicEnv';
 
 function ChatGlyph20() {
   return (
@@ -61,11 +63,21 @@ function CopyGlyph18() {
   );
 }
 
-function badgeForVariant(v: ReservationDetailVariant) {
-  if (v === 'pending') {
+function formatDateTime(iso: string) {
+  const d = new Date(iso);
+  const weekday = ['일', '월', '화', '수', '목', '금', '토'][d.getDay()];
+  return `${String(d.getFullYear()).slice(2)}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')} (${weekday}) ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+}
+
+function formatPrice(price: number) {
+  return `${price.toLocaleString()}원`;
+}
+
+function badgeForStatus(status: string) {
+  if (status === 'PENDING') {
     return { className: 'res-detail__badge res-detail__badge--muted', text: '승인대기' };
   }
-  if (v === 'confirmed') {
+  if (status === 'CONFIRMED') {
     return { className: 'res-detail__badge res-detail__badge--blue', text: '예약확정' };
   }
   return { className: 'res-detail__badge res-detail__badge--blue', text: '이용완료' };
@@ -74,15 +86,13 @@ function badgeForVariant(v: ReservationDetailVariant) {
 export function ReservationDetailPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const variant = parseReservationDetailVariant(searchParams.get('status'));
+  const bookingId = searchParams.get('bookingId');
   const isAuthenticated = Boolean(loadAuthSession());
   const [headerSearchOpen, setHeaderSearchOpen] = useState(false);
   const [headerSearchQuery, setHeaderSearchQuery] = useState('');
   const headerSearchRef = useRef<HTMLDivElement | null>(null);
   const [cancelModalOpen, setCancelModalOpen] = useState(false);
-
-  const d = RESERVATION_DETAIL;
-  const badge = badgeForVariant(variant);
+  const [detail, setDetail] = useState<BookingDetailResponse | null>(null);
 
   const filteredSuggestions = HEADER_SEARCH_KEYWORD_SUGGESTIONS.filter((item) =>
     item.toLowerCase().includes(headerSearchQuery.toLowerCase()),
@@ -107,14 +117,57 @@ export function ReservationDetailPage() {
     return () => document.removeEventListener('mousedown', onPointerDown);
   }, []);
 
+  useEffect(() => {
+    if (isMockMode()) {
+      const variant: ReservationDetailVariant = parseReservationDetailVariant(
+        searchParams.get('status'),
+      );
+      const mockDetail: BookingDetailResponse = {
+        bookingId: 1,
+        roomId: 1,
+        roomName: RESERVATION_DETAIL.spaceTitle,
+        studioName: '유스뮤직',
+        status: variant === 'pending' ? 'PENDING' : variant === 'completed' ? 'COMPLETED' : 'CONFIRMED',
+        startsAt: '2025-08-13T16:00:00',
+        endsAt: '2025-08-13T17:00:00',
+        totalPrice: 20000,
+        paymentMethod: RESERVATION_DETAIL.payment.method,
+        bookerName: RESERVATION_DETAIL.booker.name,
+        bookerPhone: RESERVATION_DETAIL.booker.phone,
+        bookerNote: null,
+        cancelReason: null,
+        createdAt: '2025-08-09T10:00:00',
+      };
+      setDetail(mockDetail);
+      return;
+    }
+
+    if (!bookingId) return;
+    getBookingDetail(Number(bookingId))
+      .then(setDetail)
+      .catch(() => undefined);
+  }, [bookingId, searchParams]);
+
+  if (!detail) {
+    return null;
+  }
+
+  const badge = badgeForStatus(detail.status);
+  const isCompleted = detail.status === 'COMPLETED';
+
   const onCopyAddress = () => {
-    void navigator.clipboard.writeText(d.address);
+    void navigator.clipboard.writeText('서울시 마포구 독막로9길 31 지하 1층');
   };
 
-  const cta =
-    variant === 'completed'
-      ? { className: 'res-detail__cta res-detail__cta--yellow', label: '리뷰쓰기' }
-      : { className: 'res-detail__cta res-detail__cta--muted', label: '예약취소' };
+  const startFormatted = formatDateTime(detail.startsAt);
+  const endDate = new Date(detail.endsAt);
+  const endTime = `${String(endDate.getHours()).padStart(2, '0')}:${String(endDate.getMinutes()).padStart(2, '0')}`;
+  const durationMs = endDate.getTime() - new Date(detail.startsAt).getTime();
+  const durationHours = durationMs / (1000 * 60 * 60);
+
+  const cta = isCompleted
+    ? { className: 'res-detail__cta res-detail__cta--yellow', label: '리뷰쓰기' }
+    : { className: 'res-detail__cta res-detail__cta--muted', label: '예약취소' };
 
   return (
     <main className="res-detail-page">
@@ -158,22 +211,13 @@ export function ReservationDetailPage() {
             </button>
             <h1 className="res-detail__title">예약상세</h1>
             <span className={badge.className}>{badge.text}</span>
-            {variant === 'confirmed' ? (
-              <p className="res-detail__headline">{d.confirmedHeadline}</p>
-            ) : null}
           </div>
 
           <div className="res-detail__hero">
             <div className="res-detail__hero-main">
-              <img
-                alt=""
-                className="res-detail__thumb"
-                src={d.thumbUrl}
-                loading="lazy"
-              />
               <div className="res-detail__hero-text">
-                <p className="res-detail__space-title">{d.spaceTitle}</p>
-                <p className="res-detail__address-line">{d.address}</p>
+                <p className="res-detail__space-title">{detail.roomName}</p>
+                <p className="res-detail__address-line">{detail.studioName}</p>
               </div>
             </div>
             <button
@@ -199,26 +243,20 @@ export function ReservationDetailPage() {
             <div className="res-detail__rows">
               <div className="res-detail__row">
                 <span className="res-detail__row-label">일자/시간</span>
-                <span className="res-detail__row-value">
-                  {d.schedule.dateShort}
-                </span>
+                <span className="res-detail__row-value">{startFormatted}</span>
               </div>
               <div className="res-detail__row">
                 <span className="res-detail__row-label">예약 시간</span>
-                <span className="res-detail__row-value">{d.schedule.range}</span>
-              </div>
-              <div className="res-detail__row">
-                <span className="res-detail__row-label">예약 인원</span>
                 <span className="res-detail__row-value">
-                  {d.schedule.peopleLine}
+                  {startFormatted} ~ {endTime} (총 {durationHours}시간)
                 </span>
               </div>
-              <div className="res-detail__row">
-                <span className="res-detail__row-label">상품 옵션</span>
-                <span className="res-detail__row-value">
-                  {d.schedule.options}
-                </span>
-              </div>
+              {detail.bookerNote ? (
+                <div className="res-detail__row">
+                  <span className="res-detail__row-label">추가 요청사항</span>
+                  <span className="res-detail__row-value">{detail.bookerNote}</span>
+                </div>
+              ) : null}
             </div>
           </div>
 
@@ -230,7 +268,7 @@ export function ReservationDetailPage() {
               </div>
             </div>
             <div className="res-detail__address-copy">
-              <p>{d.address}</p>
+              <p>서울시 마포구 독막로9길 31 지하 1층</p>
               <button
                 type="button"
                 className="res-detail__copy-btn"
@@ -251,17 +289,15 @@ export function ReservationDetailPage() {
                 <div className="res-detail__rows">
                   <div className="res-detail__row">
                     <span className="res-detail__row-label">예약번호</span>
-                    <span className="res-detail__row-value">
-                      {d.booker.reservationNo}
-                    </span>
+                    <span className="res-detail__row-value">{detail.bookingId}</span>
                   </div>
                   <div className="res-detail__row">
                     <span className="res-detail__row-label">이름</span>
-                    <span className="res-detail__row-value">{d.booker.name}</span>
+                    <span className="res-detail__row-value">{detail.bookerName}</span>
                   </div>
                   <div className="res-detail__row">
                     <span className="res-detail__row-label">연락처</span>
-                    <span className="res-detail__row-value">{d.booker.phone}</span>
+                    <span className="res-detail__row-value">{detail.bookerPhone}</span>
                   </div>
                 </div>
               </div>
@@ -273,19 +309,7 @@ export function ReservationDetailPage() {
                 <div className="res-detail__rows">
                   <div className="res-detail__row">
                     <span className="res-detail__row-label">가격</span>
-                    <span className="res-detail__row-value">{d.priceLine}</span>
-                  </div>
-                  <div className="res-detail__row">
-                    <span className="res-detail__row-label">사용 쿠폰</span>
-                    <span className="res-detail__row-value">
-                      {d.payment.couponLine}
-                    </span>
-                  </div>
-                  <div className="res-detail__row">
-                    <span className="res-detail__row-label">사용 포인트</span>
-                    <span className="res-detail__row-value">
-                      {d.payment.pointLine}
-                    </span>
+                    <span className="res-detail__row-value">{formatPrice(detail.totalPrice)}</span>
                   </div>
                 </div>
               </div>
@@ -294,49 +318,21 @@ export function ReservationDetailPage() {
             <section>
               <div className="res-detail__pay-header">
                 <h2>결제 금액</h2>
-                <p className="res-detail__pay-total">{d.priceLine}</p>
+                <p className="res-detail__pay-total">{formatPrice(detail.totalPrice)}</p>
               </div>
               <div className="res-detail__subcard">
                 <div className="res-detail__pay-split">
-                  <div className="res-detail__pay-split-top">
-                    <div className="res-detail__row">
-                      <span className="res-detail__row-label">공간 금액</span>
-                      <span className="res-detail__row-value">
-                        {d.payment.space}
-                      </span>
-                    </div>
-                    <div className="res-detail__row">
-                      <span className="res-detail__row-label">옵션 금액</span>
-                      <span className="res-detail__row-value">
-                        {d.payment.option}
-                      </span>
-                    </div>
-                    <div className="res-detail__row">
-                      <span className="res-detail__row-label">포인트</span>
-                      <span className="res-detail__row-value">
-                        {d.payment.pointLine}
-                      </span>
-                    </div>
-                    <div className="res-detail__row">
-                      <span className="res-detail__row-label">쿠폰</span>
-                      <span className="res-detail__row-value">
-                        {d.payment.couponLine}
-                      </span>
-                    </div>
-                  </div>
                   <div className="res-detail__pay-split-bottom">
                     <div className="res-detail__row">
                       <span className="res-detail__row-label">실 결제 금액</span>
-                      <span className="res-detail__row-value">
-                        {d.payment.paid}
-                      </span>
+                      <span className="res-detail__row-value">{formatPrice(detail.totalPrice)}</span>
                     </div>
-                    <div className="res-detail__row">
-                      <span className="res-detail__row-label">결제 수단</span>
-                      <span className="res-detail__row-value">
-                        {d.payment.method}
-                      </span>
-                    </div>
+                    {detail.paymentMethod ? (
+                      <div className="res-detail__row">
+                        <span className="res-detail__row-label">결제 수단</span>
+                        <span className="res-detail__row-value">{detail.paymentMethod}</span>
+                      </div>
+                    ) : null}
                   </div>
                 </div>
               </div>
@@ -348,7 +344,7 @@ export function ReservationDetailPage() {
               type="button"
               className={cta.className}
               onClick={() => {
-                if (variant === 'completed') {
+                if (isCompleted) {
                   navigate('/review/write');
                   return;
                 }
@@ -392,8 +388,12 @@ export function ReservationDetailPage() {
         noticeRows={RESERVATION_CANCEL_NOTICE_DEFAULT}
         onClose={() => setCancelModalOpen(false)}
         onConfirm={() => {
+          if (bookingId) {
+            cancelBooking(Number(bookingId), { cancelReason: '고객 취소' })
+              .then(() => navigate('/my-reservations'))
+              .catch(() => undefined);
+          }
           setCancelModalOpen(false);
-          navigate('/my-reservations');
         }}
         open={cancelModalOpen}
       />

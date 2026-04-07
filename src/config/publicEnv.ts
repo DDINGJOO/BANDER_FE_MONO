@@ -56,6 +56,13 @@ export function getCdnBaseUrl(): string {
   return optionalEnv('REACT_APP_CDN_BASE_URL') ?? '';
 }
 
+/* --- Mock 모드 (npm run start:mock) --- */
+
+/** REACT_APP_USE_MOCK=1 이면 mock 데이터 사용, 아니면 실제 API */
+export function isMockMode(): boolean {
+  return process.env.REACT_APP_USE_MOCK === '1';
+}
+
 /* --- 로컬 개발 로그인 백도어 (`devLogin.ts`) --- */
 
 export function isDevLoginBypassExplicitlyOff(): boolean {

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { fetchVendorDetail, type VendorDetailDto } from '../api/spaces';
+import { isMockMode } from '../config/publicEnv';
 import { getVendorDetail as getMockVendorDetail, type VendorDetailModel } from '../data/vendorDetail';
 import type { VendorBasicInfoRow } from '../types/vendorBasicInfo';
 
@@ -75,6 +76,8 @@ function mapApiToVendorModel(dto: VendorDetailDto): VendorDetailModel {
 export function useVendorDetail(slug: string | undefined) {
   const [vendor, setVendor] = useState<VendorDetailModel | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+  const mock = isMockMode();
 
   useEffect(() => {
     if (!slug) {
@@ -83,8 +86,15 @@ export function useVendorDetail(slug: string | undefined) {
       return;
     }
 
+    if (mock) {
+      setVendor(getMockVendorDetail(slug));
+      setLoading(false);
+      return;
+    }
+
     let cancelled = false;
     setLoading(true);
+    setError(null);
 
     fetchVendorDetail(slug)
       .then((dto) => {
@@ -92,10 +102,9 @@ export function useVendorDetail(slug: string | undefined) {
           setVendor(mapApiToVendorModel(dto));
         }
       })
-      .catch(() => {
-        // API 실패 시 mock fallback
+      .catch((err: unknown) => {
         if (!cancelled) {
-          setVendor(getMockVendorDetail(slug));
+          setError(err instanceof Error ? err : new Error('Failed to load vendor'));
         }
       })
       .finally(() => {
@@ -107,7 +116,7 @@ export function useVendorDetail(slug: string | undefined) {
     return () => {
       cancelled = true;
     };
-  }, [slug]);
+  }, [slug, mock]);
 
-  return { vendor, loading };
+  return { vendor, loading, error };
 }

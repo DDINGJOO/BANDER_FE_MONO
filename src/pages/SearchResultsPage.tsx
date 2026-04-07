@@ -5,36 +5,55 @@ import { HomeHeader } from '../components/home/HomeHeader';
 import { HomeSpaceExplorer } from '../components/home/HomeSpaceExplorer';
 import { ChevronIcon } from '../components/shared/Icons';
 import { HEADER_SEARCH_KEYWORD_SUGGESTIONS } from '../config/searchSuggestions';
-import {
-  COMMUNITY_FEED_ITEMS,
-  COMMUNITY_SORT_OPTIONS,
-} from '../data/communityFeed';
+import { COMMUNITY_SORT_OPTIONS, COMMUNITY_FEED_ITEMS } from '../data/communityFeed';
 import { loadAuthSession } from '../data/authSession';
+import {
+  searchRooms,
+  searchVendors,
+  searchPosts,
+  type VendorSearchItem,
+  type PostSearchItem,
+} from '../api/search';
+import { isMockMode } from '../config/publicEnv';
 
-const SEARCH_VENDOR_RESULTS = [
+const MOCK_VENDOR_RESULTS = [
   { name: '유스뮤직', slug: 'youth-music', spaces: '15개의 공간', tone: 'linear-gradient(135deg, #7f1315, #e26447)' },
-  {
-    name: '방구석 뮤지션의 합주실',
-    slug: 'banggu-musician',
-    spaces: '15개의 공간',
-    tone: 'linear-gradient(135deg, #6b4d24, #c5a071)',
-  },
+  { name: '방구석 뮤지션의 합주실', slug: 'banggu-musician', spaces: '15개의 공간', tone: 'linear-gradient(135deg, #6b4d24, #c5a071)' },
   { name: '챗츠뮤직', slug: 'chats-music', spaces: '15개의 공간', tone: 'linear-gradient(135deg, #bcbcbc, #ececec)' },
 ];
 
 type SearchTab = 'community' | 'space' | 'vendor';
 
-const SEARCH_SORT_OPTIONS: Record<SearchTab, string[]> = {
-  community: [...COMMUNITY_SORT_OPTIONS],
-  space: ['가까운순', '정확도순', '예약 많은 순', '가격 높은 순', '가격 낮은 순'],
-  vendor: ['가까운순', '정확도순', '예약 많은 순', '가격 높은 순', '가격 낮은 순'],
+const SPACE_SORT_OPTIONS = ['LATEST', 'POPULARITY', 'PRICE_ASC', 'PRICE_DESC'] as const;
+const SPACE_SORT_LABELS: Record<string, string> = {
+  LATEST: '최신순',
+  POPULARITY: '예약 많은 순',
+  PRICE_ASC: '가격 낮은 순',
+  PRICE_DESC: '가격 높은 순',
+};
+
+const VENDOR_SORT_OPTIONS = ['relevance'] as const;
+const VENDOR_SORT_LABELS: Record<string, string> = {
+  relevance: '정확도순',
+};
+
+const SEARCH_SORT_OPTIONS: Record<SearchTab, readonly string[]> = {
+  community: COMMUNITY_SORT_OPTIONS,
+  space: SPACE_SORT_OPTIONS,
+  vendor: VENDOR_SORT_OPTIONS,
 };
 
 const SEARCH_SORT_DEFAULT: Record<SearchTab, string> = {
   community: '최신순',
-  space: '가까운순',
-  vendor: '가까운순',
+  space: 'LATEST',
+  vendor: 'relevance',
 };
+
+function sortLabel(tab: SearchTab, value: string): string {
+  if (tab === 'space') return SPACE_SORT_LABELS[value] ?? value;
+  if (tab === 'vendor') return VENDOR_SORT_LABELS[value] ?? value;
+  return value;
+}
 
 export function SearchResultsPage() {
   const navigate = useNavigate();
@@ -49,6 +68,16 @@ export function SearchResultsPage() {
   const headerSearchRef = useRef<HTMLDivElement | null>(null);
   const sortRef = useRef<HTMLDivElement | null>(null);
 
+  const [roomsTotalCount, setRoomsTotalCount] = useState<number | null>(null);
+
+  const [vendors, setVendors] = useState<VendorSearchItem[]>([]);
+  const [vendorsLoading, setVendorsLoading] = useState(false);
+  const [vendorsTotalCount, setVendorsTotalCount] = useState<number | null>(null);
+
+  const [posts, setPosts] = useState<PostSearchItem[]>([]);
+  const [postsLoading, setPostsLoading] = useState(false);
+  const [postsTotalCount, setPostsTotalCount] = useState<number | null>(null);
+
   useEffect(() => {
     setHeaderSearchQuery(query);
   }, [query]);
@@ -57,6 +86,35 @@ export function SearchResultsPage() {
     setSortBy(SEARCH_SORT_DEFAULT[activeTab]);
     setSortOpen(false);
   }, [activeTab]);
+
+  useEffect(() => {
+    if (isMockMode()) return;
+
+    if (activeTab === 'space') {
+      searchRooms({ q: query, sort: sortBy, size: 20 })
+        .then((res) => setRoomsTotalCount(res.totalElements));
+    }
+
+    if (activeTab === 'vendor') {
+      setVendorsLoading(true);
+      searchVendors({ q: query, sort: sortBy, size: 20 })
+        .then((res) => {
+          setVendors(res.items);
+          setVendorsTotalCount(res.totalCount);
+        })
+        .finally(() => setVendorsLoading(false));
+    }
+
+    if (activeTab === 'community') {
+      setPostsLoading(true);
+      searchPosts({ q: query, size: 20 })
+        .then((res) => {
+          setPosts(res.items);
+          setPostsTotalCount(res.totalCount);
+        })
+        .finally(() => setPostsLoading(false));
+    }
+  }, [query, activeTab, sortBy]);
 
   useEffect(() => {
     const handlePointerDown = (event: MouseEvent) => {
@@ -90,12 +148,23 @@ export function SearchResultsPage() {
     navigate(`/search?q=${encodeURIComponent(normalizedValue)}`);
   };
 
-  const resultCountLabel =
-    activeTab === 'space'
+  const resultCountLabel = isMockMode()
+    ? activeTab === 'space'
       ? '4개의 공간'
       : activeTab === 'vendor'
         ? '3개의 업체'
-        : `${COMMUNITY_FEED_ITEMS.length}개의 게시글`;
+        : COMMUNITY_FEED_ITEMS.length + '개의 글'
+    : activeTab === 'space'
+      ? roomsTotalCount !== null
+        ? `${roomsTotalCount}개의 공간`
+        : '공간'
+      : activeTab === 'vendor'
+        ? vendorsTotalCount !== null
+          ? `${vendorsTotalCount}개의 업체`
+          : '업체'
+        : postsTotalCount !== null
+          ? `${postsTotalCount}개의 게시글`
+          : '게시글';
 
   return (
     <main className="search-results-page">
@@ -123,7 +192,7 @@ export function SearchResultsPage() {
       />
 
       <section className="search-results__inner">
-        <h1 className="search-results__title">‘{query}’ 검색 결과</h1>
+        <h1 className="search-results__title">'{query}' 검색 결과</h1>
 
         <div className="search-results__tabs">
           <button
@@ -157,7 +226,7 @@ export function SearchResultsPage() {
               onClick={() => setSortOpen((current) => !current)}
               type="button"
             >
-              <span>{sortBy}</span>
+              <span>{sortLabel(activeTab, sortBy)}</span>
               <ChevronIcon />
             </button>
 
@@ -173,7 +242,7 @@ export function SearchResultsPage() {
                     }}
                     type="button"
                   >
-                    <span>{option}</span>
+                    <span>{sortLabel(activeTab, option)}</span>
                     {sortBy === option ? <span className="search-results__sort-check">✓</span> : null}
                   </button>
                 ))}
@@ -183,44 +252,76 @@ export function SearchResultsPage() {
         </div>
 
         {activeTab === 'space' ? (
-          <HomeSpaceExplorer resultLimit={4} variant="section" />
+          <HomeSpaceExplorer resultLimit={20} variant="section" />
         ) : null}
 
         {activeTab === 'vendor' ? (
-          <div className="search-results__vendor-grid">
-            {SEARCH_VENDOR_RESULTS.map((vendor) => (
-              <Link className="search-results__vendor-card search-results__vendor-card--link" key={vendor.slug} to={`/vendors/${vendor.slug}`}>
-                <div className="search-results__vendor-avatar" style={{ background: vendor.tone }} />
-                <div className="search-results__vendor-body">
-                  <h2 className="search-results__vendor-name">{vendor.name}</h2>
-                  <p className="search-results__vendor-meta">{vendor.spaces}</p>
-                </div>
-              </Link>
-            ))}
-          </div>
+          vendorsLoading ? (
+            <div className="search-results__loading">로딩 중...</div>
+          ) : isMockMode() ? (
+            <div className="search-results__vendor-grid">
+              {MOCK_VENDOR_RESULTS.map((vendor) => (
+                <Link className="search-results__vendor-card search-results__vendor-card--link" key={vendor.slug} to={`/vendors/${vendor.slug}`}>
+                  <div
+                    className="search-results__vendor-avatar"
+                    style={{ background: vendor.tone }}
+                  />
+                  <div className="search-results__vendor-body">
+                    <h2 className="search-results__vendor-name">{vendor.name}</h2>
+                    <p className="search-results__vendor-meta">{vendor.spaces}</p>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          ) : (
+            <div className="search-results__vendor-grid">
+              {vendors.map((vendor) => (
+                <Link className="search-results__vendor-card search-results__vendor-card--link" key={vendor.id} to={`/vendors/${vendor.id}`}>
+                  <div
+                    className="search-results__vendor-avatar"
+                    style={vendor.thumbnailUrl ? { backgroundImage: `url(${vendor.thumbnailUrl})`, backgroundSize: 'cover' } : undefined}
+                  />
+                  <div className="search-results__vendor-body">
+                    <h2 className="search-results__vendor-name">{vendor.name}</h2>
+                    <p className="search-results__vendor-meta">{vendor.address}</p>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          )
         ) : null}
 
         {activeTab === 'community' ? (
-          <div className="search-results__community-list">
-            {COMMUNITY_FEED_ITEMS.map((item) => (
-              <article className="search-results__community-card" key={item.title}>
-                <div className="search-results__community-copy">
-                  <span className="search-results__community-category">{item.category}</span>
-                  <h2 className="search-results__community-title">{item.title}</h2>
-                  <p className="search-results__community-excerpt">{item.excerpt}</p>
-                  <div className="search-results__community-meta">
-                    <span>neowmeow</span>
-                    <span>방금</span>
-                    <span>♥ {item.likes}</span>
-                    <span>• 2</span>
+          postsLoading ? (
+            <div className="search-results__loading">로딩 중...</div>
+          ) : isMockMode() ? (
+            <div className="search-results__community-list">
+              {COMMUNITY_FEED_ITEMS.map((post, index) => (
+                <article className="search-results__community-card" key={index}>
+                  <div className="search-results__community-copy">
+                    <h2 className="search-results__community-title">{post.title}</h2>
+                    <div className="search-results__community-meta">
+                      <span>{post.category}</span>
+                    </div>
                   </div>
-                </div>
-                {item.thumbnail ? (
-                  <div className="search-results__community-thumb" style={{ background: item.thumbnail }} />
-                ) : null}
-              </article>
-            ))}
-          </div>
+                </article>
+              ))}
+            </div>
+          ) : (
+            <div className="search-results__community-list">
+              {posts.map((post) => (
+                <article className="search-results__community-card" key={post.id}>
+                  <div className="search-results__community-copy">
+                    <h2 className="search-results__community-title">{post.title}</h2>
+                    <div className="search-results__community-meta">
+                      <span>{post.authorUserId}</span>
+                      <span>{post.createdAt}</span>
+                    </div>
+                  </div>
+                </article>
+              ))}
+            </div>
+          )
         ) : null}
       </section>
 

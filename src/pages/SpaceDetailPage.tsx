@@ -2,10 +2,10 @@ import React, { useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { HomeFooter } from '../components/home/HomeFooter';
 import { HomeHeader } from '../components/home/HomeHeader';
-import { HomeSpaceCard } from '../components/home/HomeSpaceCard';
 import { KakaoMapView } from '../components/map/KakaoMapView';
 import { BookmarkIcon, ChevronIcon, HeaderChatIcon, StarIcon } from '../components/shared/Icons';
 import { loadAuthSession } from '../data/authSession';
+import { HomeSpaceCard } from '../components/home/HomeSpaceCard';
 import { ROOM_DETAIL_INFO_ROWS, ROOM_DETAIL_RECOMMENDATIONS } from '../data/spaceDetail';
 import { SpaceSummaryFeatureIcon } from '../components/space/SpaceSummaryFeatureIcon';
 import { BanderUsagePolicyModal } from '../components/space/BanderUsagePolicyModal';
@@ -83,7 +83,7 @@ function DetailPolicyBlock({ body, title }: { body: string; title: string }) {
 export function SpaceDetailPage() {
   const navigate = useNavigate();
   const { slug: slugParam } = useParams();
-  const { detail, slug, vendorSlug } = useSpaceDetail(slugParam);
+  const { detail, slug, vendorSlug, loading } = useSpaceDetail(slugParam);
   const authSession = loadAuthSession();
   const isAuthenticated = Boolean(authSession);
   const [phoneVerified, setPhoneVerified] = useState(authSession?.phoneVerified === true);
@@ -123,6 +123,16 @@ export function SpaceDetailPage() {
   const selectedBookingDateLabel = selectedBookingDay
     ? `${new Date(2025, 7, selectedBookingDay).getFullYear()}년 8월 ${selectedBookingDay}일 (${['일', '월', '화', '수', '목', '금', '토'][new Date(2025, 7, selectedBookingDay).getDay()]})`
     : '날짜를 선택해주세요';
+
+  if (loading || !detail) {
+    return (
+      <main className="space-detail-page">
+        <HomeHeader authenticated={isAuthenticated} onGuestCta={() => navigate('/login')} variant="icon" />
+        <section className="space-detail__inner" />
+        <HomeFooter />
+      </main>
+    );
+  }
 
   return (
     <main className="space-detail-page">
@@ -338,14 +348,24 @@ export function SpaceDetailPage() {
                   </div>
                   <div className="space-detail__info-card">
                     <div className="space-detail__info-list">
-                      {ROOM_DETAIL_INFO_ROWS.map((row) => (
-                        <div className="space-detail__info-row" key={row.label}>
-                          <span className="space-detail__info-label">{row.label}</span>
-                          <span
-                            className={`space-detail__info-value ${row.label === '주소' ? 'space-detail__info-value--multiline' : ''}`}
-                          >
-                            {row.value}
+                      {detail.address ? (
+                        <div className="space-detail__info-row" key="address">
+                          <span className="space-detail__info-label">주소</span>
+                          <span className="space-detail__info-value space-detail__info-value--multiline">
+                            {detail.address}
                           </span>
+                        </div>
+                      ) : null}
+                      {detail.operatingSummary ? (
+                        <div className="space-detail__info-row" key="hours">
+                          <span className="space-detail__info-label">영업시간</span>
+                          <span className="space-detail__info-value">{detail.operatingSummary}</span>
+                        </div>
+                      ) : null}
+                      {detail.pricingLines.map((line) => (
+                        <div className="space-detail__info-row" key={`pricing-${line.label}`}>
+                          <span className="space-detail__info-label">{line.label}</span>
+                          <span className="space-detail__info-value">{line.value}</span>
                         </div>
                       ))}
                     </div>

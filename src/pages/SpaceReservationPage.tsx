@@ -8,6 +8,13 @@ import { loadAuthSession } from '../data/authSession';
 import { COUPON_ITEMS } from '../data/couponDownloadModal';
 import { HOME_SPACE_CARDS } from '../data/home';
 import { useCouponDownloads } from '../hooks/useCouponDownloads';
+import {
+  getSpaceAvailability,
+  createBooking,
+  confirmPayment,
+  type SpaceAvailabilitySlot,
+} from '../api/bookings';
+import { isMockMode } from '../config/publicEnv';
 
 const TOSS_PAY_IMAGE =
   'https://www.figma.com/api/mcp/asset/2eae63a4-d92c-4d34-9e5c-985a8b6f3ade';
@@ -22,27 +29,6 @@ function ReservationCalendarIcon() {
     </svg>
   );
 }
-
-const TIME_COLUMNS = Array.from({ length: 24 }, (_, hour) => {
-  const firstLabel = `${String(hour).padStart(2, '0')}:00`;
-  const secondLabel = `${String(hour).padStart(2, '0')}:30`;
-
-  return {
-    hour,
-    slots: [
-      {
-        available: !(hour < 6 || hour === 17),
-        label: firstLabel,
-        price: hour >= 18 ? 8000 : 5000,
-      },
-      {
-        available: !(hour < 6 || (hour === 18 && secondLabel === '18:30')),
-        label: secondLabel,
-        price: hour >= 18 ? 8000 : 5000,
-      },
-    ],
-  };
-});
 
 const RESERVATION_OPTION_ITEMS = [
   {
@@ -95,6 +81,10 @@ function formatReservationDate(dateParam: string | null) {
   return `${String(parsed.getFullYear()).slice(2)}.${String(parsed.getMonth() + 1).padStart(2, '0')}.${String(parsed.getDate()).padStart(2, '0')} (${weekday})`;
 }
 
+function slotLabelToIso(date: string, label: string): string {
+  return `${date}T${label}:00`;
+}
+
 export function SpaceReservationPage() {
   const navigate = useNavigate();
   const { slug } = useParams();
@@ -122,8 +112,11 @@ export function SpaceReservationPage() {
     people: 0,
     piano: 0,
   });
+  const [availabilitySlots, setAvailabilitySlots] = useState<SpaceAvailabilitySlot[]>([]);
   const timelineScrollRef = useRef<HTMLDivElement | null>(null);
   const scrollDragStateRef = useRef({ active: false, scrollLeft: 0, startX: 0 });
+
+  const dateParam = searchParams.get('date') ?? '2025-08-20';
 
   const updateTimelineNavState = () => {
     if (!timelineScrollRef.current) {
@@ -172,13 +165,50 @@ export function SpaceReservationPage() {
     };
   }, []);
 
+  useEffect(() => {
+    if (isMockMode()) return;
+    if (!slug) return;
+    getSpaceAvailability(slug, dateParam)
+      .then((res) => setAvailabilitySlots(res.slots))
+      .catch(() => setAvailabilitySlots([]));
+  }, [slug, dateParam]);
+
+  const timeColumns = useMemo(() => {
+    return Array.from({ length: 24 }, (_, hour) => {
+      const firstLabel = `${String(hour).padStart(2, '0')}:00`;
+      const secondLabel = `${String(hour).padStart(2, '0')}:30`;
+
+      const findSlot = (label: string) =>
+        availabilitySlots.find((s) => s.startTime.endsWith(`T${label}:00`) || s.startTime.slice(11, 16) === label);
+
+      const firstApiSlot = findSlot(firstLabel);
+      const secondApiSlot = findSlot(secondLabel);
+
+      return {
+        hour,
+        slots: [
+          {
+            available: firstApiSlot ? firstApiSlot.available : !(hour < 6 || hour === 17),
+            label: firstLabel,
+            price: firstApiSlot ? firstApiSlot.pricePerSlot : (hour >= 18 ? 8000 : 5000),
+          },
+          {
+            available: secondApiSlot ? secondApiSlot.available : !(hour < 6 || (hour === 18 && secondLabel === '18:30')),
+            label: secondLabel,
+            price: secondApiSlot ? secondApiSlot.pricePerSlot : (hour >= 18 ? 8000 : 5000),
+          },
+        ],
+      };
+    });
+  }, [availabilitySlots]);
+
   const spaceCard = useMemo(
     () => HOME_SPACE_CARDS.find((item) => item.detailPath === `/spaces/${slug}`) ?? HOME_SPACE_CARDS[1],
     [slug]
   );
 
-  const reservationDateLabel = formatReservationDate(searchParams.get('date'));
-  const linearSlots = TIME_COLUMNS.flatMap((column) => column.slots);
+  const reservationDateLabel = formatReservationDate(dateParam);
+  const linearSlots = timeColumns.flatMap((column) => column.slots);
   const selectedSlotDetails = linearSlots.filter((slot) => selectedTimes.includes(slot.label));
   const basePrice = selectedSlotDetails.reduce((sum, slot) => sum + slot.price, 0) || 10000;
   const optionTotal = RESERVATION_OPTION_ITEMS.reduce(
@@ -312,6 +342,32 @@ export function SpaceReservationPage() {
     }, 220);
   };
 
+  const handlePaymentSubmit = async () => {
+    if (!canSubmitPayment || selectedTimes.length === 0) return;
+
+    if (isMockMode()) {
+      setPaymentResult('success');
+      return;
+    }
+
+    const sorted = [...selectedTimes].sort();
+    const startsAt = slotLabelToIso(dateParam, sorted[0]);
+    const last = sorted[sorted.length - 1];
+    const [hour, minute] = last.split(':').map(Number);
+    const nextMinute = minute + 30;
+    const endHour = nextMinute >= 60 ? hour + 1 : hour;
+    const endMinute = nextMinute >= 60 ? 0 : nextMinute;
+    const endsAt = slotLabelToIso(dateParam, `${String(endHour).padStart(2, '0')}:${String(endMinute).padStart(2, '0')}`);
+
+    try {
+      const booking = await createBooking({ roomId: 1, startsAt, endsAt });
+      await confirmPayment(booking.bookingId, { paymentId: `toss-${Date.now()}` });
+      setPaymentResult('success');
+    } catch {
+      setPaymentResult('failed');
+    }
+  };
+
   return (
     <main className="space-reservation-page">
       <HomeHeader authenticated={isAuthenticated} onGuestCta={() => navigate('/login')} variant="icon" />
@@ -391,7 +447,7 @@ export function SpaceReservationPage() {
               onScroll={updateTimelineNavState}
               ref={timelineScrollRef}
             >
-              {TIME_COLUMNS.map((column) => (
+              {timeColumns.map((column) => (
                 <div className="space-reservation__timeline-column" key={column.hour}>
                   <div className="space-reservation__timeline-hour">
                     {String(column.hour).padStart(2, '0')}:00
@@ -564,7 +620,7 @@ export function SpaceReservationPage() {
           <button
             className="space-reservation__submit"
             disabled={!canSubmitPayment}
-            onClick={() => setPaymentResult('success')}
+            onClick={() => { void handlePaymentSubmit(); }}
             type="button"
           >
             총 {totalPrice.toLocaleString()}원 결제하기
@@ -729,7 +785,7 @@ export function SpaceReservationPage() {
                   <button onClick={() => navigate('/')} type="button">홈으로</button>
                   <button
                     className="space-reservation__result-primary"
-                    onClick={() => navigate(paymentResult === 'success' ? '/search?q=합주' : `/spaces/${slug}/reserve?date=${searchParams.get('date') ?? '2025-08-20'}`)}
+                    onClick={() => navigate(paymentResult === 'success' ? '/search?q=합주' : `/spaces/${slug}/reserve?date=${dateParam}`)}
                     type="button"
                   >
                     {paymentResult === 'success' ? '예약현황 이동' : '다시 예약하기'}
