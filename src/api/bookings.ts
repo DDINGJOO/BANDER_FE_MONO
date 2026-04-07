@@ -16,6 +16,14 @@ export type ConfirmPaymentRequest = {
   paymentId: string;
 };
 
+export type BookingCommandResponse = {
+  bookingId: number;
+  status: string;
+  expiresAt: string | null;
+  totalPrice: number;
+  cancelledAt: string | null;
+};
+
 export type BookingDetailResponse = {
   bookingId: number;
   roomId: number;
@@ -34,23 +42,22 @@ export type BookingDetailResponse = {
 };
 
 export type MyBookingItem = {
-  bookingId: number;
-  roomName: string;
+  bookingId: string;
+  studioId: string;
   studioName: string;
-  studioSlug: string;
-  thumbnailUrl: string | null;
+  date: string;
+  startTime: string;
+  endTime: string;
   status: string;
-  startsAt: string;
-  endsAt: string;
-  totalPrice: number;
+  totalPriceWon: number;
   createdAt: string;
 };
 
 export type SpaceAvailabilitySlot = {
   startTime: string;
   endTime: string;
-  available: boolean;
-  pricePerSlot: number;
+  bookable: boolean;
+  priceWon: number;
 };
 
 export type SpaceAvailabilityResponse = {
@@ -76,23 +83,23 @@ export type CursorPageResponse<T> = {
 // --- Functions ---
 
 export function createBooking(req: CreateBookingRequest) {
-  return postJson<BookingDetailResponse>('/api/v1/bookings', req);
+  return postJson<BookingCommandResponse>('/api/v1/bookings', req);
 }
 
-export function cancelBooking(bookingId: number, req: CancelBookingRequest) {
-  return postJson<BookingDetailResponse>(`/api/v1/bookings/${bookingId}/cancel`, req);
+export function cancelBooking(bookingId: number | string, req: CancelBookingRequest) {
+  return postJson<BookingCommandResponse>(`/api/v1/bookings/${bookingId}/cancel`, req);
 }
 
-export function confirmPayment(bookingId: number, req: ConfirmPaymentRequest) {
-  return postJson<BookingDetailResponse>(`/api/v1/bookings/${bookingId}/confirm-payment`, req);
+export function confirmPayment(bookingId: number | string, req: ConfirmPaymentRequest) {
+  return postJson<BookingCommandResponse>(`/api/v1/bookings/${bookingId}/confirm-payment`, req);
 }
 
-export function getBookingDetail(bookingId: number) {
+export function getBookingDetail(bookingId: number | string) {
   return getJson<BookingDetailResponse>(`/api/v1/bookings/${bookingId}`);
 }
 
 export function getMyBookings(params: { tab: string; cursor?: string; size?: number }) {
-  const query = new URLSearchParams({ tab: params.tab });
+  const query = new URLSearchParams({ status: params.tab });
   if (params.cursor) query.set('cursor', params.cursor);
   if (params.size != null) query.set('size', String(params.size));
   return getJson<CursorPageResponse<MyBookingItem>>(`/api/v1/users/me/bookings?${query.toString()}`);

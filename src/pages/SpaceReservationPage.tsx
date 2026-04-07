@@ -117,6 +117,8 @@ export function SpaceReservationPage() {
   const scrollDragStateRef = useRef({ active: false, scrollLeft: 0, startX: 0 });
 
   const dateParam = searchParams.get('date') ?? '2025-08-20';
+  const roomIdParam = searchParams.get('roomId');
+  const roomId = roomIdParam ? Number(roomIdParam) : null;
 
   const updateTimelineNavState = () => {
     if (!timelineScrollRef.current) {
@@ -167,11 +169,11 @@ export function SpaceReservationPage() {
 
   useEffect(() => {
     if (isMockMode()) return;
-    if (!slug) return;
-    getSpaceAvailability(slug, dateParam)
+    if (!roomId) return;
+    getSpaceAvailability(roomId, dateParam)
       .then((res) => setAvailabilitySlots(res.slots))
       .catch(() => setAvailabilitySlots([]));
-  }, [slug, dateParam]);
+  }, [roomId, dateParam]);
 
   const timeColumns = useMemo(() => {
     return Array.from({ length: 24 }, (_, hour) => {
@@ -179,7 +181,7 @@ export function SpaceReservationPage() {
       const secondLabel = `${String(hour).padStart(2, '0')}:30`;
 
       const findSlot = (label: string) =>
-        availabilitySlots.find((s) => s.startTime.endsWith(`T${label}:00`) || s.startTime.slice(11, 16) === label);
+        availabilitySlots.find((s) => s.startTime.slice(0, 5) === label);
 
       const firstApiSlot = findSlot(firstLabel);
       const secondApiSlot = findSlot(secondLabel);
@@ -188,14 +190,14 @@ export function SpaceReservationPage() {
         hour,
         slots: [
           {
-            available: firstApiSlot ? firstApiSlot.available : !(hour < 6 || hour === 17),
+            available: firstApiSlot ? firstApiSlot.bookable : !(hour < 6 || hour === 17),
             label: firstLabel,
-            price: firstApiSlot ? firstApiSlot.pricePerSlot : (hour >= 18 ? 8000 : 5000),
+            price: firstApiSlot ? firstApiSlot.priceWon : (hour >= 18 ? 8000 : 5000),
           },
           {
-            available: secondApiSlot ? secondApiSlot.available : !(hour < 6 || (hour === 18 && secondLabel === '18:30')),
+            available: secondApiSlot ? secondApiSlot.bookable : !(hour < 6 || (hour === 18 && secondLabel === '18:30')),
             label: secondLabel,
-            price: secondApiSlot ? secondApiSlot.pricePerSlot : (hour >= 18 ? 8000 : 5000),
+            price: secondApiSlot ? secondApiSlot.priceWon : (hour >= 18 ? 8000 : 5000),
           },
         ],
       };
@@ -360,7 +362,7 @@ export function SpaceReservationPage() {
     const endsAt = slotLabelToIso(dateParam, `${String(endHour).padStart(2, '0')}:${String(endMinute).padStart(2, '0')}`);
 
     try {
-      const booking = await createBooking({ roomId: 1, startsAt, endsAt });
+      const booking = await createBooking({ roomId: roomId ?? 0, startsAt, endsAt });
       await confirmPayment(booking.bookingId, { paymentId: `toss-${Date.now()}` });
       setPaymentResult('success');
     } catch {
@@ -785,7 +787,7 @@ export function SpaceReservationPage() {
                   <button onClick={() => navigate('/')} type="button">홈으로</button>
                   <button
                     className="space-reservation__result-primary"
-                    onClick={() => navigate(paymentResult === 'success' ? '/search?q=합주' : `/spaces/${slug}/reserve?date=${dateParam}`)}
+                    onClick={() => navigate(paymentResult === 'success' ? '/search?q=합주' : `/spaces/${slug}/reserve?date=${dateParam}${roomId ? `&roomId=${roomId}` : ''}`)}
                     type="button"
                   >
                     {paymentResult === 'success' ? '예약현황 이동' : '다시 예약하기'}

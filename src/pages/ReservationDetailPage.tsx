@@ -143,7 +143,7 @@ export function ReservationDetailPage() {
     }
 
     if (!bookingId) return;
-    getBookingDetail(Number(bookingId))
+    getBookingDetail(bookingId)
       .then(setDetail)
       .catch(() => undefined);
   }, [bookingId, searchParams]);
@@ -389,7 +389,7 @@ export function ReservationDetailPage() {
         onClose={() => setCancelModalOpen(false)}
         onConfirm={() => {
           if (bookingId) {
-            cancelBooking(Number(bookingId), { cancelReason: '고객 취소' })
+            cancelBooking(bookingId, { cancelReason: '고객 취소' })
               .then(() => navigate('/my-reservations'))
               .catch(() => undefined);
           }

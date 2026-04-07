@@ -608,7 +608,7 @@ export function SpaceDetailPage() {
                   onClick={() =>
                     selectedBookingDay &&
                     navigate(
-                      `/spaces/${slug}/reserve?date=2025-08-${String(selectedBookingDay).padStart(2, '0')}`
+                      `/spaces/${slug}/reserve?date=2025-08-${String(selectedBookingDay).padStart(2, '0')}${detail && 'roomId' in detail && detail.roomId ? `&roomId=${detail.roomId}` : ''}`
                     )
                   }
                   type="button"

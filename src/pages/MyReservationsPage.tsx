@@ -47,17 +47,18 @@ function statusPillClass(status: BookingStatus) {
   return 'my-res-card__pill--muted';
 }
 
-function formatDateRange(startsAt: string, endsAt: string) {
-  const start = new Date(startsAt);
-  const end = new Date(endsAt);
-  const weekday = ['일', '월', '화', '수', '목', '금', '토'][start.getDay()];
-  const dateStr = `${String(start.getFullYear()).slice(2)}.${String(start.getMonth() + 1).padStart(2, '0')}.${String(start.getDate()).padStart(2, '0')} (${weekday})`;
-  const startTime = `${String(start.getHours()).padStart(2, '0')}:${String(start.getMinutes()).padStart(2, '0')}`;
-  const endTime = `${String(end.getHours()).padStart(2, '0')}:${String(end.getMinutes()).padStart(2, '0')}`;
-  const durationMs = end.getTime() - start.getTime();
-  const durationHours = durationMs / (1000 * 60 * 60);
+function formatDateRange(date: string, startTime: string, endTime: string) {
+  const parsed = new Date(date);
+  const weekday = ['일', '월', '화', '수', '목', '금', '토'][parsed.getDay()];
+  const dateStr = `${String(parsed.getFullYear()).slice(2)}.${String(parsed.getMonth() + 1).padStart(2, '0')}.${String(parsed.getDate()).padStart(2, '0')} (${weekday})`;
+  const start = startTime.slice(0, 5);
+  const end = endTime.slice(0, 5);
+  const [startH, startM] = start.split(':').map(Number);
+  const [endH, endM] = end.split(':').map(Number);
+  const durationMinutes = (endH * 60 + endM) - (startH * 60 + startM);
+  const durationHours = durationMinutes / 60;
   return {
-    dateTimeLine: `${dateStr} ${startTime} ~ ${endTime} `,
+    dateTimeLine: `${dateStr} ${start} ~ ${end} `,
     durationLine: `총 ${durationHours}시간 이용`,
   };
 }
@@ -76,7 +77,7 @@ function actionButtonLabel(action: 'cancel' | 'writeReview' | 'viewMyReview' | '
 }
 
 type CardItem = {
-  bookingId: number;
+  bookingId: string;
   status: BookingStatus;
   action: 'cancel' | 'writeReview' | 'viewMyReview' | 'none';
   thumbUrl: string;
@@ -162,13 +163,13 @@ function ReservationCard({
 }
 
 function toCardItem(booking: MyBookingItem): CardItem {
-  const { dateTimeLine, durationLine } = formatDateRange(booking.startsAt, booking.endsAt);
+  const { dateTimeLine, durationLine } = formatDateRange(booking.date, booking.startTime, booking.endTime);
   return {
     bookingId: booking.bookingId,
     status: booking.status,
     action: bookingAction(booking.status),
-    thumbUrl: booking.thumbnailUrl ?? '',
-    spaceTitle: booking.roomName,
+    thumbUrl: '',
+    spaceTitle: booking.studioName,
     vendorName: booking.studioName,
     dateTimeLine,
     durationLine,
@@ -182,7 +183,7 @@ export function MyReservationsPage() {
   const [tab, setTab] = useState<MyReservationTab>('upcoming');
   const [bookings, setBookings] = useState<CardItem[]>([]);
   const [loading, setLoading] = useState(false);
-  const [selectedBookingId, setSelectedBookingId] = useState<number | null>(null);
+  const [selectedBookingId, setSelectedBookingId] = useState<string | null>(null);
   const [reviewViewOpen, setReviewViewOpen] = useState(false);
   const [cancelModalOpen, setCancelModalOpen] = useState(false);
   const [cancelToast, setCancelToast] = useState(false);
@@ -216,7 +217,7 @@ export function MyReservationsPage() {
   useEffect(() => {
     if (isMockMode()) {
       const mockItems = reservationsForTab(tab).map((r: MyReservation, index: number): CardItem => ({
-        bookingId: index,
+        bookingId: String(index),
         status: r.status === 'confirmed' ? 'CONFIRMED'
           : r.status === 'pending' ? 'PENDING'
           : r.status === 'completed' ? 'COMPLETED'
