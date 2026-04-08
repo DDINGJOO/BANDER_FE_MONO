@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { HomeFooter } from '../components/home/HomeFooter';
 import { HomeHeader } from '../components/home/HomeHeader';
 import { HEADER_SEARCH_KEYWORD_SUGGESTIONS } from '../config/searchSuggestions';
+import { isMockMode } from '../config/publicEnv';
 import { loadAuthSession } from '../data/authSession';
 import {
   APP_NOTIFICATIONS,
@@ -11,7 +12,38 @@ import {
   type NotificationIconKind,
   type NotificationTabFilter,
 } from '../data/notifications';
+import type { NotificationItem } from '../api/notifications';
+import { useNotifications } from '../hooks/useNotifications';
 import '../styles/notifications.css';
+
+function mapToAppNotification(item: NotificationItem): AppNotification {
+  const now = new Date();
+  const created = new Date(item.createdAt);
+  const diffMs = now.getTime() - created.getTime();
+  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+  let timeLabel: string;
+  if (diffHours < 1) timeLabel = '방금';
+  else if (diffHours < 24) timeLabel = `${diffHours}시간 전`;
+  else if (diffDays === 1) timeLabel = '어제';
+  else timeLabel = created.toLocaleDateString('ko-KR', { year: '2-digit', month: '2-digit', day: '2-digit' }).replace(/\. /g, '.').replace(/\.$/, '');
+
+  const isToday = diffHours < 24;
+
+  let icon: NotificationIconKind = 'bell';
+  if (item.type === 'PAYMENT_APPROVED' || item.type === 'PAYMENT_REFUNDED') icon = 'gift';
+
+  return {
+    id: String(item.notificationId),
+    section: isToday ? 'today' : 'week',
+    category: 'activity',
+    icon,
+    message: item.content,
+    timeLabel,
+    read: item.read,
+  };
+}
 
 /** Figma 6465:30579 — 헤더 알림과 동일 실루엣, 66px · Gray 4 톤 */
 function NotificationsEmptyBell() {
@@ -108,7 +140,7 @@ function NotificationGlyph({ kind }: { kind: NotificationIconKind }) {
   }
 }
 
-function NotificationCard({ item }: { item: AppNotification }) {
+function NotificationCard({ item, onRead }: { item: AppNotification; onRead?: (id: string) => void }) {
   const navigate = useNavigate();
   const hasThumb = Boolean(item.thumbUrl);
   const hasCta = Boolean(item.cta);
@@ -150,7 +182,10 @@ function NotificationCard({ item }: { item: AppNotification }) {
       type="button"
       className="notifications__card"
       role="listitem"
-      onClick={() => navigate('/')}
+      onClick={() => {
+        onRead?.(item.id);
+        navigate('/');
+      }}
     >
       {inner}
       {hasThumb ? (
@@ -176,17 +211,31 @@ export function NotificationsPage() {
   const headerSearchRef = useRef<HTMLDivElement | null>(null);
   const [tab, setTab] = useState<NotificationTabFilter>('all');
 
+  const { notifications: apiNotifications, unreadCount, loading, markAsRead, markAllAsRead } = useNotifications();
+
   const filteredSuggestions = HEADER_SEARCH_KEYWORD_SUGGESTIONS.filter((item) =>
     item.toLowerCase().includes(headerSearchQuery.toLowerCase()),
   );
 
+  const allDisplayItems: AppNotification[] = useMemo(() => {
+    if (isMockMode()) return [...APP_NOTIFICATIONS];
+    return apiNotifications.map(mapToAppNotification);
+  }, [apiNotifications]);
+
   const { todayItems, weekItems } = useMemo(() => {
-    const filtered = filterNotifications(APP_NOTIFICATIONS, tab);
+    const filtered = filterNotifications(allDisplayItems, tab);
     return {
       todayItems: filtered.filter((n) => n.section === 'today'),
       weekItems: filtered.filter((n) => n.section === 'week'),
     };
-  }, [tab]);
+  }, [allDisplayItems, tab]);
+
+  const handleRead = useCallback((id: string) => {
+    const numericId = parseInt(id, 10);
+    if (!isNaN(numericId)) {
+      markAsRead(numericId);
+    }
+  }, [markAsRead]);
 
   const onHeaderSearchSubmit = useCallback(
     (value: string) => {
@@ -241,7 +290,23 @@ export function NotificationsPage() {
 
       <div className="notifications-page__main">
         <div className="notifications">
-          <h1 className="notifications__title">알림</h1>
+          <div className="notifications__title-row">
+            <h1 className="notifications__title">
+              알림
+              {unreadCount > 0 ? (
+                <span className="notifications__unread-badge">{unreadCount}</span>
+              ) : null}
+            </h1>
+            {!isMockMode() && unreadCount > 0 ? (
+              <button
+                type="button"
+                className="notifications__read-all-btn"
+                onClick={() => markAllAsRead()}
+              >
+                전체 읽음
+              </button>
+            ) : null}
+          </div>
 
           <div
             className="notifications__tabs"
@@ -262,7 +327,11 @@ export function NotificationsPage() {
             ))}
           </div>
 
-          {empty ? (
+          {loading ? (
+            <div className="notifications__empty-state" role="status">
+              <p className="notifications__empty-message">로딩 중...</p>
+            </div>
+          ) : empty ? (
             <div className="notifications__empty-state" role="status">
               <NotificationsEmptyBell />
               <p className="notifications__empty-message">
@@ -284,7 +353,7 @@ export function NotificationsPage() {
                   </h2>
                   <div className="notifications__section-list" role="list">
                     {todayItems.map((item) => (
-                      <NotificationCard item={item} key={item.id} />
+                      <NotificationCard item={item} key={item.id} onRead={handleRead} />
                     ))}
                   </div>
                 </section>
@@ -303,7 +372,7 @@ export function NotificationsPage() {
                   </h2>
                   <div className="notifications__section-list" role="list">
                     {weekItems.map((item) => (
-                      <NotificationCard item={item} key={item.id} />
+                      <NotificationCard item={item} key={item.id} onRead={handleRead} />
                     ))}
                   </div>
                 </section>
