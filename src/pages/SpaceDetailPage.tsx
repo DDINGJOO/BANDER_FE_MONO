@@ -90,7 +90,7 @@ function DetailPolicyBlock({ body, title, imageUrl }: { body: string; title: str
 export function SpaceDetailPage() {
   const navigate = useNavigate();
   const { slug: slugParam } = useParams();
-  const { detail, slug, vendorSlug, loading } = useSpaceDetail(slugParam);
+  const { detail, slug, vendorSlug, loading, error } = useSpaceDetail(slugParam);
   const authSession = loadAuthSession();
   const isAuthenticated = Boolean(authSession);
   const [phoneVerified, setPhoneVerified] = useState(authSession?.phoneVerified === true);
@@ -131,11 +131,28 @@ export function SpaceDetailPage() {
     ? `${new Date(2025, 7, selectedBookingDay).getFullYear()}년 8월 ${selectedBookingDay}일 (${['일', '월', '화', '수', '목', '금', '토'][new Date(2025, 7, selectedBookingDay).getDay()]})`
     : '날짜를 선택해주세요';
 
-  if (loading || !detail) {
+  if (loading) {
     return (
       <main className="space-detail-page">
         <HomeHeader authenticated={isAuthenticated} onGuestCta={() => navigate('/login')} variant="icon" />
-        <section className="space-detail__inner" />
+        <section className="space-detail__inner">
+          <p style={{ textAlign: 'center', padding: '4rem 0', color: '#888' }}>로딩 중...</p>
+        </section>
+        <HomeFooter />
+      </main>
+    );
+  }
+
+  if (error || !detail) {
+    return (
+      <main className="space-detail-page">
+        <HomeHeader authenticated={isAuthenticated} onGuestCta={() => navigate('/login')} variant="icon" />
+        <section className="space-detail__inner">
+          <div style={{ textAlign: 'center', padding: '4rem 0' }}>
+            <p style={{ fontSize: '1.1rem', color: '#333', marginBottom: '1rem' }}>공간 정보를 불러올 수 없습니다.</p>
+            <button onClick={() => navigate(-1)} style={{ padding: '0.5rem 1.5rem', borderRadius: '8px', border: '1px solid #ccc', background: '#fff', cursor: 'pointer' }} type="button">뒤로 가기</button>
+          </div>
+        </section>
         <HomeFooter />
       </main>
     );

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { fetchPostComments, fetchPostDetail, type CommentTreeDto, type PostDetailDto } from '../api/community';
+import { fetchPostComments, fetchPostDetail, createComment, deleteCommentApi, toggleReaction, type CommentTreeDto, type PostDetailDto } from '../api/community';
 import { CommunityPostReportConfirmModal } from '../components/community/CommunityPostReportConfirmModal';
 import { CommunityReportModal } from '../components/community/CommunityReportModal';
 import { CommunityReplyDeleteModal } from '../components/community/CommunityReplyDeleteModal';
@@ -291,12 +291,36 @@ export function CommunityPostDetailPage() {
     setVisibleCommentCount(mockPost.commentCount);
   }, [mockPost]);
 
-  const toggleLike = useCallback(() => {
-    setLiked((v) => {
-      setLikesCount((c) => (v ? c - 1 : c + 1));
-      return !v;
-    });
-  }, []);
+  const toggleLike = useCallback(async () => {
+    if (!slug || isMockMode()) {
+      const wasLiked = liked;
+      setLiked(!wasLiked);
+      setLikesCount((c) => (wasLiked ? c - 1 : c + 1));
+      return;
+    }
+    try {
+      const res = await toggleReaction(slug);
+      setLiked(res.liked);
+      setLikesCount((c) => (res.liked ? c + 1 : c - 1));
+    } catch {
+      const wasLiked = liked;
+      setLiked(!wasLiked);
+      setLikesCount((c) => (wasLiked ? c - 1 : c + 1));
+    }
+  }, [slug, liked]);
+
+  const handleSubmitComment = useCallback(async () => {
+    if (!draft.trim() || !slug) return;
+    if (isMockMode()) return;
+    try {
+      await createComment(slug, { content: draft.trim() });
+      setDraft('');
+      const comments = await fetchPostComments(slug);
+      setApiComments(comments);
+    } catch {
+      // ignore
+    }
+  }, [draft, slug]);
 
   const handleCommentAction = useCallback((commentId: string, action: CommunityDetailCommentAction) => {
     if (action === 'delete') setReplyDeleteId(commentId);
@@ -310,8 +334,17 @@ export function CommunityPostDetailPage() {
 
   const cancelPostReportConfirm = useCallback(() => setPostReportConfirmOpen(false), []);
 
-  const confirmReplyDelete = useCallback(() => {
+  const confirmReplyDelete = useCallback(async () => {
     if (!replyDeleteId) return;
+    if (!isMockMode() && slug) {
+      try {
+        await deleteCommentApi(slug, replyDeleteId);
+        const comments = await fetchPostComments(slug);
+        setApiComments(comments);
+      } catch {
+        // ignore
+      }
+    }
     setCommentThreads((prev) =>
       prev.map((t) => ({
         ...t,
@@ -320,7 +353,7 @@ export function CommunityPostDetailPage() {
     );
     setVisibleCommentCount((c) => Math.max(0, c - 1));
     setReplyDeleteId(null);
-  }, [replyDeleteId]);
+  }, [replyDeleteId, slug]);
 
   const cancelReplyDelete = useCallback(() => setReplyDeleteId(null), []);
 
@@ -576,7 +609,7 @@ export function CommunityPostDetailPage() {
                       type="text"
                       value={draft}
                     />
-                    <button aria-label="댓글 보내기" className="community-post-detail__comment-send" type="button">
+                    <button aria-label="댓글 보내기" className="community-post-detail__comment-send" onClick={handleSubmitComment} type="button">
                       <SendGlyph24 />
                     </button>
                   </>

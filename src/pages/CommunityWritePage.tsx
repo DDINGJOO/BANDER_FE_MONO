@@ -5,6 +5,8 @@ import { HomeHeader } from '../components/home/HomeHeader';
 import { ChevronIcon } from '../components/shared/Icons';
 import { HEADER_SEARCH_KEYWORD_SUGGESTIONS } from '../config/searchSuggestions';
 import { loadAuthSession } from '../data/authSession';
+import { createPost } from '../api/community';
+import { isMockMode } from '../config/publicEnv';
 import {
   COMMUNITY_WRITE_BODY_MAX,
   COMMUNITY_WRITE_CATEGORIES,
@@ -114,9 +116,27 @@ export function CommunityWritePage() {
     });
   };
 
-  const onSubmit = () => {
-    if (!canSubmit) return;
-    navigate('/community');
+  const [submitting, setSubmitting] = useState(false);
+
+  const onSubmit = async () => {
+    if (!canSubmit || submitting) return;
+
+    if (isMockMode()) {
+      navigate('/community');
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const blocks: { blockType: 'TEXT' | 'IMAGE' | 'CODE'; content: string }[] = [];
+      if (body.trim()) {
+        blocks.push({ blockType: 'TEXT', content: body.trim() });
+      }
+      await createPost({ title: postTitle.trim(), blocks });
+      navigate('/community');
+    } catch {
+      setSubmitting(false);
+    }
   };
 
   return (

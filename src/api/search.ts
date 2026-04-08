@@ -5,6 +5,8 @@ export type RoomSearchItem = {
   studioId: number;
   studioName: string;
   roomName: string;
+  roomSlug: string;
+  studioSlug: string;
   description: string;
   category: string;
   parkingAvailable: boolean;
@@ -30,6 +32,7 @@ export type RoomSearchResponse = {
 export type VendorSearchItem = {
   id: string;
   name: string;
+  slug: string;
   description: string;
   address: string;
   thumbnailUrl: string;
@@ -53,6 +56,11 @@ export type PostSearchItem = {
 type RoomSearchParams = {
   q?: string;
   category?: string;
+  region?: string;
+  minPrice?: number;
+  maxPrice?: number;
+  capacity?: number;
+  parking?: boolean;
   sort?: string;
   page?: number;
   size?: number;
@@ -71,7 +79,7 @@ type PostSearchParams = {
   size?: number;
 };
 
-function buildQuery(params: Record<string, string | number | undefined>): string {
+function buildQuery(params: Record<string, string | number | boolean | undefined>): string {
   const entries = Object.entries(params).filter(([, v]) => v !== undefined && v !== '');
   if (entries.length === 0) return '';
   return '?' + entries.map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(String(v))}`).join('&');

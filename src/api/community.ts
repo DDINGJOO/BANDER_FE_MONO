@@ -1,4 +1,4 @@
-import { getJson } from './client';
+import { getJson, postJson, deleteJson } from './client';
 
 export type PostBlockDto = {
   blockId?: number;
@@ -41,4 +41,34 @@ export type CommentTreeDto = {
 
 export function fetchPostComments(postId: string) {
   return getJson<CommentTreeDto[]>(`/api/v1/posts/${encodeURIComponent(postId)}/comments`);
+}
+
+export type CreatePostRequest = {
+  title: string;
+  blocks: { blockType: 'TEXT' | 'IMAGE' | 'CODE'; content: string }[];
+};
+
+export function createPost(request: CreatePostRequest) {
+  return postJson<PostDetailDto>('/api/v1/posts', request);
+}
+
+export type CreateCommentRequest = {
+  content: string;
+  parentId?: number;
+};
+
+export function createComment(postId: string, request: CreateCommentRequest) {
+  return postJson<CommentDto>(`/api/v1/posts/${encodeURIComponent(postId)}/comments`, request);
+}
+
+export function deleteCommentApi(postId: string, commentId: string) {
+  return deleteJson<void>(`/api/v1/posts/${encodeURIComponent(postId)}/comments/${encodeURIComponent(commentId)}`);
+}
+
+export type ReactionToggleResponse = {
+  liked: boolean;
+};
+
+export function toggleReaction(postId: string) {
+  return postJson<ReactionToggleResponse>(`/api/v1/posts/${encodeURIComponent(postId)}/reactions`, {});
 }

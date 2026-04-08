@@ -124,19 +124,6 @@ export function MainPage({ previewAuthenticated = false }: { previewAuthenticate
         <HomeSpaceExplorer spaces={recommendedSpaces} />
       </section>
 
-      <section className="home-bubbles">
-        <div className="home-bubbles__inner">
-          <h2>밴더 인기 합주실</h2>
-          <div className="home-bubbles__list">
-            {categoryBubbles.map((item) => (
-              <div className="home-bubble" key={item.label} style={{ borderColor: item.accent }}>
-                <span>{item.label}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
       {vendorCards.length > 0 && (
         <section className="home-section home-section--vendors" id="vendors">
           <div className="home-section__heading home-section__heading--stack">

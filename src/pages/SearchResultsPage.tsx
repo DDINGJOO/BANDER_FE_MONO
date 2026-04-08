@@ -1,8 +1,8 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { HomeFooter } from '../components/home/HomeFooter';
 import { HomeHeader } from '../components/home/HomeHeader';
-import { HomeSpaceExplorer } from '../components/home/HomeSpaceExplorer';
+import { HomeSpaceExplorer, type SpaceFilterState } from '../components/home/HomeSpaceExplorer';
 import { ChevronIcon } from '../components/shared/Icons';
 import { HEADER_SEARCH_KEYWORD_SUGGESTIONS } from '../config/searchSuggestions';
 import { COMMUNITY_SORT_OPTIONS, COMMUNITY_FEED_ITEMS } from '../data/communityFeed';
@@ -33,9 +33,11 @@ const SPACE_SORT_LABELS: Record<string, string> = {
   PRICE_DESC: '가격 높은 순',
 };
 
-const VENDOR_SORT_OPTIONS = ['relevance'] as const;
+const VENDOR_SORT_OPTIONS = ['relevance', 'popular', 'latest'] as const;
 const VENDOR_SORT_LABELS: Record<string, string> = {
   relevance: '정확도순',
+  popular: '인기순',
+  latest: '최신순',
 };
 
 const SEARCH_SORT_OPTIONS: Record<SearchTab, readonly string[]> = {
@@ -81,6 +83,17 @@ export function SearchResultsPage() {
   const [postsLoading, setPostsLoading] = useState(false);
   const [postsTotalCount, setPostsTotalCount] = useState<number | null>(null);
 
+  const spaceFiltersRef = useRef<SpaceFilterState>({});
+  const [spaceFilterKey, setSpaceFilterKey] = useState(0);
+
+  const handleFilterChange = useCallback((filters: SpaceFilterState) => {
+    const prev = JSON.stringify(spaceFiltersRef.current);
+    const next = JSON.stringify(filters);
+    if (prev === next) return;
+    spaceFiltersRef.current = filters;
+    setSpaceFilterKey((k) => k + 1);
+  }, []);
+
   useEffect(() => {
     setHeaderSearchQuery(query);
   }, [query]);
@@ -95,7 +108,20 @@ export function SearchResultsPage() {
 
     if (activeTab === 'space') {
       setRoomsLoading(true);
-      searchRooms({ q: query, sort: sortBy, size: 20 })
+      const sf = spaceFiltersRef.current;
+      const cleanKeywords = sf.keywords?.map((k) => k.replace(/^#/, '')) ?? [];
+      const filterQuery = cleanKeywords.length
+        ? [query, ...cleanKeywords].filter(Boolean).join(' ')
+        : query;
+      searchRooms({
+        q: filterQuery,
+        category: sf.category,
+        region: sf.regions?.length ? sf.regions[0] : undefined,
+        capacity: sf.capacity,
+        parking: sf.parking,
+        sort: sortBy,
+        size: 20,
+      })
         .then((res) => {
           setRooms(res.rooms);
           setRoomsTotalCount(res.totalElements);
@@ -108,7 +134,7 @@ export function SearchResultsPage() {
       searchVendors({ q: query, sort: sortBy, size: 20 })
         .then((res) => {
           setVendors(res.items);
-          setVendorsTotalCount(res.totalCount);
+          setVendorsTotalCount(res.totalCount ?? null);
         })
         .finally(() => setVendorsLoading(false));
     }
@@ -118,11 +144,12 @@ export function SearchResultsPage() {
       searchPosts({ q: query, size: 20 })
         .then((res) => {
           setPosts(res.items);
-          setPostsTotalCount(res.totalCount);
+          setPostsTotalCount(res.totalCount ?? null);
         })
         .finally(() => setPostsLoading(false));
     }
-  }, [query, activeTab, sortBy]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [query, activeTab, sortBy, spaceFilterKey]);
 
   useEffect(() => {
     const handlePointerDown = (event: MouseEvent) => {
@@ -260,14 +287,13 @@ export function SearchResultsPage() {
         </div>
 
         {activeTab === 'space' ? (
-          roomsLoading ? (
-            <div className="search-results__loading">로딩 중...</div>
-          ) : isMockMode() ? (
-            <HomeSpaceExplorer resultLimit={20} variant="section" />
+          isMockMode() ? (
+            <HomeSpaceExplorer onFilterChange={handleFilterChange} resultLimit={20} variant="section" />
           ) : (
             <HomeSpaceExplorer
+              onFilterChange={handleFilterChange}
               resultLimit={20}
-              spaces={rooms.map((r) => ({
+              spaces={roomsLoading ? [] : rooms.map((r) => ({
                 title: r.roomName,
                 subtitle: r.description || '',
                 studio: r.studioName,
@@ -275,7 +301,7 @@ export function SearchResultsPage() {
                 price: `${r.pricePerSlot.toLocaleString()}원`,
                 rating: '',
                 image: '',
-                detailPath: `/spaces/${r.roomId}`,
+                detailPath: `/spaces/${r.roomSlug || r.roomId}`,
               }))}
               variant="section"
             />
@@ -303,7 +329,7 @@ export function SearchResultsPage() {
           ) : (
             <div className="search-results__vendor-grid">
               {vendors.map((vendor) => (
-                <Link className="search-results__vendor-card search-results__vendor-card--link" key={vendor.id} to={`/vendors/${vendor.id}`}>
+                <Link className="search-results__vendor-card search-results__vendor-card--link" key={vendor.id} to={`/vendors/${vendor.slug || vendor.id}`}>
                   <div
                     className="search-results__vendor-avatar"
                     style={vendor.thumbnailUrl ? { backgroundImage: `url(${vendor.thumbnailUrl})`, backgroundSize: 'cover' } : undefined}
@@ -337,7 +363,7 @@ export function SearchResultsPage() {
           ) : (
             <div className="search-results__community-list">
               {posts.map((post) => (
-                <article className="search-results__community-card" key={post.id}>
+                <Link className="search-results__community-card search-results__community-card--link" key={post.id} to={`/community/post/${post.id}`}>
                   <div className="search-results__community-copy">
                     <h2 className="search-results__community-title">{post.title}</h2>
                     <div className="search-results__community-meta">
@@ -345,7 +371,7 @@ export function SearchResultsPage() {
                       <span>{post.createdAt}</span>
                     </div>
                   </div>
-                </article>
+                </Link>
               ))}
             </div>
           )

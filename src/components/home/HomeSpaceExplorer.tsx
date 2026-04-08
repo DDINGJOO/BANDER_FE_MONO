@@ -40,8 +40,17 @@ type SpaceCardData = {
   detailPath?: string;
 };
 
+export type SpaceFilterState = {
+  category?: string;
+  capacity?: number;
+  parking?: boolean;
+  regions?: string[];
+  keywords?: string[];
+};
+
 type HomeSpaceExplorerProps = {
   headerContent?: React.ReactNode;
+  onFilterChange?: (filters: SpaceFilterState) => void;
   resultLimit?: number;
   spaces?: SpaceCardData[];
   variant?: ExplorerVariant;
@@ -109,6 +118,7 @@ function summarizeSelection(values: string[], emptyLabel: string) {
 
 export function HomeSpaceExplorer({
   headerContent,
+  onFilterChange,
   resultLimit,
   spaces = [],
   variant = 'section',
@@ -159,6 +169,22 @@ export function HomeSpaceExplorer({
       document.removeEventListener('mousedown', handlePointerDown);
     };
   }, []);
+
+  const prevFilterRef = useRef('');
+  useEffect(() => {
+    if (!onFilterChange) return;
+    const next: SpaceFilterState = {
+      category: appliedSpaceSelections.length === 1 ? appliedSpaceSelections[0] : undefined,
+      capacity: appliedPeopleCount > 0 ? appliedPeopleCount : undefined,
+      parking: parkingOnly || undefined,
+      regions: appliedRegionSelections.length > 0 ? appliedRegionSelections : undefined,
+      keywords: appliedKeywordSelections.length > 0 ? appliedKeywordSelections : undefined,
+    };
+    const key = JSON.stringify(next);
+    if (key === prevFilterRef.current) return;
+    prevFilterRef.current = key;
+    onFilterChange(next);
+  }, [appliedSpaceSelections, appliedPeopleCount, parkingOnly, appliedRegionSelections, appliedKeywordSelections, onFilterChange]);
 
   const openRegionPanel = () => {
     if (openPanel === 'region') {

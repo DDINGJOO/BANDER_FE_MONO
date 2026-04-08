@@ -17,7 +17,7 @@ export function HomeSpaceCard(props: HomeSpaceCardProps) {
   const cardContent = (
     <>
       <div className="home-space-card__image-wrap">
-        <img alt="" className="home-space-card__image" src={props.image} />
+        {props.image ? <img alt="" className="home-space-card__image" src={props.image} /> : <div className="home-space-card__image home-space-card__image--placeholder" />}
         <BookmarkIcon />
       </div>
       <div className="home-space-card__body">
