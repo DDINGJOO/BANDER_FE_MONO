@@ -13,7 +13,7 @@ import { useHomeFeed } from '../hooks/useHomeFeed';
 
 export function MainPage({ previewAuthenticated = false }: { previewAuthenticated?: boolean }) {
   const navigate = useNavigate();
-  const { hotPosts, recommendedSpaces, reviewCards, categoryBubbles, loading } = useHomeFeed();
+  const { hotPosts, recommendedSpaces, reviewCards, categoryBubbles, vendorCards, loading } = useHomeFeed();
   const isAuthenticated = previewAuthenticated || Boolean(loadAuthSession());
   const [guestModalOpen, setGuestModalOpen] = useState(false);
   const [headerSearchOpen, setHeaderSearchOpen] = useState(false);
@@ -36,6 +36,21 @@ export function MainPage({ previewAuthenticated = false }: { previewAuthenticate
       document.removeEventListener('mousedown', handlePointerDown);
     };
   }, []);
+
+  // HOT 게시물 자동 슬라이드
+  useEffect(() => {
+    const track = hotPostsScrollRef.current;
+    if (!track || hotPosts.length === 0) return;
+    const interval = setInterval(() => {
+      const maxScroll = track.scrollWidth - track.clientWidth;
+      if (track.scrollLeft >= maxScroll - 10) {
+        track.scrollTo({ left: 0, behavior: 'smooth' });
+      } else {
+        track.scrollBy({ left: 320, behavior: 'smooth' });
+      }
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [hotPosts]);
 
   const filteredSuggestions = HEADER_SEARCH_KEYWORD_SUGGESTIONS.filter((item) =>
     item.toLowerCase().includes(headerSearchQuery.toLowerCase())
@@ -95,18 +110,10 @@ export function MainPage({ previewAuthenticated = false }: { previewAuthenticate
         </div>
         <div className="home-post-carousel">
           <div className="home-post-carousel__track" ref={hotPostsScrollRef}>
-            {hotPosts.map((post) => (
+            {hotPosts.slice(0, 5).map((post) => (
               <HomePostCard key={post.title} {...post} />
             ))}
           </div>
-          <button
-            aria-label="다음 게시글 보기"
-            className="home-post-carousel__next"
-            onClick={() => hotPostsScrollRef.current?.scrollBy({ behavior: 'smooth', left: 300 })}
-            type="button"
-          >
-            ›
-          </button>
         </div>
       </section>
 
@@ -122,17 +129,37 @@ export function MainPage({ previewAuthenticated = false }: { previewAuthenticate
           <h2>밴더 인기 합주실</h2>
           <div className="home-bubbles__list">
             {categoryBubbles.map((item) => (
-              <div className="home-bubble" key={item.label}>
-                <div
-                  className="home-bubble__circle"
-                  style={{ background: `radial-gradient(circle at 30% 30%, #ffffff, ${item.accent})` }}
-                />
+              <div className="home-bubble" key={item.label} style={{ borderColor: item.accent }}>
                 <span>{item.label}</span>
               </div>
             ))}
           </div>
         </div>
       </section>
+
+      {vendorCards.length > 0 && (
+        <section className="home-section home-section--vendors" id="vendors">
+          <div className="home-section__heading home-section__heading--stack">
+            <h2>인기 업체</h2>
+            <p>검증된 음악 공간 업체를 만나보세요.</p>
+          </div>
+          <div className="home-space-grid">
+            {vendorCards.slice(0, 8).map((vendor) => (
+              <HomeSpaceCard
+                key={vendor.slug}
+                detailPath={vendor.detailPath}
+                image={vendor.imageUrl}
+                location={vendor.location}
+                price={vendor.roomCount}
+                rating={vendor.rating}
+                studio=""
+                subtitle={vendor.description}
+                title={vendor.name}
+              />
+            ))}
+          </div>
+        </section>
+      )}
 
       <section className="home-section home-section--popular-spaces" id="popular-spaces">
         <div className="home-space-grid">

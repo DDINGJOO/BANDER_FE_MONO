@@ -42,9 +42,21 @@ export type HomeCategoryBubbleDto = {
   searchQueryOrTag: string;
 };
 
+export type HomeVendorCardDto = {
+  slug: string;
+  name: string;
+  description: string;
+  location: string;
+  roomCount: string;
+  rating: string;
+  imageUrl: string;
+  detailPath: string;
+};
+
 export type HomeFeedResponseDto = {
   hotPosts: HomeHotPostDto[];
   recommendedSpaces: HomeRecommendedSpaceDto[];
   reviewCards: HomeReviewCardDto[];
   categoryBubbles: HomeCategoryBubbleDto[];
+  vendorCards: HomeVendorCardDto[];
 };

@@ -74,8 +74,8 @@ export type SpacePricingLineDto = { label: string; value: string };
 export type SpaceOperatingDayDto = { weekday: string; hours: string; isToday: boolean };
 export type SpaceFacilityChipDto = { key: string; label: string };
 export type SpaceBenefitChipDto = { label: string };
-export type SpaceNoticeDto = { title: string; body: string };
-export type SpacePolicyDto = { title: string; body: string };
+export type SpaceNoticeDto = { title: string; body: string; imageUrl: string | null };
+export type SpacePolicyDto = { title: string; body: string; imageUrl: string | null };
 export type SpaceVendorInfoDto = { name: string; spaces: string | null };
 
 export type SpaceDetailDto = {

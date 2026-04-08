@@ -21,9 +21,6 @@ export function HomeSpaceCard(props: HomeSpaceCardProps) {
         <BookmarkIcon />
       </div>
       <div className="home-space-card__body">
-        <p className="home-space-card__meta">
-          {props.subtitle} <span className="home-space-card__dot" /> {props.studio}
-        </p>
         <h3 className="home-space-card__title">{props.title}</h3>
         <div className="home-space-card__rating">
           <span className="home-meta__group">
@@ -39,6 +36,11 @@ export function HomeSpaceCard(props: HomeSpaceCardProps) {
           </div>
           <p className="home-space-card__tags">주차가능 · 예약가능</p>
         </div>
+        {props.subtitle ? (
+          <p className="home-space-card__meta">
+            {props.subtitle} {props.studio ? <><span className="home-space-card__dot" /> {props.studio}</> : null}
+          </p>
+        ) : null}
       </div>
     </>
   );

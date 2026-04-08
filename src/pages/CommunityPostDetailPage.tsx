@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
+import { fetchPostComments, fetchPostDetail, type CommentTreeDto, type PostDetailDto } from '../api/community';
 import { CommunityPostReportConfirmModal } from '../components/community/CommunityPostReportConfirmModal';
 import { CommunityReportModal } from '../components/community/CommunityReportModal';
 import { CommunityReplyDeleteModal } from '../components/community/CommunityReplyDeleteModal';
 import { HomeFooter } from '../components/home/HomeFooter';
 import { HomeHeader } from '../components/home/HomeHeader';
 import { HEADER_SEARCH_KEYWORD_SUGGESTIONS } from '../config/searchSuggestions';
+import { isMockMode } from '../config/publicEnv';
 import { loadAuthSession } from '../data/authSession';
 import {
   getCommunityPostBySlug,
@@ -205,8 +207,13 @@ function CommentThreadView({
 export function CommunityPostDetailPage() {
   const navigate = useNavigate();
   const { slug } = useParams<{ slug: string }>();
-  const post = getCommunityPostBySlug(slug);
   const isAuthenticated = Boolean(loadAuthSession());
+
+  // Mock mode: use static data; API mode: fetch from backend
+  const mockPost = isMockMode() ? getCommunityPostBySlug(slug) : null;
+  const [apiPost, setApiPost] = useState<PostDetailDto | null>(null);
+  const [apiComments, setApiComments] = useState<CommentTreeDto[]>([]);
+  const [apiLoading, setApiLoading] = useState(!isMockMode());
 
   const [headerSearchOpen, setHeaderSearchOpen] = useState(false);
   const [headerSearchQuery, setHeaderSearchQuery] = useState('');
@@ -245,23 +252,44 @@ export function CommunityPostDetailPage() {
   }, []);
 
   useEffect(() => {
-    if (!slug || !getCommunityPostBySlug(slug)) {
-      navigate('/community', { replace: true });
+    if (isMockMode()) {
+      if (!slug || !getCommunityPostBySlug(slug)) {
+        navigate('/community', { replace: true });
+      }
+      return;
     }
+    if (!slug) {
+      navigate('/community', { replace: true });
+      return;
+    }
+    setApiLoading(true);
+    Promise.all([fetchPostDetail(slug), fetchPostComments(slug)])
+      .then(([data, comments]) => {
+        setApiPost(data);
+        setLikesCount(data.likeCount);
+        setVisibleCommentCount(data.commentCount);
+        setApiComments(comments);
+      })
+      .catch(() => {
+        navigate('/community', { replace: true });
+      })
+      .finally(() => {
+        setApiLoading(false);
+      });
   }, [slug, navigate]);
 
   useEffect(() => {
-    if (!post) return;
-    setLiked(post.likedByViewer ?? false);
-    setLikesCount(post.likes);
+    if (!mockPost) return;
+    setLiked(mockPost.likedByViewer ?? false);
+    setLikesCount(mockPost.likes);
     setCommentThreads(
-      post.commentThreads.map((t) => ({
+      mockPost.commentThreads.map((t) => ({
         root: { ...t.root },
         replies: t.replies.map((r) => ({ ...r })),
       })),
     );
-    setVisibleCommentCount(post.commentCount);
-  }, [post]);
+    setVisibleCommentCount(mockPost.commentCount);
+  }, [mockPost]);
 
   const toggleLike = useCallback(() => {
     setLiked((v) => {
@@ -296,9 +324,86 @@ export function CommunityPostDetailPage() {
 
   const cancelReplyDelete = useCallback(() => setReplyDeleteId(null), []);
 
-  if (!post) {
+  if (isMockMode() && !mockPost) {
     return null;
   }
+
+  if (!isMockMode() && apiLoading) {
+    return (
+      <main className="community-post-detail">
+        <HomeHeader
+          authenticated={isAuthenticated}
+          filteredSuggestions={filteredSuggestions}
+          onGuestCta={() => navigate('/login')}
+          onSearchChange={(value) => {
+            setHeaderSearchQuery(value);
+            setHeaderSearchOpen(Boolean(value.trim()));
+          }}
+          onSearchClear={() => {
+            setHeaderSearchQuery('');
+            setHeaderSearchOpen(false);
+          }}
+          onSearchFocus={() => setHeaderSearchOpen(Boolean(headerSearchQuery.trim()))}
+          onSearchSubmit={handleSearchSubmit}
+          onSuggestionSelect={(value) => {
+            setHeaderSearchOpen(false);
+            handleSearchSubmit(value);
+          }}
+          searchOpen={headerSearchOpen}
+          searchQuery={headerSearchQuery}
+          searchRef={headerSearchRef}
+        />
+        <div className="community-post-detail__main" />
+        <HomeFooter />
+      </main>
+    );
+  }
+
+  if (!isMockMode() && !apiPost) {
+    return null;
+  }
+
+  // Derived display values — mock path uses mockPost, API path uses apiPost
+  const displayTitle = isMockMode() ? (mockPost!.title) : (apiPost!.title);
+  const displayAuthor = isMockMode() ? (mockPost!.author) : `사용자 ${apiPost!.authorUserId}`;
+  const displayAuthorAvatar = isMockMode() ? (mockPost!.authorAvatar) : '';
+  const displayPostedAt = isMockMode()
+    ? (mockPost!.postedAt)
+    : new Date(apiPost!.createdAt).toLocaleDateString('ko-KR', {
+        year: '2-digit',
+        month: '2-digit',
+        day: '2-digit',
+      });
+  const displayCategoryLabel = isMockMode() ? (mockPost!.categoryLabel) : '';
+
+  const displayCommentThreads: import('../data/communityPostDetail').CommunityDetailCommentThread[] = isMockMode()
+    ? commentThreads
+    : apiComments.map((tree) => ({
+        root: {
+          id: String(tree.comment.commentId),
+          author: `사용자 ${tree.comment.authorUserId}`,
+          avatar: '',
+          time: new Date(tree.comment.createdAt).toLocaleDateString('ko-KR', {
+            year: '2-digit',
+            month: '2-digit',
+            day: '2-digit',
+          }),
+          body: tree.comment.content,
+          actions: ['reply', 'report'] as import('../data/communityPostDetail').CommunityDetailCommentAction[],
+        },
+        replies: tree.replies.map((r) => ({
+          id: String(r.commentId),
+          author: `사용자 ${r.authorUserId}`,
+          avatar: '',
+          time: new Date(r.createdAt).toLocaleDateString('ko-KR', {
+            year: '2-digit',
+            month: '2-digit',
+            day: '2-digit',
+          }),
+          body: r.content,
+          actions: ['reply', 'report'] as import('../data/communityPostDetail').CommunityDetailCommentAction[],
+        })),
+      }));
 
   return (
     <main className="community-post-detail">
@@ -331,8 +436,10 @@ export function CommunityPostDetailPage() {
             <div>
               <div className="community-post-detail__post-head">
                 <div className="community-post-detail__title-block">
-                  <span className="community-post-detail__category">{post.categoryLabel}</span>
-                  <h1 className="community-post-detail__title">{post.title}</h1>
+                  {displayCategoryLabel ? (
+                    <span className="community-post-detail__category">{displayCategoryLabel}</span>
+                  ) : null}
+                  <h1 className="community-post-detail__title">{displayTitle}</h1>
                 </div>
                 <button
                   aria-label="게시글 신고"
@@ -343,36 +450,72 @@ export function CommunityPostDetailPage() {
                   <SirenGlyph30 />
                 </button>
               </div>
-              <p className="community-post-detail__body">{post.body}</p>
-            </div>
 
-            <div className="community-post-detail__author-row">
-              <img
-                alt=""
-                className="community-post-detail__author-avatar"
-                height="40"
-                src={post.authorAvatar}
-                width="40"
-              />
-              <div className="community-post-detail__author-meta">
-                <div className="community-post-detail__author-name-row">
-                  <span className="community-post-detail__author-name">{post.author}</span>
-                  <AuthorChevron16 />
+              <div className="community-post-detail__author-row">
+                {displayAuthorAvatar ? (
+                  <img
+                    alt=""
+                    className="community-post-detail__author-avatar"
+                    height="40"
+                    src={displayAuthorAvatar}
+                    width="40"
+                  />
+                ) : (
+                  <div className="community-post-detail__author-avatar" style={{ width: 40, height: 40, borderRadius: '50%', background: '#e0e0e0' }} />
+                )}
+                <div className="community-post-detail__author-meta">
+                  <div className="community-post-detail__author-name-row">
+                    <span className="community-post-detail__author-name">{displayAuthor}</span>
+                    <AuthorChevron16 />
+                  </div>
+                  <span className="community-post-detail__author-time">{displayPostedAt}</span>
                 </div>
-                <span className="community-post-detail__author-time">{post.postedAt}</span>
               </div>
+
+              {isMockMode() ? (
+                <p className="community-post-detail__body">{mockPost!.body}</p>
+              ) : (
+                <div className="community-post-detail__body">
+                  {apiPost!.blocks
+                    .slice()
+                    .sort((a, b) => a.sortOrder - b.sortOrder)
+                    .map((block, idx) => {
+                      if (block.blockType === 'IMAGE') {
+                        return (
+                          <img
+                            alt=""
+                            className="community-post-detail__block-image"
+                            key={block.blockId ?? idx}
+                            src={block.content}
+                          />
+                        );
+                      }
+                      return (
+                        <p key={block.blockId ?? idx}>{block.content}</p>
+                      );
+                    })}
+                </div>
+              )}
             </div>
 
-            <div className="community-post-detail__hero">
-              <img alt="" height="400" src={post.heroImage} width="1200" />
-            </div>
+            {isMockMode() ? (
+              <div className="community-post-detail__hero">
+                <img alt="" height="400" src={mockPost!.heroImage} width="1200" />
+              </div>
+            ) : null}
 
             <div className="community-post-detail__stats">
               <button
                 aria-label={liked ? '좋아요 취소' : '좋아요'}
                 aria-pressed={liked}
                 className="community-post-detail__stat"
-                onClick={toggleLike}
+                onClick={() => {
+                  if (!isAuthenticated) {
+                    navigate(`/login?returnTo=${encodeURIComponent(`/community/post/${slug}`)}`);
+                    return;
+                  }
+                  toggleLike();
+                }}
                 type="button"
               >
                 {liked ? <LikeGlyph24On /> : <LikeGlyph24Outline />}
@@ -385,22 +528,24 @@ export function CommunityPostDetailPage() {
             </div>
 
             <div className="community-post-detail__nav-block">
-              <div className="community-post-detail__adjacent">
-                <div className="community-post-detail__adjacent-row">
-                  <span className="community-post-detail__adjacent-label">이전으로</span>
-                  <div className="community-post-detail__adjacent-body">
-                    <p className="community-post-detail__adjacent-title">{post.adjacent.prev.title}</p>
-                    <span className="community-post-detail__adjacent-date">{post.adjacent.prev.date}</span>
+              {isMockMode() && mockPost ? (
+                <div className="community-post-detail__adjacent">
+                  <div className="community-post-detail__adjacent-row">
+                    <span className="community-post-detail__adjacent-label">이전으로</span>
+                    <div className="community-post-detail__adjacent-body">
+                      <p className="community-post-detail__adjacent-title">{mockPost.adjacent.prev.title}</p>
+                      <span className="community-post-detail__adjacent-date">{mockPost.adjacent.prev.date}</span>
+                    </div>
+                  </div>
+                  <div className="community-post-detail__adjacent-row">
+                    <span className="community-post-detail__adjacent-label">다음으로</span>
+                    <div className="community-post-detail__adjacent-body">
+                      <p className="community-post-detail__adjacent-title">{mockPost.adjacent.next.title}</p>
+                      <span className="community-post-detail__adjacent-date">{mockPost.adjacent.next.date}</span>
+                    </div>
                   </div>
                 </div>
-                <div className="community-post-detail__adjacent-row">
-                  <span className="community-post-detail__adjacent-label">다음으로</span>
-                  <div className="community-post-detail__adjacent-body">
-                    <p className="community-post-detail__adjacent-title">{post.adjacent.next.title}</p>
-                    <span className="community-post-detail__adjacent-date">{post.adjacent.next.date}</span>
-                  </div>
-                </div>
-              </div>
+              ) : null}
               <Link className="community-post-detail__back" to="/community">
                 목록으로
               </Link>
@@ -412,7 +557,7 @@ export function CommunityPostDetailPage() {
               <div>
                 <h2 className="community-post-detail__comments-head">댓글 {visibleCommentCount}</h2>
                 <div className="community-post-detail__comments-scroll">
-                  {commentThreads.map((thread) => (
+                  {displayCommentThreads.map((thread) => (
                     <CommentThreadView
                       key={thread.root.id}
                       onCommentAction={handleCommentAction}
@@ -422,16 +567,29 @@ export function CommunityPostDetailPage() {
                 </div>
               </div>
               <div className="community-post-detail__comment-input-wrap">
-                <input
-                  className="community-post-detail__comment-input"
-                  onChange={(e) => setDraft(e.target.value)}
-                  placeholder="댓글을 입력해주세요."
-                  type="text"
-                  value={draft}
-                />
-                <button aria-label="댓글 보내기" className="community-post-detail__comment-send" type="button">
-                  <SendGlyph24 />
-                </button>
+                {isAuthenticated ? (
+                  <>
+                    <input
+                      className="community-post-detail__comment-input"
+                      onChange={(e) => setDraft(e.target.value)}
+                      placeholder="댓글을 입력해주세요."
+                      type="text"
+                      value={draft}
+                    />
+                    <button aria-label="댓글 보내기" className="community-post-detail__comment-send" type="button">
+                      <SendGlyph24 />
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    className="community-post-detail__comment-input community-post-detail__comment-login-prompt"
+                    onClick={() => navigate(`/login?returnTo=${encodeURIComponent(`/community/post/${slug}`)}`)}
+                    type="button"
+                    style={{ cursor: 'pointer', textAlign: 'left', color: '#999', border: '1px solid #e0e0e0', borderRadius: 8, padding: '10px 14px', background: '#fafafa', width: '100%' }}
+                  >
+                    댓글을 작성하려면 로그인해주세요.
+                  </button>
+                )}
               </div>
             </div>
           </aside>

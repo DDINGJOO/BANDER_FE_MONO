@@ -8,6 +8,7 @@ import type {
   HomeHotPostDto,
   HomeRecommendedSpaceDto,
   HomeReviewCardDto,
+  HomeVendorCardDto,
 } from '../schemas/homeFeed';
 
 /** HOME_HOT_POSTS 행 */
@@ -58,11 +59,26 @@ export function homeCategoryBubbleFromDto(row: HomeCategoryBubbleDto) {
   };
 }
 
+/** HOME_VENDOR_CARDS 행 */
+export function homeVendorCardFromDto(row: HomeVendorCardDto) {
+  return {
+    slug: row.slug,
+    name: row.name,
+    description: row.description,
+    location: row.location,
+    roomCount: row.roomCount,
+    rating: row.rating,
+    imageUrl: row.imageUrl,
+    detailPath: row.detailPath,
+  };
+}
+
 export function normalizeHomeFeedForUi(dto: HomeFeedResponseDto) {
   return {
     hotPosts: dto.hotPosts.map(homeHotPostCardFromDto),
     recommendedSpaces: dto.recommendedSpaces.map(homeSpaceCardFromDto),
     reviewCards: dto.reviewCards.map(homeReviewCardFromDto),
     categoryBubbles: dto.categoryBubbles.map(homeCategoryBubbleFromDto),
+    vendorCards: (dto.vendorCards ?? []).map(homeVendorCardFromDto),
   };
 }

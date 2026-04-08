@@ -31,9 +31,23 @@ function mapApiToViewModel(dto: SpaceDetailDto) {
     };
   });
 
-  const detailBenefits: SpaceDetailBenefitItem[] = dto.detailBenefitChips.map((chip) => ({
-    key: undefined,
-    label: chip.label,
+  // detailBenefits를 facilityChips에 통합 (중복 제거)
+  const benefitLabels = new Set(facilityChips.map((c) => c.label));
+  const mergedBenefits: SpaceDetailBenefitItem[] = dto.detailBenefitChips
+    .filter((chip) => !benefitLabels.has(chip.label))
+    .map((chip) => ({ key: undefined, label: chip.label }));
+  const allFacilities = [...facilityChips, ...mergedBenefits];
+
+  // notices/policies에 imageUrl 보장
+  const notices = dto.notices.map((n) => ({
+    title: n.title,
+    body: n.body,
+    imageUrl: n.imageUrl ?? null,
+  }));
+  const policies = dto.policies.map((p) => ({
+    title: p.title,
+    body: p.body,
+    imageUrl: p.imageUrl ?? null,
   }));
 
   return {
@@ -45,10 +59,10 @@ function mapApiToViewModel(dto: SpaceDetailDto) {
     pricingLines: dto.pricingLines,
     operatingSummary: dto.operatingSummary ?? '',
     operatingWeek: dto.operatingWeek,
-    facilityChips,
-    detailBenefits,
-    notices: dto.notices,
-    policies: dto.policies,
+    facilityChips: allFacilities,
+    detailBenefits: [] as SpaceDetailBenefitItem[],
+    notices,
+    policies,
     couponStripLabel: dto.couponStripLabel || '사용 가능한 쿠폰',
     trustBanner: dto.trustBanner || null,
     priceTeaserSuffix: dto.priceSuffix ?? '',
@@ -135,12 +149,13 @@ export function useSpaceDetail(slug: string | undefined) {
         if (cancelled) return;
         setApiData(data);
 
-        // Fetch reviews for this room using studioId
+        // Fetch reviews for this specific room
         const studioId = data.studioId;
-        if (studioId) {
+        const roomId = data.id;
+        if (studioId && roomId) {
           try {
             const reviewData = await getJson<ReviewApiResponse>(
-              `/api/v1/spaces/${encodeURIComponent(studioId)}/reviews`
+              `/api/v1/spaces/${encodeURIComponent(studioId)}/reviews?roomId=${encodeURIComponent(roomId)}`
             );
             if (!cancelled && reviewData?.items) {
               setReviews(reviewData.items.map((r) => ({

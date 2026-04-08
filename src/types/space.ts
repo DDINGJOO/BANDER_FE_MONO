@@ -35,11 +35,13 @@ export type SpaceReviewSnippet = {
 export type SpacePolicy = {
   body: string;
   title: string;
+  imageUrl?: string | null;
 };
 
 export type SpaceNoticeItem = {
   body: string;
   title: string;
+  imageUrl?: string | null;
 };
 
 export type SpacePricingLine = {

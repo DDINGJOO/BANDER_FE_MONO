@@ -59,7 +59,7 @@ const DETAIL_CALENDAR_DAYS: DetailCalendarDay[] = [
   { day: 31 },
 ];
 
-function DetailPolicyBlock({ body, title }: { body: string; title: string }) {
+function DetailPolicyBlock({ body, title, imageUrl }: { body: string; title: string; imageUrl?: string | null }) {
   const lines = body
     .split(/\n+/)
     .map((line) => line.trim())
@@ -70,6 +70,13 @@ function DetailPolicyBlock({ body, title }: { body: string; title: string }) {
         <span aria-hidden="true" className="space-detail__detail-policy-sq" />
         <h3>{title}</h3>
       </div>
+      {imageUrl ? (
+        <img
+          alt={title}
+          className="space-detail__detail-policy-image"
+          src={imageUrl}
+        />
+      ) : null}
       {lines.map((line) => (
         <div className="space-detail__detail-policy-row" key={line}>
           <span aria-hidden="true" className="space-detail__detail-policy-bar" />
@@ -476,30 +483,14 @@ export function SpaceDetailPage() {
                   {detail.notices.length > 0 ? (
                     <div className="space-detail__notice-list space-detail__notice-list--under-detail-title">
                       {detail.notices.map((notice) => (
-                        <article className="space-detail__notice-card" key={notice.title}>
-                          <h3>{notice.title}</h3>
-                          <p>{notice.body}</p>
-                        </article>
+                        <DetailPolicyBlock body={notice.body} imageUrl={notice.imageUrl} key={notice.title} title={notice.title} />
                       ))}
                     </div>
                   ) : null}
-                  <div className="space-detail__detail-benefit-strip" aria-label="제공 혜택">
-                    {detail.detailBenefits.map((item) => (
-                      <div className="space-detail__detail-benefit-cell" key={item.label}>
-                        <span className="space-detail__detail-benefit-icon-wrap">
-                          {item.key ? (
-                            <SpaceSummaryFeatureIcon featureKey={item.key} />
-                          ) : (
-                            <span aria-hidden="true" className="space-detail__detail-benefit-icon-ph" />
-                          )}
-                        </span>
-                        <span className="space-detail__detail-benefit-label">{item.label}</span>
-                      </div>
-                    ))}
-                  </div>
+                  {/* detailBenefits는 facilityChips에 통합됨 */}
                   <div className="space-detail__detail-policy-stack">
                     {detail.policies.map((policy) => (
-                      <DetailPolicyBlock body={policy.body} key={policy.title} title={policy.title} />
+                      <DetailPolicyBlock body={policy.body} imageUrl={policy.imageUrl} key={policy.title} title={policy.title} />
                     ))}
                   </div>
                 </section>

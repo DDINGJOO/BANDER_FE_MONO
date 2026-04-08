@@ -11,6 +11,7 @@ import {
   searchRooms,
   searchVendors,
   searchPosts,
+  type RoomSearchItem,
   type VendorSearchItem,
   type PostSearchItem,
 } from '../api/search';
@@ -68,6 +69,8 @@ export function SearchResultsPage() {
   const headerSearchRef = useRef<HTMLDivElement | null>(null);
   const sortRef = useRef<HTMLDivElement | null>(null);
 
+  const [rooms, setRooms] = useState<RoomSearchItem[]>([]);
+  const [roomsLoading, setRoomsLoading] = useState(false);
   const [roomsTotalCount, setRoomsTotalCount] = useState<number | null>(null);
 
   const [vendors, setVendors] = useState<VendorSearchItem[]>([]);
@@ -91,8 +94,13 @@ export function SearchResultsPage() {
     if (isMockMode()) return;
 
     if (activeTab === 'space') {
+      setRoomsLoading(true);
       searchRooms({ q: query, sort: sortBy, size: 20 })
-        .then((res) => setRoomsTotalCount(res.totalElements));
+        .then((res) => {
+          setRooms(res.rooms);
+          setRoomsTotalCount(res.totalElements);
+        })
+        .finally(() => setRoomsLoading(false));
     }
 
     if (activeTab === 'vendor') {
@@ -252,7 +260,26 @@ export function SearchResultsPage() {
         </div>
 
         {activeTab === 'space' ? (
-          <HomeSpaceExplorer resultLimit={20} variant="section" />
+          roomsLoading ? (
+            <div className="search-results__loading">로딩 중...</div>
+          ) : isMockMode() ? (
+            <HomeSpaceExplorer resultLimit={20} variant="section" />
+          ) : (
+            <HomeSpaceExplorer
+              resultLimit={20}
+              spaces={rooms.map((r) => ({
+                title: r.roomName,
+                subtitle: r.description || '',
+                studio: r.studioName,
+                location: r.roadAddress || '',
+                price: `${r.pricePerSlot.toLocaleString()}원`,
+                rating: '',
+                image: '',
+                detailPath: `/spaces/${r.roomId}`,
+              }))}
+              variant="section"
+            />
+          )
         ) : null}
 
         {activeTab === 'vendor' ? (

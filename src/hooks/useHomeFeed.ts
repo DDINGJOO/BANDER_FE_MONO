@@ -47,6 +47,7 @@ export function useHomeFeed() {
         recommendedSpaces: HOME_SPACE_CARDS,
         reviewCards: HOME_REVIEW_CARDS,
         categoryBubbles: HOME_CATEGORY_BUBBLES,
+        vendorCards: [],
         loading: false,
         error,
       };
@@ -58,6 +59,7 @@ export function useHomeFeed() {
         recommendedSpaces: [],
         reviewCards: [],
         categoryBubbles: [],
+        vendorCards: [],
         loading,
         error: null,
       };
@@ -70,6 +72,7 @@ export function useHomeFeed() {
       recommendedSpaces: normalized.recommendedSpaces.length > 0 ? normalized.recommendedSpaces : HOME_SPACE_CARDS,
       reviewCards: normalized.reviewCards.length > 0 ? normalized.reviewCards : HOME_REVIEW_CARDS,
       categoryBubbles: normalized.categoryBubbles.length > 0 ? normalized.categoryBubbles : HOME_CATEGORY_BUBBLES,
+      vendorCards: normalized.vendorCards,
       loading: false,
       error: null,
     };

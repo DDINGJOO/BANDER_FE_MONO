@@ -1367,7 +1367,12 @@
   padding-bottom: 6px;
   margin-right: 8px;
   flex: 1 1 auto;
-  scrollbar-width: thin;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.home-post-carousel__track::-webkit-scrollbar {
+  display: none;
 }
 
 .home-post-carousel__track .home-post-card {
