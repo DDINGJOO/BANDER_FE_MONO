@@ -11,10 +11,10 @@ import { useCouponDownloads } from '../hooks/useCouponDownloads';
 import {
   getSpaceAvailability,
   createBooking,
-  confirmPayment,
   type SpaceAvailabilitySlot,
 } from '../api/bookings';
-import { isMockMode } from '../config/publicEnv';
+import { isMockMode, getTossPaymentsClientKey } from '../config/publicEnv';
+import { requestTossPayment } from '../utils/tossPayments';
 
 const TOSS_PAY_IMAGE =
   'https://www.figma.com/api/mcp/asset/2eae63a4-d92c-4d34-9e5c-985a8b6f3ade';
@@ -363,8 +363,23 @@ export function SpaceReservationPage() {
 
     try {
       const booking = await createBooking({ roomId: roomId ?? 0, startsAt, endsAt });
-      await confirmPayment(booking.bookingId, { paymentId: `toss-${Date.now()}` });
-      setPaymentResult('success');
+
+      const clientKey = getTossPaymentsClientKey();
+      if (!clientKey || !booking.orderId) {
+        setPaymentResult('failed');
+        return;
+      }
+
+      sessionStorage.setItem('bander_pending_booking_id', String(booking.bookingId));
+
+      await requestTossPayment({
+        clientKey,
+        orderId: booking.orderId,
+        orderName: spaceCard.title + ' 예약',
+        amount: booking.totalPrice,
+        successUrl: `${window.location.origin}/payment/success`,
+        failUrl: `${window.location.origin}/payment/fail`,
+      });
     } catch {
       setPaymentResult('failed');
     }

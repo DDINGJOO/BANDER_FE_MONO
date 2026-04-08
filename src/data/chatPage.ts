@@ -2,6 +2,8 @@
  * Figma 6406:77292 채팅 · 6435:27960 빈 상태
  */
 
+import type { ChatMessageResponse, ChatRoomResponse } from '../api/chat';
+
 export type ChatThread = {
   id: string;
   title: string;
@@ -157,5 +159,69 @@ export function resolveChatPageModel(params: URLSearchParams): ChatPageModel {
     chatDateLabel: '25년 8월 13일 (수)',
     showEmptyPrompt: !hasConversation,
     vendorPanel,
+  };
+}
+
+// ─── API 연동 헬퍼 ────────────────────────────────────────────────────────────
+
+export function formatChatTime(iso: string | null): string {
+  if (!iso) return '';
+  const date = new Date(iso);
+  if (isNaN(date.getTime())) return '';
+
+  const nowKst = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Seoul' }));
+  const todayKst = new Date(nowKst.getFullYear(), nowKst.getMonth(), nowKst.getDate());
+  const dateKst = new Date(date.toLocaleString('en-US', { timeZone: 'Asia/Seoul' }));
+  const dayKst = new Date(dateKst.getFullYear(), dateKst.getMonth(), dateKst.getDate());
+  const diffDays = Math.round((todayKst.getTime() - dayKst.getTime()) / (1000 * 60 * 60 * 24));
+
+  if (diffDays === 0) {
+    return date.toLocaleTimeString('ko-KR', {
+      timeZone: 'Asia/Seoul',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+    });
+  }
+  if (diffDays === 1) return '어제';
+  if (dateKst.getFullYear() === nowKst.getFullYear()) {
+    return date.toLocaleDateString('ko-KR', {
+      timeZone: 'Asia/Seoul',
+      month: 'long',
+      day: 'numeric',
+    });
+  }
+  const yyyy = dateKst.getFullYear();
+  const mm = String(dateKst.getMonth() + 1).padStart(2, '0');
+  const dd = String(dateKst.getDate()).padStart(2, '0');
+  return `${yyyy}.${mm}.${dd}`;
+}
+
+export function chatRoomToThread(room: ChatRoomResponse): ChatThread {
+  return {
+    id: room.chatRoomId,
+    title: room.partnerNickname ?? '알 수 없는 사용자',
+    preview: room.lastMessagePreview ?? '',
+    timeLabel: formatChatTime(room.lastMessageAt),
+    unread: room.unreadCount > 0 ? room.unreadCount : undefined,
+    unreadOverflow: room.unreadCount > 99,
+  };
+}
+
+export function chatMessageToUiMessage(
+  msg: ChatMessageResponse,
+  currentUserId: number,
+  partnerNickname?: string,
+): ChatMessage {
+  const time = formatChatTime(msg.createdAt);
+  if (msg.senderUserId === currentUserId) {
+    return { id: msg.messageId, kind: 'out', lines: [msg.content], time };
+  }
+  return {
+    id: msg.messageId,
+    kind: 'in',
+    senderName: partnerNickname ?? '상대방',
+    text: msg.content,
+    time,
   };
 }

@@ -28,6 +28,8 @@ import { CommunityPostDetailPage } from './pages/CommunityPostDetailPage';
 import { CommunityWritePage } from './pages/CommunityWritePage';
 import { MyMiniFeedPage } from './pages/MyMiniFeedPage';
 import { OAuthCallbackPage } from './pages/OAuthCallbackPage';
+import { PaymentSuccessPage } from './pages/PaymentSuccessPage';
+import { PaymentFailPage } from './pages/PaymentFailPage';
 
 function App() {
   return (
@@ -60,6 +62,8 @@ function App() {
       <Route element={<ReviewWritePage />} path="/review/write" />
       <Route element={<MyReviewsPage />} path="/my-reviews" />
       <Route element={<OAuthCallbackPage />} path="/auth/callback" />
+      <Route element={<PaymentSuccessPage />} path="/payment/success" />
+      <Route element={<PaymentFailPage />} path="/payment/fail" />
       <Route element={<Navigate replace to="/" />} path="*" />
     </Routes>
   );

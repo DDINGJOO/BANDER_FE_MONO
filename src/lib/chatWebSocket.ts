@@ -1,0 +1,81 @@
+import { Client, IMessage } from '@stomp/stompjs';
+import { ChatMessageResponse } from '../api/chat';
+
+type ChatMessageCallback = (message: ChatMessageResponse) => void;
+
+let stompClient: Client | null = null;
+const subscriptions: Map<string, { id: string; unsubscribe: () => void }> = new Map();
+
+export function connectChat(): Client {
+  if (stompClient?.connected) return stompClient;
+
+  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const wsUrl = `${protocol}//${window.location.host}/ws/chat`;
+
+  stompClient = new Client({
+    brokerURL: wsUrl,
+    reconnectDelay: 5000,
+    heartbeatIncoming: 10000,
+    heartbeatOutgoing: 10000,
+    debug: (str) => {
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[STOMP]', str);
+      }
+    },
+  });
+
+  stompClient.activate();
+  return stompClient;
+}
+
+export function subscribeToRoom(roomId: string, callback: ChatMessageCallback): () => void {
+  const client = connectChat();
+  const topic = `/topic/chat/rooms/${roomId}`;
+
+  if (subscriptions.has(roomId)) {
+    subscriptions.get(roomId)!.unsubscribe();
+    subscriptions.delete(roomId);
+  }
+
+  const doSubscribe = () => {
+    const sub = client.subscribe(topic, (message: IMessage) => {
+      const parsed = JSON.parse(message.body) as ChatMessageResponse;
+      callback(parsed);
+    });
+    subscriptions.set(roomId, { id: sub.id, unsubscribe: () => sub.unsubscribe() });
+  };
+
+  if (client.connected) {
+    doSubscribe();
+  } else {
+    const previousOnConnect = client.onConnect;
+    client.onConnect = (frame) => {
+      if (previousOnConnect) previousOnConnect(frame);
+      doSubscribe();
+    };
+  }
+
+  return () => {
+    if (subscriptions.has(roomId)) {
+      subscriptions.get(roomId)!.unsubscribe();
+      subscriptions.delete(roomId);
+    }
+  };
+}
+
+export function sendWsMessage(roomId: string, content: string, messageType = 'TEXT'): void {
+  if (!stompClient?.connected) {
+    throw new Error('WebSocket not connected');
+  }
+  stompClient.publish({
+    destination: `/app/chat/rooms/${roomId}`,
+    body: JSON.stringify({ content, messageType }),
+  });
+}
+
+export function disconnectChat(): void {
+  subscriptions.forEach((sub) => sub.unsubscribe());
+  subscriptions.clear();
+  stompClient?.deactivate();
+  stompClient = null;
+}

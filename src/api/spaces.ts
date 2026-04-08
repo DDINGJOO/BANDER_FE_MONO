@@ -41,6 +41,7 @@ export type VendorBusinessHourDto = {
 export type VendorDetailDto = {
   vendorId: string;
   slug: string | null;
+  ownerUserId: string;
   name: string;
   description: string | null;
   contactPhone: string | null;

@@ -1,5 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
+import { createChatRoom } from '../api/chat';
+import { fetchVendorDetail } from '../api/spaces';
 import { HomeFooter } from '../components/home/HomeFooter';
 import { HomeHeader } from '../components/home/HomeHeader';
 import { KakaoMapView } from '../components/map/KakaoMapView';
@@ -473,16 +475,30 @@ export function SpaceDetailPage() {
                     <button
                       className="space-detail__chat-button"
                       type="button"
-                      onClick={() => {
-                        const dest = buildChatHref({
-                          space: slug || undefined,
-                          vendor: vendorSlug ?? undefined,
-                        });
+                      onClick={async () => {
                         if (!isAuthenticated) {
+                          const dest = buildChatHref({
+                            space: slug || undefined,
+                            vendor: vendorSlug ?? undefined,
+                          });
                           navigate(`/login?returnTo=${encodeURIComponent(dest)}`);
                           return;
                         }
-                        navigate(dest);
+                        if (vendorSlug) {
+                          try {
+                            const vendorDto = await fetchVendorDetail(vendorSlug);
+                            const room = await createChatRoom({
+                              targetUserId: Number(vendorDto.ownerUserId),
+                              vendorId: Number(vendorDto.vendorId),
+                              vendorSlug,
+                            });
+                            navigate(`/chat?t=${room.chatRoomId}`);
+                          } catch {
+                            navigate(buildChatHref({ space: slug || undefined, vendor: vendorSlug }));
+                          }
+                        } else {
+                          navigate(buildChatHref({ space: slug || undefined }));
+                        }
                       }}
                     >
                       <HeaderChatIcon />

@@ -42,6 +42,9 @@ function mapApiToVendorModel(dto: VendorDetailDto): VendorDetailModel {
   const lng = dto.address?.longitude ?? 126.9229;
 
   return {
+    vendorId: dto.vendorId,
+    ownerUserId: dto.ownerUserId,
+    slug: dto.slug,
     name: dto.name,
     description: dto.description ?? '',
     distanceLabel: '',

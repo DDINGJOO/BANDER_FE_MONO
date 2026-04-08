@@ -13,7 +13,9 @@ export type CancelBookingRequest = {
 };
 
 export type ConfirmPaymentRequest = {
-  paymentId: string;
+  paymentKey: string;
+  orderId: string;
+  amount: string;
 };
 
 export type BookingCommandResponse = {
@@ -22,6 +24,8 @@ export type BookingCommandResponse = {
   expiresAt: string | null;
   totalPrice: number;
   cancelledAt: string | null;
+  orderId: string | null;
+  paymentId: number | null;
 };
 
 export type BookingDetailResponse = {
@@ -80,6 +84,15 @@ export type CursorPageResponse<T> = {
   size: number;
 };
 
+export type RefundEstimateResponse = {
+  bookingId: number;
+  totalPrice: number;
+  refundRatePercent: number;
+  cancellationFee: number;
+  refundAmount: number;
+  cancellable: boolean;
+};
+
 // --- Functions ---
 
 export function createBooking(req: CreateBookingRequest) {
@@ -103,6 +116,10 @@ export function getMyBookings(params: { tab: string; cursor?: string; size?: num
   if (params.cursor) query.set('cursor', params.cursor);
   if (params.size != null) query.set('size', String(params.size));
   return getJson<CursorPageResponse<MyBookingItem>>(`/api/v1/users/me/bookings?${query.toString()}`);
+}
+
+export function getRefundEstimate(bookingId: number | string) {
+  return getJson<RefundEstimateResponse>(`/api/v1/bookings/${bookingId}/refund-estimate`);
 }
 
 export function getSpaceAvailability(spaceId: number | string, date: string) {

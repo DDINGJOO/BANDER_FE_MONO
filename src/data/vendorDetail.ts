@@ -125,6 +125,10 @@ export type VendorDetailModel = {
   reviews: VendorReviewItem[];
   rooms: VendorRoomItem[];
   timeNote: string;
+  /** API로부터 채워지는 채팅 연동 필드 (mock 모드에서는 null) */
+  vendorId: string | null;
+  ownerUserId: string | null;
+  slug: string | null;
 };
 
 const FIGMA_HERO =
@@ -145,6 +149,9 @@ const REVIEW_PHOTO_3 =
   'https://www.figma.com/api/mcp/asset/6a9e57cf-8224-4a37-a641-5a5c21ec02b3';
 
 const YOUTH_VENDOR_DETAIL: VendorDetailModel = {
+  vendorId: null,
+  ownerUserId: null,
+  slug: 'youth-music',
   description:
     '누구보다 몰입감 있는 사운드 환경을 갖춘 합주실입니다.\n밴드와 보컬, 개인 연습까지 모두 만족할 수 있는 음향과 장비를 준비했습니다.\n여러분이 연습에만 집중할 수 있도록 쾌적한 공간과 편안한 시설을 제공하기 위해 항상 최선을 다하겠습니다.\n찾아주시는 모든 분들이 즐겁게 머물 수 있는 합주 공간이 되도록 꾸준히 노력하겠습니다.',
   distanceLabel: '500m',
@@ -314,6 +321,9 @@ function buildAggregateVendor(slug: string, studio: string): VendorDetailModel {
   }));
 
   return {
+    vendorId: null,
+    ownerUserId: null,
+    slug,
     description: `${studio}에서 운영 중인 연습·합주 공간입니다. 각 룸 상세에서 예약과 이용 안내를 확인해 주세요.`,
     distanceLabel,
     fullAddress,
@@ -332,8 +342,11 @@ function buildAggregateVendor(slug: string, studio: string): VendorDetailModel {
   };
 }
 
-function staticSearchVendor(name: string): VendorDetailModel {
+function staticSearchVendor(name: string, slug: string): VendorDetailModel {
   return {
+    vendorId: null,
+    ownerUserId: null,
+    slug,
     description:
       `${name}의 공간 정보입니다. 아래에서 등록된 룸을 확인하고 상세 페이지에서 예약할 수 있습니다.`,
     distanceLabel: '350m',
@@ -363,11 +376,11 @@ export function getVendorDetail(slug: string | undefined): VendorDetailModel | n
   }
 
   if (slug === 'banggu-musician') {
-    return staticSearchVendor('방구석 뮤지션의 합주실');
+    return staticSearchVendor('방구석 뮤지션의 합주실', slug);
   }
 
   if (slug === 'chats-music') {
-    return staticSearchVendor('챗츠뮤직');
+    return staticSearchVendor('챗츠뮤직', slug);
   }
 
   const studio = studioFromSlug(slug);

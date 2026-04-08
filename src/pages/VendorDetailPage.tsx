@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
+import { createChatRoom } from '../api/chat';
 import { HomeFooter } from '../components/home/HomeFooter';
 import { HomeHeader } from '../components/home/HomeHeader';
 import { KakaoMapView } from '../components/map/KakaoMapView';
@@ -105,13 +106,26 @@ export function VendorDetailPage() {
           <button
             className="vendor-detail__chat-button"
             type="button"
-            onClick={() => {
-              const dest = buildChatHref({ vendor: slug });
+            onClick={async () => {
               if (!isAuthenticated) {
+                const dest = buildChatHref({ vendor: slug });
                 navigate(`/login?returnTo=${encodeURIComponent(dest)}`);
                 return;
               }
-              navigate(dest);
+              if (vendor.ownerUserId) {
+                try {
+                  const room = await createChatRoom({
+                    targetUserId: Number(vendor.ownerUserId),
+                    vendorId: vendor.vendorId ? Number(vendor.vendorId) : undefined,
+                    vendorSlug: vendor.slug ?? undefined,
+                  });
+                  navigate(`/chat?t=${room.chatRoomId}`);
+                } catch {
+                  navigate(buildChatHref({ vendor: slug }));
+                }
+              } else {
+                navigate(buildChatHref({ vendor: slug }));
+              }
             }}
           >
             <HeaderChatIcon />

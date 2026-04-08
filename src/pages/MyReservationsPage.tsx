@@ -12,9 +12,12 @@ import {
   RESERVATION_CANCEL_ALERT_DEFAULT,
   RESERVATION_CANCEL_LEAD_LINES,
   RESERVATION_CANCEL_NOTICE_DEFAULT,
+  buildCancelNoticeRows,
+  buildCancelLeadLines,
 } from '../data/reservationCancelModal';
+import type { ReservationCancelNoticeRow } from '../components/reservations/ReservationCancelModal';
 import { reservationsForTab, type MyReservation, type MyReservationTab } from '../data/myReservations';
-import { getMyBookings, type MyBookingItem } from '../api/bookings';
+import { getMyBookings, getRefundEstimate, type MyBookingItem } from '../api/bookings';
 import { isMockMode } from '../config/publicEnv';
 
 const TAB_LABELS: Record<MyReservationTab, string> = {
@@ -187,6 +190,8 @@ export function MyReservationsPage() {
   const [reviewViewOpen, setReviewViewOpen] = useState(false);
   const [cancelModalOpen, setCancelModalOpen] = useState(false);
   const [cancelToast, setCancelToast] = useState(false);
+  const [cancelNoticeRows, setCancelNoticeRows] = useState<ReservationCancelNoticeRow[]>(RESERVATION_CANCEL_NOTICE_DEFAULT);
+  const [cancelLeadLines, setCancelLeadLines] = useState<[string, string]>(RESERVATION_CANCEL_LEAD_LINES);
   const [headerSearchOpen, setHeaderSearchOpen] = useState(false);
   const [headerSearchQuery, setHeaderSearchQuery] = useState('');
   const headerSearchRef = useRef<HTMLDivElement | null>(null);
@@ -336,7 +341,25 @@ export function MyReservationsPage() {
                     }
                     if (row.action === 'cancel') {
                       setSelectedBookingId(row.bookingId);
-                      setCancelModalOpen(true);
+                      if (!isMockMode()) {
+                        getRefundEstimate(row.bookingId)
+                          .then((est) => {
+                            if (!est.cancellable) {
+                              alert('취소 불가: 예약 시작 12시간 이내에는 취소할 수 없습니다.');
+                              return;
+                            }
+                            setCancelNoticeRows(buildCancelNoticeRows(est));
+                            setCancelLeadLines(buildCancelLeadLines(est));
+                            setCancelModalOpen(true);
+                          })
+                          .catch(() => {
+                            setCancelNoticeRows(RESERVATION_CANCEL_NOTICE_DEFAULT);
+                            setCancelLeadLines(RESERVATION_CANCEL_LEAD_LINES);
+                            setCancelModalOpen(true);
+                          });
+                      } else {
+                        setCancelModalOpen(true);
+                      }
                     }
                   }}
                 />
@@ -357,8 +380,8 @@ export function MyReservationsPage() {
       <ReservationCancelModal
         alertText={RESERVATION_CANCEL_ALERT_DEFAULT}
         dividerAfterRowIndex={1}
-        leadLines={RESERVATION_CANCEL_LEAD_LINES}
-        noticeRows={RESERVATION_CANCEL_NOTICE_DEFAULT}
+        leadLines={cancelLeadLines}
+        noticeRows={cancelNoticeRows}
         onClose={() => {
           setCancelModalOpen(false);
           setSelectedBookingId(null);
