@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { HEADER_SEARCH_KEYWORD_SUGGESTIONS } from '../config/searchSuggestions';
 import { GuestGateModal } from '../components/home/GuestGateModal';
@@ -7,9 +7,11 @@ import { HomeHeader } from '../components/home/HomeHeader';
 import { HomePostCard } from '../components/home/HomePostCard';
 import { HomeReviewCard } from '../components/home/HomeReviewCard';
 import { HomeSpaceCard } from '../components/home/HomeSpaceCard';
-import { HomeSpaceExplorer } from '../components/home/HomeSpaceExplorer';
+import { HomeSpaceExplorer, type SpaceFilterState } from '../components/home/HomeSpaceExplorer';
 import { loadAuthSession } from '../data/authSession';
 import { useHomeFeed } from '../hooks/useHomeFeed';
+import { searchRooms, searchVendors, type RoomSearchItem, type VendorSearchItem } from '../api/search';
+import { isMockMode } from '../config/publicEnv';
 
 export function MainPage({ previewAuthenticated = false }: { previewAuthenticated?: boolean }) {
   const navigate = useNavigate();
@@ -20,6 +22,50 @@ export function MainPage({ previewAuthenticated = false }: { previewAuthenticate
   const [headerSearchQuery, setHeaderSearchQuery] = useState('');
   const headerSearchRef = useRef<HTMLDivElement | null>(null);
   const hotPostsScrollRef = useRef<HTMLDivElement | null>(null);
+
+  const [filteredSpaces, setFilteredSpaces] = useState<RoomSearchItem[] | null>(null);
+  const mainFilterRef = useRef<SpaceFilterState>({});
+  const [mainFilterKey, setMainFilterKey] = useState(0);
+
+  const handleMainFilterChange = useCallback((filters: SpaceFilterState) => {
+    const prev = JSON.stringify(mainFilterRef.current);
+    const next = JSON.stringify(filters);
+    if (prev === next) return;
+    mainFilterRef.current = filters;
+    const hasAny = filters.category || filters.capacity || filters.parking || filters.regions?.length || filters.keywords?.length;
+    if (!hasAny) {
+      setFilteredSpaces(null);
+      return;
+    }
+    setMainFilterKey((k) => k + 1);
+  }, []);
+
+  const [vendorSort, setVendorSort] = useState<'popular' | 'latest' | 'relevance'>('popular');
+  const [filteredVendors, setFilteredVendors] = useState<VendorSearchItem[] | null>(null);
+  const [vendorQuery, setVendorQuery] = useState('');
+
+  useEffect(() => {
+    if (isMockMode()) return;
+    const q = vendorQuery.trim() || undefined;
+    searchVendors({ q, sort: vendorSort, size: 8 })
+      .then((res) => setFilteredVendors(res.items))
+      .catch(() => {});
+  }, [vendorSort, vendorQuery]);
+
+  useEffect(() => {
+    if (mainFilterKey === 0 || isMockMode()) return;
+    const sf = mainFilterRef.current;
+    const cleanKeywords = sf.keywords?.map((k) => k.replace(/^#/, '')) ?? [];
+    const q = cleanKeywords.length ? cleanKeywords.join(' ') : '';
+    searchRooms({
+      q: q || undefined,
+      category: sf.category,
+      region: sf.regions?.length ? sf.regions[0] : undefined,
+      capacity: sf.capacity,
+      parking: sf.parking,
+      size: 20,
+    }).then((res) => setFilteredSpaces(res.rooms)).catch(() => {});
+  }, [mainFilterKey]);
 
   useEffect(() => {
     const handlePointerDown = (event: MouseEvent) => {
@@ -121,7 +167,22 @@ export function MainPage({ previewAuthenticated = false }: { previewAuthenticate
         <div className="home-section__heading home-section__heading--stack">
           <h2>이런 공간은 어떠신가요?</h2>
         </div>
-        <HomeSpaceExplorer spaces={recommendedSpaces} />
+        <HomeSpaceExplorer
+          onFilterChange={handleMainFilterChange}
+          spaces={filteredSpaces
+            ? filteredSpaces.map((r) => ({
+                title: r.roomName,
+                subtitle: r.description || '',
+                studio: r.studioName,
+                location: r.roadAddress || '',
+                price: `${r.pricePerSlot.toLocaleString()}원`,
+                rating: '',
+                image: '',
+                detailPath: `/spaces/${r.roomSlug || r.roomId}`,
+              }))
+            : recommendedSpaces
+          }
+        />
       </section>
 
       {vendorCards.length > 0 && (
@@ -149,8 +210,23 @@ export function MainPage({ previewAuthenticated = false }: { previewAuthenticate
       )}
 
       <section className="home-section home-section--popular-spaces" id="popular-spaces">
+        <div className="home-section__heading home-section__heading--stack">
+          <h2>인기 공간</h2>
+        </div>
         <div className="home-space-grid">
-          {recommendedSpaces.slice(0, 8).map((space) => (
+          {(filteredSpaces
+            ? filteredSpaces.map((r) => ({
+                title: r.roomName,
+                subtitle: r.description || '',
+                studio: r.studioName,
+                location: r.roadAddress || '',
+                price: `${r.pricePerSlot.toLocaleString()}원`,
+                rating: '',
+                image: '',
+                detailPath: `/spaces/${r.roomSlug || r.roomId}`,
+              }))
+            : recommendedSpaces
+          ).slice(0, 8).map((space) => (
             <HomeSpaceCard key={space.title} {...space} />
           ))}
         </div>
