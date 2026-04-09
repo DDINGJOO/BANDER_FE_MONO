@@ -44,5 +44,5 @@ export type PasswordResetVerifyResponse = {
 export type LoginResponse = {
   expiresAt: string;
   gatewayContextToken: string;
-  userId: number;
+  userId: number | string;
 };

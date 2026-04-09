@@ -3,6 +3,7 @@
  */
 
 import type { ChatMessageResponse, ChatRoomResponse } from '../api/chat';
+import { resolveProfileImageUrl } from '../config/media';
 
 export type ChatThread = {
   id: string;
@@ -11,6 +12,7 @@ export type ChatThread = {
   timeLabel: string;
   unread?: number;
   unreadOverflow?: boolean;
+  avatarUrl?: string;
 };
 
 export type ChatMessage =
@@ -205,16 +207,17 @@ export function chatRoomToThread(room: ChatRoomResponse): ChatThread {
     timeLabel: formatChatTime(room.lastMessageAt),
     unread: room.unreadCount > 0 ? room.unreadCount : undefined,
     unreadOverflow: room.unreadCount > 99,
+    avatarUrl: resolveProfileImageUrl(room.partnerProfileImage),
   };
 }
 
 export function chatMessageToUiMessage(
   msg: ChatMessageResponse,
-  currentUserId: number,
+  currentUserId: number | string,
   partnerNickname?: string,
 ): ChatMessage {
   const time = formatChatTime(msg.createdAt);
-  if (msg.senderUserId === currentUserId) {
+  if (String(msg.senderUserId) === String(currentUserId)) {
     return { id: msg.messageId, kind: 'out', lines: [msg.content], time };
   }
   return {

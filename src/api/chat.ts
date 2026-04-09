@@ -23,7 +23,8 @@ export type ChatRoomResponse = {
 export type ChatMessageResponse = {
   messageId: string;
   chatRoomId: string;
-  senderUserId: number;
+  /** Backend serializes Long as string via @JsonFormat(shape = STRING) */
+  senderUserId: number | string;
   content: string;
   messageType: 'TEXT' | 'IMAGE' | 'SYSTEM';
   readAt: string | null;

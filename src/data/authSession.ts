@@ -17,7 +17,8 @@ export type AuthSession = {
   expiresAt: string;
   gatewayContextToken: string;
   phoneVerified?: boolean;
-  userId: number;
+  /** Snowflake ID — stored as string to avoid JS number precision loss */
+  userId: number | string;
 };
 
 const SIGNUP_DRAFT_KEY = 'bander.signupDraft';

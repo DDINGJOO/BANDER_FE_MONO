@@ -15,6 +15,7 @@ import { HomeFooter } from '../components/home/HomeFooter';
 import { HomeHeader } from '../components/home/HomeHeader';
 import { SearchIcon } from '../components/shared/Icons';
 import { HEADER_SEARCH_KEYWORD_SUGGESTIONS } from '../config/searchSuggestions';
+import { resolveProfileImageUrl } from '../config/media';
 import { loadAuthSession, saveAuthSession } from '../data/authSession';
 import {
   type ChatVendorPanel,
@@ -89,6 +90,7 @@ export function ChatPage() {
   const [loading, setLoading] = useState(true);
   const [inputValue, setInputValue] = useState('');
   const [vendorDetail, setVendorDetail] = useState<VendorDetailDto | null>(null);
+  const [vendorDetailsMap, setVendorDetailsMap] = useState<Record<string, VendorDetailDto>>({});
   const messagesContainerRef = useRef<HTMLDivElement | null>(null);
 
   const activeRoomId = searchParams.get('t') ?? null;
@@ -150,6 +152,26 @@ export function ChatPage() {
         setLoading(false);
       });
   }, [isAuthenticated]);
+
+  // Vendor rooms: fetch vendor details for name/image enrichment
+  useEffect(() => {
+    const vendorRooms = allRooms.filter((r) => r.chatRoomType === 'VENDOR' && r.vendorSlug);
+    if (vendorRooms.length === 0) return;
+    Promise.allSettled(
+      vendorRooms.map((r) =>
+        fetchVendorDetail(r.vendorSlug!).then((dto) => [r.chatRoomId, dto] as const),
+      ),
+    ).then((results) => {
+      const map: Record<string, VendorDetailDto> = {};
+      for (const result of results) {
+        if (result.status === 'fulfilled') {
+          const [roomId, dto] = result.value;
+          map[String(roomId)] = dto;
+        }
+      }
+      setVendorDetailsMap(map);
+    });
+  }, [allRooms]);
 
   // 클라이언트 필터링
   useEffect(() => {
@@ -236,11 +258,33 @@ export function ChatPage() {
     return null;
   }
 
-  // Derive UI model from API data
-  const threads = rooms.map(chatRoomToThread);
+  // Derive UI model from API data — enrich vendor rooms with fetched details
+  const threads = rooms.map((room) => {
+    const thread = chatRoomToThread(room);
+    if (room.chatRoomType === 'VENDOR') {
+      const vd = vendorDetailsMap[String(room.chatRoomId)];
+      if (vd) {
+        thread.title = vd.name;
+        const firstRoomImage = vd.rooms?.[0]?.imageUrl ?? null;
+        if (firstRoomImage) {
+          thread.avatarUrl = firstRoomImage;
+        }
+      }
+    }
+    return thread;
+  });
   // chatRoomId는 number/bigint지만 URL param은 string이므로 String() 비교
   const activeRoom = rooms.find((r) => String(r.chatRoomId) === activeRoomId) ?? null;
-  const partnerNickname = activeRoom?.partnerNickname ?? undefined;
+  const isVendorRoom = activeRoom?.chatRoomType === 'VENDOR';
+  const activeVendorDetail = activeRoom ? vendorDetailsMap[String(activeRoom.chatRoomId)] : undefined;
+  const partnerNickname = (isVendorRoom && activeVendorDetail?.name)
+    ? activeVendorDetail.name
+    : (activeRoom?.partnerNickname ?? undefined);
+  // 업체 채팅방: 업체 첫 번째 룸 이미지, 개인 채팅방: 상대방 프로필 이미지
+  const vendorImageUrl = vendorDetail?.rooms?.[0]?.imageUrl ?? null;
+  const partnerAvatarUrl = isVendorRoom
+    ? (vendorImageUrl || resolveProfileImageUrl(activeRoom?.partnerProfileImage))
+    : resolveProfileImageUrl(activeRoom?.partnerProfileImage);
 
   const uiMessages = messages.map((msg) =>
     chatMessageToUiMessage(msg, currentUserId, partnerNickname),
@@ -349,7 +393,11 @@ export function ChatPage() {
                     className={`chat-page__thread${active ? ' chat-page__thread--active' : ''}`}
                     onClick={() => setThread(thread.id)}
                   >
-                    <span className="chat-page__thread-avatar" aria-hidden />
+                    {thread.avatarUrl ? (
+                      <img className="chat-page__thread-avatar chat-page__thread-avatar--img" src={thread.avatarUrl} alt="" />
+                    ) : (
+                      <span className="chat-page__thread-avatar" aria-hidden />
+                    )}
                     <span className="chat-page__thread-body">
                       <span className="chat-page__thread-title">{thread.title}</span>
                       <span className="chat-page__thread-preview">{thread.preview}</span>
@@ -395,7 +443,11 @@ export function ChatPage() {
                       </div>
                     ) : (
                       <div className="chat-page__row chat-page__row--in" key={msg.id}>
-                        <span className="chat-page__in-avatar" aria-hidden />
+                        {partnerAvatarUrl ? (
+                          <img className="chat-page__in-avatar chat-page__in-avatar--img" src={partnerAvatarUrl} alt="" />
+                        ) : (
+                          <span className="chat-page__in-avatar" aria-hidden />
+                        )}
                         <div className="chat-page__in-block">
                           <p className="chat-page__in-name">{msg.senderName}</p>
                           <div className="chat-page__in-line">
@@ -441,7 +493,11 @@ export function ChatPage() {
 
           <aside className="chat-page__vendor-col" aria-label="상대 정보">
             <div className="chat-page__vendor-top">
-              <span className="chat-page__vendor-avatar" aria-hidden />
+              {partnerAvatarUrl ? (
+                <img className="chat-page__vendor-avatar chat-page__vendor-avatar--img" src={partnerAvatarUrl} alt="" />
+              ) : (
+                <span className="chat-page__vendor-avatar" aria-hidden />
+              )}
               <button type="button" className="chat-page__vendor-more" aria-label="더보기">
                 <MoreGlyph30 />
               </button>
