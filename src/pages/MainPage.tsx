@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { HEADER_SEARCH_KEYWORD_SUGGESTIONS } from '../config/searchSuggestions';
+import { useSearchSuggestions } from '../hooks/useSearchSuggestions';
 import { GuestGateModal } from '../components/home/GuestGateModal';
 import { HomeFooter } from '../components/home/HomeFooter';
 import { HomeHeader } from '../components/home/HomeHeader';
@@ -98,9 +98,7 @@ export function MainPage({ previewAuthenticated = false }: { previewAuthenticate
     return () => clearInterval(interval);
   }, [hotPosts]);
 
-  const filteredSuggestions = HEADER_SEARCH_KEYWORD_SUGGESTIONS.filter((item) =>
-    item.toLowerCase().includes(headerSearchQuery.toLowerCase())
-  );
+  const { suggestions: filteredSuggestions } = useSearchSuggestions(headerSearchQuery);
 
   return (
     <main className="home-page">

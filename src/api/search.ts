@@ -1,4 +1,5 @@
 import { getJson } from './client';
+import type { SearchSuggestionsResponseDto } from '../data/schemas/search';
 
 export type RoomSearchItem = {
   roomId: number;
@@ -19,6 +20,7 @@ export type RoomSearchItem = {
   longitude: number;
   available: boolean;
   popularityScore: number;
+  thumbnailUrl: string | null;
 };
 
 export type RoomSearchResponse = {
@@ -95,4 +97,11 @@ export function searchVendors(params: VendorSearchParams) {
 
 export function searchPosts(params: PostSearchParams) {
   return getJson<CursorPageResponse<PostSearchItem>>(`/api/v1/search/posts${buildQuery(params)}`);
+}
+
+
+export function searchSuggestions(prefix: string, size = 10) {
+  return getJson<SearchSuggestionsResponseDto>(
+    `/api/v1/search/suggestions?prefix=${encodeURIComponent(prefix)}&size=${size}`
+  );
 }

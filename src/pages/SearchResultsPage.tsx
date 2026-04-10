@@ -4,7 +4,7 @@ import { HomeFooter } from '../components/home/HomeFooter';
 import { HomeHeader } from '../components/home/HomeHeader';
 import { HomeSpaceExplorer, type SpaceFilterState } from '../components/home/HomeSpaceExplorer';
 import { ChevronIcon } from '../components/shared/Icons';
-import { HEADER_SEARCH_KEYWORD_SUGGESTIONS } from '../config/searchSuggestions';
+import { useSearchSuggestions } from '../hooks/useSearchSuggestions';
 import { COMMUNITY_SORT_OPTIONS, COMMUNITY_FEED_ITEMS } from '../data/communityFeed';
 import { loadAuthSession } from '../data/authSession';
 import {
@@ -170,9 +170,7 @@ export function SearchResultsPage() {
     };
   }, []);
 
-  const filteredSuggestions = HEADER_SEARCH_KEYWORD_SUGGESTIONS.filter((item) =>
-    item.toLowerCase().includes(headerSearchQuery.toLowerCase())
-  );
+  const { suggestions: filteredSuggestions } = useSearchSuggestions(headerSearchQuery);
 
   const handleSearchSubmit = (value: string) => {
     const normalizedValue = value.trim();
@@ -300,7 +298,7 @@ export function SearchResultsPage() {
                 location: r.roadAddress || '',
                 price: `${r.pricePerSlot.toLocaleString()}원`,
                 rating: '',
-                image: '',
+                image: r.thumbnailUrl || '',
                 detailPath: `/spaces/${r.roomSlug || r.roomId}`,
               }))}
               variant="section"
