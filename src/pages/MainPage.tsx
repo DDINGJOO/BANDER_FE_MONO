@@ -44,6 +44,9 @@ export function MainPage({ previewAuthenticated = false }: { previewAuthenticate
   const [filteredVendors, setFilteredVendors] = useState<VendorSearchItem[] | null>(null);
   const [vendorQuery, setVendorQuery] = useState('');
 
+  // HomeHeader fetches /users/me/summary on its own and caches across pages,
+  // so MainPage no longer needs to duplicate that work.
+
   useEffect(() => {
     if (isMockMode()) return;
     const q = vendorQuery.trim() || undefined;

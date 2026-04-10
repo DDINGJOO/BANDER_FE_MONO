@@ -4,7 +4,7 @@ import { ApiError } from "../api/client";
 import { checkNicknameAvailability, getMyProfile, requestProfileImageUploadForEdit, updateMyProfile } from "../api/users";
 import { resolveProfileImageUrl } from "../config/media";
 import { HomeFooter } from "../components/home/HomeFooter";
-import { HomeHeader } from "../components/home/HomeHeader";
+import { HomeHeader, invalidateUserSummaryCache } from "../components/home/HomeHeader";
 import { ChevronIcon, SelectedCheckIcon } from "../components/shared/Icons";
 import { HEADER_SEARCH_KEYWORD_SUGGESTIONS } from "../config/searchSuggestions";
 import { loadAuthSession } from "../data/authSession";
@@ -101,6 +101,7 @@ export function ProfileEditPage() {
   const [loading, setLoading] = useState(true);
   const [submitLoading, setSubmitLoading] = useState(false);
   const [submitError, setSubmitError] = useState('');
+  const [successOpen, setSuccessOpen] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
   const savedTrim = savedNickname.trim();
@@ -189,7 +190,7 @@ export function ProfileEditPage() {
         setSavedNickname(profile.nickname ?? '');
         setCheckedNickname(profile.nickname ?? '');
         setBio(profile.bio ?? '');
-        setPhotoUrl(resolveProfileImageUrl(profile.profileImageRef));
+        setPhotoUrl(resolveProfileImageUrl(profile.profileImageRef) ?? PROFILE_EDIT_DEFAULT_PHOTO);
         if (profile.gender) {
           setServerGender(profile.gender);
           const genderMap: Record<string, ProfileEditGender> = { MALE: 'male', FEMALE: 'female' };
@@ -522,7 +523,9 @@ export function ProfileEditPage() {
                     instruments: instruments.join(',') || undefined,
                     profileImageRef: imageRef,
                   });
-                  navigate(-1);
+                  // Force header to refetch latest profile on next render.
+                  invalidateUserSummaryCache();
+                  setSuccessOpen(true);
                 } catch (err) {
                   if (err instanceof ApiError) {
                     setSubmitError(err.message);
@@ -552,6 +555,68 @@ export function ProfileEditPage() {
           />
         </div>
       </div>
+
+      {successOpen ? (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="profile-edit-success-title"
+          style={{
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 9999,
+          }}
+          onClick={() => {
+            setSuccessOpen(false);
+            navigate('/');
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              backgroundColor: '#fff',
+              borderRadius: '12px',
+              padding: '32px 40px',
+              minWidth: '320px',
+              maxWidth: '90vw',
+              boxShadow: '0 8px 32px rgba(0, 0, 0, 0.24)',
+              textAlign: 'center',
+            }}
+          >
+            <div style={{ fontSize: '40px', marginBottom: '12px' }}>✓</div>
+            <h2 id="profile-edit-success-title" style={{ fontSize: '18px', fontWeight: 700, margin: '0 0 8px 0' }}>
+              성공했습니다
+            </h2>
+            <p style={{ fontSize: '14px', color: '#6b7280', margin: '0 0 20px 0' }}>
+              프로필이 성공적으로 수정되었습니다.
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                setSuccessOpen(false);
+                navigate('/');
+              }}
+              style={{
+                width: '100%',
+                padding: '12px',
+                fontSize: '15px',
+                fontWeight: 600,
+                color: '#fff',
+                backgroundColor: 'var(--color-main-yellow, #f5b82e)',
+                border: 'none',
+                borderRadius: '8px',
+                cursor: 'pointer',
+              }}
+            >
+              확인
+            </button>
+          </div>
+        </div>
+      ) : null}
 
       <HomeFooter />
     </main>

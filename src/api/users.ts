@@ -39,6 +39,19 @@ export function getMyProfile() {
   return getJson<UserProfile>('/api/v1/users/me/profile');
 }
 
+export type UserMeSummary = {
+  displayName: string;
+  email: string;
+  profileImageRef: string | null;
+  pointsLabel: string;
+  couponCountLabel: string;
+  reservationBadgeCount: number;
+};
+
+export function getMySummary() {
+  return getJson<UserMeSummary>('/api/v1/users/me/summary');
+}
+
 export function updateMyProfile(req: UpdateProfileRequest) {
   return patchJson<UpdateProfileResponse>('/api/v1/users/me/profile', req);
 }

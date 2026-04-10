@@ -1,15 +1,13 @@
 import { getCdnBaseUrl } from './publicEnv';
 
-const DEFAULT_PROFILE_IMAGE = '/images/default-profile.png';
-
 /**
  * Convert a profileImageRef (S3 key) to a displayable URL.
- * If CDN is configured, prepend the CDN base URL.
- * Handles: full URLs (https://), blob: URLs, S3 keys, and defaults.
+ * Returns undefined for the default/placeholder ref so callers can render
+ * a CSS fallback (gradient avatar) instead of a broken <img>.
  */
-export function resolveProfileImageUrl(ref: string | null | undefined): string {
+export function resolveProfileImageUrl(ref: string | null | undefined): string | undefined {
   if (!ref || ref === 'profile/default-v1') {
-    return DEFAULT_PROFILE_IMAGE;
+    return undefined;
   }
 
   // Already a full URL (blob: or https:)
@@ -23,6 +21,6 @@ export function resolveProfileImageUrl(ref: string | null | undefined): string {
     return `${cdn}/${ref}`;
   }
 
-  // No CDN configured — return key as-is
-  return ref;
+  // No CDN configured — treat as not-resolvable
+  return undefined;
 }

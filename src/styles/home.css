@@ -338,6 +338,12 @@
     radial-gradient(circle at 52% 34%, #f2d6bd 0 21%, transparent 21.5%),
     radial-gradient(circle at 50% 72%, #d2a88d 0 28%, transparent 28.5%),
     linear-gradient(180deg, #32261f 0 42%, #e4b998 42% 100%);
+  object-fit: cover;
+  display: block;
+}
+
+img.home-header__avatar::after {
+  content: none;
 }
 
 .home-header__avatar::after {

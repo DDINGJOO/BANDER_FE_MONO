@@ -1,7 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { clearAuthSession } from '../../data/authSession';
-import { logout as apiLogout } from '../../api/users';
+import { getMySummary, logout as apiLogout, type UserMeSummary } from '../../api/users';
+import { resolveProfileImageUrl } from '../../config/media';
 import { resolveHomeProfileMenuModel, type HomeProfileMenuModel } from '../../types/homeProfileMenu';
 import { BrandMark } from '../shared/BrandMark';
 import {
@@ -45,6 +46,32 @@ function isSearchBar(props: HomeHeaderProps): props is HomeHeaderSearchBarProps 
   return props.variant !== 'icon';
 }
 
+// Module-level cache so cross-page navigation does not refetch or flicker.
+let cachedUserSummary: UserMeSummary | null = null;
+const summarySubscribers = new Set<(s: UserMeSummary | null) => void>();
+let summaryFetchInFlight: Promise<UserMeSummary | null> | null = null;
+
+function fetchUserSummaryOnce(): Promise<UserMeSummary | null> {
+  if (cachedUserSummary) return Promise.resolve(cachedUserSummary);
+  if (summaryFetchInFlight) return summaryFetchInFlight;
+  summaryFetchInFlight = getMySummary()
+    .then((s) => {
+      cachedUserSummary = s;
+      summarySubscribers.forEach((cb) => cb(s));
+      return s;
+    })
+    .catch(() => null)
+    .finally(() => {
+      summaryFetchInFlight = null;
+    });
+  return summaryFetchInFlight;
+}
+
+export function invalidateUserSummaryCache() {
+  cachedUserSummary = null;
+  summarySubscribers.forEach((cb) => cb(null));
+}
+
 export function HomeHeader(props: HomeHeaderProps) {
   const { authenticated, onGuestCta, profileMenu: profileMenuPartial } = props;
   const bar = isSearchBar(props);
@@ -55,7 +82,33 @@ export function HomeHeader(props: HomeHeaderProps) {
   const profileRootRef = useRef<HTMLDivElement | null>(null);
   const [profileOpen, setProfileOpen] = useState(false);
   const [logoutOpen, setLogoutOpen] = useState(false);
-  const profileModel = resolveHomeProfileMenuModel(profileMenuPartial);
+
+  // Auto-fetch user summary once per session and reuse across pages.
+  const [summary, setSummary] = useState<UserMeSummary | null>(cachedUserSummary);
+  useEffect(() => {
+    if (!authenticated) return;
+    const notify = (s: UserMeSummary | null) => setSummary(s);
+    summarySubscribers.add(notify);
+    fetchUserSummaryOnce().then((s) => {
+      if (s) setSummary(s);
+    });
+    return () => {
+      summarySubscribers.delete(notify);
+    };
+  }, [authenticated]);
+
+  // Prefer explicit props override, otherwise derive from cached summary.
+  const derivedFromSummary: Partial<HomeProfileMenuModel> | undefined = summary
+    ? {
+        displayName: summary.displayName,
+        email: summary.email,
+        profileImageUrl: resolveProfileImageUrl(summary.profileImageRef),
+        pointsLabel: summary.pointsLabel,
+        couponCountLabel: summary.couponCountLabel,
+        reservationBadgeCount: summary.reservationBadgeCount,
+      }
+    : undefined;
+  const profileModel = resolveHomeProfileMenuModel(profileMenuPartial ?? derivedFromSummary);
 
   useEffect(() => {
     if (!profileOpen) {
@@ -233,7 +286,16 @@ export function HomeHeader(props: HomeHeaderProps) {
                 onClick={() => setProfileOpen((open) => !open)}
                 type="button"
               >
-                <span aria-hidden="true" className="home-header__avatar" />
+                {profileModel.profileImageUrl ? (
+                  <img
+                    alt=""
+                    aria-hidden="true"
+                    className="home-header__avatar"
+                    src={profileModel.profileImageUrl}
+                  />
+                ) : (
+                  <span aria-hidden="true" className="home-header__avatar" />
+                )}
                 <span aria-hidden="true" className="home-header__profile-arrow">
                   <ChevronIcon />
                 </span>
@@ -270,6 +332,7 @@ export function HomeHeader(props: HomeHeaderProps) {
             // logout may fail if session already expired, proceed anyway
           }
           clearAuthSession();
+          invalidateUserSummaryCache();
           setLogoutOpen(false);
           navigate(0);
         }}
