@@ -540,8 +540,8 @@ export function SpaceDetailPage() {
                     </button>
                   </div>
                   <div className="space-detail__review-list">
-                    {detail.reviewSummary.map((review) => (
-                      <article className="space-detail__review-card" key={`${review.author}-${review.date}`}>
+                    {detail.reviewSummary.map((review, index) => (
+                      <article className="space-detail__review-card" key={`review-${index}`}>
                         <div className="space-detail__review-meta-row">
                           <span className="space-detail__review-avatar-sm" aria-hidden="true" />
                           <p className="space-detail__review-meta-line">

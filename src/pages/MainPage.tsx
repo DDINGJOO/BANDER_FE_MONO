@@ -246,8 +246,8 @@ export function MainPage({ previewAuthenticated = false }: { previewAuthenticate
           <p>게스트도 후기와 정보를 충분히 보고 공간을 비교할 수 있습니다.</p>
         </div>
         <div className="home-review-grid">
-          {reviewCards.map((review) => (
-            <HomeReviewCard key={`${review.author}-${review.date}`} {...review} />
+          {reviewCards.map((review, index) => (
+            <HomeReviewCard key={`review-${index}`} {...review} />
           ))}
         </div>
       </section>

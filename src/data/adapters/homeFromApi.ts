@@ -75,10 +75,10 @@ export function homeVendorCardFromDto(row: HomeVendorCardDto) {
 
 export function normalizeHomeFeedForUi(dto: HomeFeedResponseDto) {
   return {
-    hotPosts: dto.hotPosts.map(homeHotPostCardFromDto),
-    recommendedSpaces: dto.recommendedSpaces.map(homeSpaceCardFromDto),
-    reviewCards: dto.reviewCards.map(homeReviewCardFromDto),
-    categoryBubbles: dto.categoryBubbles.map(homeCategoryBubbleFromDto),
+    hotPosts: (dto.hotPosts ?? []).map(homeHotPostCardFromDto),
+    recommendedSpaces: (dto.recommendedSpaces ?? []).map(homeSpaceCardFromDto),
+    reviewCards: (dto.reviewCards ?? []).map(homeReviewCardFromDto),
+    categoryBubbles: (dto.categoryBubbles ?? []).map(homeCategoryBubbleFromDto),
     vendorCards: (dto.vendorCards ?? []).map(homeVendorCardFromDto),
   };
 }
