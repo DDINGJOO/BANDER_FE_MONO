@@ -103,7 +103,11 @@ export function createCommunityPost(request: CreateCommunityPostRequest) {
 
 export type CreateCommentRequest = {
   content: string;
-  parentId?: number;
+  /**
+   * 대댓글 부모 ID. Snowflake 기반 ID 는 64bit 이므로 JS Number 의
+   * 정밀도(53bit)를 초과할 수 있다. 반드시 string 으로 전달해야 한다.
+   */
+  parentId?: string;
 };
 
 export type CreateCommunityCommentRequest = CreateCommentRequest;

@@ -510,7 +510,9 @@ export function CommunityPostDetailPage() {
     try {
       await createCommunityComment(postId, {
         content: draft.trim(),
-        parentId: replyTo ? Number(replyTo.commentId) : undefined,
+        // Snowflake ID 는 64bit 이므로 Number 변환 시 정밀도 손실 위험.
+        // 문자열 그대로 전달한다.
+        parentId: replyTo?.commentId ?? undefined,
       });
       const nextComments = await loadComments(postId);
       setDraft('');
