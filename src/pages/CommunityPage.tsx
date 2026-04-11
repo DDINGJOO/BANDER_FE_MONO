@@ -5,11 +5,7 @@ import { HomeHeader } from '../components/home/HomeHeader';
 import { ChevronIcon } from '../components/shared/Icons';
 import { HEADER_SEARCH_KEYWORD_SUGGESTIONS } from '../config/searchSuggestions';
 import { loadAuthSession } from '../data/authSession';
-import {
-  COMMUNITY_FEED_ITEMS,
-  COMMUNITY_SORT_OPTIONS,
-  getCommunityCategoryFilters,
-} from '../data/communityFeed';
+import { useCommunityFeed } from '../hooks/useCommunityFeed';
 
 export function CommunityPage() {
   const navigate = useNavigate();
@@ -19,14 +15,23 @@ export function CommunityPage() {
   const headerSearchRef = useRef<HTMLDivElement | null>(null);
   const sortRef = useRef<HTMLDivElement | null>(null);
   const [sortOpen, setSortOpen] = useState(false);
-  const [sortBy, setSortBy] = useState<string>(COMMUNITY_SORT_OPTIONS[0]);
-  const categoryOptions = getCommunityCategoryFilters(COMMUNITY_FEED_ITEMS);
-  const [activeCategory, setActiveCategory] = useState(categoryOptions[0] ?? '전체');
-
-  const visibleItems =
-    activeCategory === '전체'
-      ? COMMUNITY_FEED_ITEMS
-      : COMMUNITY_FEED_ITEMS.filter((row) => row.category === activeCategory);
+  const {
+    activeCategory,
+    categoryOptions,
+    errorMessage,
+    goToNextPage,
+    goToPreviousPage,
+    hasNextPage,
+    hasPreviousPage,
+    items,
+    loading,
+    page,
+    selectedSortOption,
+    setCategory,
+    setSortOption,
+    sortOptions,
+    totalCount,
+  } = useCommunityFeed();
 
   const filteredSuggestions = HEADER_SEARCH_KEYWORD_SUGGESTIONS.filter((item) =>
     item.toLowerCase().includes(headerSearchQuery.toLowerCase()),
@@ -91,7 +96,7 @@ export function CommunityPage() {
                     : 'community-page__chip'
                 }
                 key={label}
-                onClick={() => setActiveCategory(label)}
+                onClick={() => setCategory(label)}
                 type="button"
               >
                 {label}
@@ -111,25 +116,26 @@ export function CommunityPage() {
               onClick={() => setSortOpen((o) => !o)}
               type="button"
             >
-              {sortBy}
+              {selectedSortOption.label}
               <span className="community-page__sort-chevron" aria-hidden>
                 <ChevronIcon />
               </span>
             </button>
             {sortOpen ? (
               <div className="community-page__sort-menu" role="listbox">
-                {COMMUNITY_SORT_OPTIONS.map((opt) => (
+                {sortOptions.map((option) => (
                   <button
+                    aria-selected={option.value === selectedSortOption.value}
                     className="community-page__sort-option"
-                    key={opt}
+                    key={option.value}
                     onClick={() => {
-                      setSortBy(opt);
+                      setSortOption(option.value);
                       setSortOpen(false);
                     }}
                     role="option"
                     type="button"
                   >
-                    {opt}
+                    {option.label}
                   </button>
                 ))}
               </div>
@@ -137,45 +143,83 @@ export function CommunityPage() {
           </div>
         </div>
 
-        <div className="community-page__grid">
-          {visibleItems.map((item) => {
-            const cardInner = (
-              <>
-                {item.thumbnail ? (
-                  <div
-                    aria-hidden
-                    className="community-page__thumb"
-                    style={
-                      item.thumbnail.startsWith('http')
-                        ? { background: `#eee url(${item.thumbnail}) center / cover` }
-                        : { background: item.thumbnail }
-                    }
-                  />
-                ) : null}
-                <div className="community-page__card-body">
-                  <span className="community-page__category">{item.category}</span>
-                  <h2 className="community-page__card-title">{item.title}</h2>
-                  <p className="community-page__excerpt">{item.excerpt}</p>
-                  <div className="community-page__meta">
-                    <span>neowmeow</span>
-                    <span>방금</span>
-                    <span>♥ {item.likes}</span>
-                    <span>• 2</span>
+        <div className="community-page__summary">
+          <span className="community-page__count">총 {totalCount.toLocaleString('ko-KR')}개</span>
+          <span className="community-page__page-indicator">{page + 1}페이지</span>
+        </div>
+
+        {loading ? (
+          <div className="community-page__feedback" role="status">
+            커뮤니티 글을 불러오는 중입니다.
+          </div>
+        ) : errorMessage ? (
+          <div className="community-page__feedback community-page__feedback--error" role="alert">
+            {errorMessage}
+          </div>
+        ) : items.length === 0 ? (
+          <div className="community-page__feedback community-page__feedback--empty">
+            아직 등록된 게시글이 없습니다.
+          </div>
+        ) : (
+          <div className="community-page__grid">
+            {items.map((item) => {
+              const cardInner = (
+                <>
+                  {item.thumbnail ? (
+                    <div
+                      aria-hidden
+                      className="community-page__thumb"
+                      style={
+                        /^https?:\/\//.test(item.thumbnail)
+                          ? { background: `#eee url(${item.thumbnail}) center / cover` }
+                          : { background: item.thumbnail }
+                      }
+                    />
+                  ) : null}
+                  <div className="community-page__card-body">
+                    <span className="community-page__category">{item.category}</span>
+                    <h2 className="community-page__card-title">{item.title}</h2>
+                    <p className="community-page__excerpt">{item.excerpt}</p>
+                    <div className="community-page__meta">
+                      <span>{item.authorNickname}</span>
+                      <span>{item.postedAtLabel}</span>
+                      <span>♥ {item.likes}</span>
+                      <span>• {item.commentCount}</span>
+                    </div>
                   </div>
-                </div>
-              </>
-            );
-            const cardClass = `community-page__card${item.detailSlug ? ' community-page__card--link' : ''}`;
-            return item.detailSlug ? (
-              <Link className={cardClass} key={item.title} to={`/community/post/${item.detailSlug}`}>
-                {cardInner}
-              </Link>
-            ) : (
-              <article className={cardClass} key={item.title}>
-                {cardInner}
-              </article>
-            );
-          })}
+                </>
+              );
+              const cardClass = `community-page__card${item.detailSlug ? ' community-page__card--link' : ''}`;
+              return item.detailSlug ? (
+                <Link className={cardClass} key={item.id} to={`/community/post/${item.detailSlug}`}>
+                  {cardInner}
+                </Link>
+              ) : (
+                <article className={cardClass} key={item.id}>
+                  {cardInner}
+                </article>
+              );
+            })}
+          </div>
+        )}
+
+        <div aria-label="커뮤니티 페이지네이션" className="community-page__pagination">
+          <button
+            className="community-page__page-button"
+            disabled={loading || !hasPreviousPage}
+            onClick={goToPreviousPage}
+            type="button"
+          >
+            이전 페이지
+          </button>
+          <button
+            className="community-page__page-button"
+            disabled={loading || !hasNextPage}
+            onClick={goToNextPage}
+            type="button"
+          >
+            다음 페이지
+          </button>
         </div>
       </div>
 

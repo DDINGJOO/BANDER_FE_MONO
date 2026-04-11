@@ -1,12 +1,15 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import {
+  createCommunityPost,
+  uploadPostInlineImage,
+} from '../api/community';
+import { ApiError } from '../api/client';
 import { HomeFooter } from '../components/home/HomeFooter';
 import { HomeHeader } from '../components/home/HomeHeader';
 import { ChevronIcon } from '../components/shared/Icons';
 import { HEADER_SEARCH_KEYWORD_SUGGESTIONS } from '../config/searchSuggestions';
 import { loadAuthSession } from '../data/authSession';
-import { createPost } from '../api/community';
-import { isMockMode } from '../config/publicEnv';
 import {
   COMMUNITY_WRITE_BODY_MAX,
   COMMUNITY_WRITE_CATEGORIES,
@@ -21,9 +24,9 @@ function CameraGlyph40() {
       aria-hidden="true"
       className="community-write__photo-add-icon"
       fill="none"
+      height="40"
       viewBox="0 0 40 40"
       width="40"
-      height="40"
     >
       <path
         d="M8.33 12.5h4.17L15 10h10l2.5 2.5h4.17c.92 0 1.66.75 1.66 1.67v16.66c0 .92-.74 1.67-1.66 1.67H8.33c-.92 0-1.66-.75-1.66-1.67V14.17c0-.92.74-1.67 1.66-1.67z"
@@ -35,11 +38,30 @@ function CameraGlyph40() {
   );
 }
 
-type PhotoItem = { id: string; url: string };
+type PhotoItem = {
+  file: File;
+  id: string;
+  url: string;
+};
+
+function getErrorMessage(error: unknown, fallback: string) {
+  if (error instanceof ApiError) {
+    return error.message;
+  }
+
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+
+  return fallback;
+}
 
 export function CommunityWritePage() {
   const navigate = useNavigate();
-  const isAuthenticated = Boolean(loadAuthSession());
+  const authSession = loadAuthSession();
+  const isAuthenticated = Boolean(authSession);
+  const ownerKey = authSession ? String(authSession.userId) : '';
+
   const [headerSearchOpen, setHeaderSearchOpen] = useState(false);
   const [headerSearchQuery, setHeaderSearchQuery] = useState('');
   const headerSearchRef = useRef<HTMLDivElement | null>(null);
@@ -50,19 +72,23 @@ export function CommunityWritePage() {
   const [postTitle, setPostTitle] = useState('');
   const [body, setBody] = useState('');
   const [photos, setPhotos] = useState<PhotoItem[]>([]);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState('');
   const photoInputId = useId();
 
   const filteredSuggestions = HEADER_SEARCH_KEYWORD_SUGGESTIONS.filter((item) =>
-    item.toLowerCase().includes(headerSearchQuery.toLowerCase()),
+    item.toLowerCase().includes(headerSearchQuery.toLowerCase())
   );
 
   const onHeaderSearchSubmit = useCallback(
     (value: string) => {
-      const q = value.trim();
-      if (!q) return;
-      navigate(`/search?q=${encodeURIComponent(q)}`);
+      const query = value.trim();
+      if (!query) {
+        return;
+      }
+      navigate(`/search?q=${encodeURIComponent(query)}`);
     },
-    [navigate],
+    [navigate]
   );
 
   useEffect(() => {
@@ -71,16 +97,20 @@ export function CommunityWritePage() {
         setHeaderSearchOpen(false);
       }
     };
+
     document.addEventListener('mousedown', onPointerDown);
     return () => document.removeEventListener('mousedown', onPointerDown);
   }, []);
 
   const photosRef = useRef(photos);
   photosRef.current = photos;
+
   useEffect(() => {
     return () => {
-      photosRef.current.forEach((p) => {
-        if (p.url.startsWith('blob:')) URL.revokeObjectURL(p.url);
+      photosRef.current.forEach((photo) => {
+        if (photo.url?.startsWith('blob:')) {
+          URL.revokeObjectURL(photo.url);
+        }
       });
     };
   }, []);
@@ -92,49 +122,93 @@ export function CommunityWritePage() {
     body.trim().length > 0;
 
   const onPickPhotos = (files: FileList | null) => {
-    if (!files?.length) return;
-    setPhotos((prev) => {
-      const next = [...prev];
-      for (let i = 0; i < files.length && next.length < COMMUNITY_WRITE_PHOTO_MAX; i += 1) {
-        const f = files.item(i);
-        if (!f || !f.type.startsWith('image/')) continue;
+    if (!files?.length) {
+      return;
+    }
+
+    setPhotos((current) => {
+      const next = [...current];
+      for (let index = 0; index < files.length && next.length < COMMUNITY_WRITE_PHOTO_MAX; index += 1) {
+        const file = files[index] ?? files.item(index);
+        if (!file || !file.type.startsWith('image/')) {
+          continue;
+        }
         next.push({
-          id: `${f.name}-${f.size}-${next.length}-${Date.now()}`,
-          url: URL.createObjectURL(f),
+          file,
+          id: `${file.name}-${file.size}-${next.length}-${Date.now()}`,
+          url: URL.createObjectURL(file),
         });
       }
       return next;
     });
-    if (fileInputRef.current) fileInputRef.current.value = '';
+
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
   };
 
   const removePhoto = (id: string) => {
-    setPhotos((prev) => {
-      const item = prev.find((p) => p.id === id);
-      if (item?.url.startsWith('blob:')) URL.revokeObjectURL(item.url);
-      return prev.filter((p) => p.id !== id);
+    setPhotos((current) => {
+      const target = current.find((photo) => photo.id === id);
+      if (target?.url.startsWith('blob:')) {
+        URL.revokeObjectURL(target.url);
+      }
+      return current.filter((photo) => photo.id !== id);
     });
   };
 
-  const [submitting, setSubmitting] = useState(false);
+  const uploadPhoto = useCallback(
+    (photo: PhotoItem) =>
+      uploadPostInlineImage({
+        file: photo.file,
+        ownerKey,
+      }),
+    [ownerKey]
+  );
 
   const onSubmit = async () => {
-    if (!canSubmit || submitting) return;
+    if (!canSubmit || submitting) {
+      return;
+    }
 
-    if (isMockMode()) {
-      navigate('/community');
+    if (!isAuthenticated) {
+      navigate('/login?returnTo=%2Fcommunity%2Fwrite');
       return;
     }
 
     setSubmitting(true);
+    setSubmitError('');
+
     try {
-      const blocks: { blockType: 'TEXT' | 'IMAGE' | 'CODE'; content: string }[] = [];
-      if (body.trim()) {
-        blocks.push({ blockType: 'TEXT', content: body.trim() });
+      let imageRefs: string[] = [];
+      if (photos.length > 0) {
+        try {
+          imageRefs = await Promise.all(photos.map((photo) => uploadPhoto(photo)));
+        } catch {
+          setSubmitError('일부 이미지 업로드에 실패했습니다. 다시 시도해 주세요.');
+          setSubmitting(false);
+          return;
+        }
       }
-      await createPost({ title: postTitle.trim(), blocks });
+
+      const blocks: Array<{ blockType: 'TEXT' | 'IMAGE' | 'CODE'; content: string }> = [
+        { blockType: 'TEXT', content: body.trim() },
+        ...imageRefs.map((mediaRef) => ({
+          blockType: 'IMAGE' as const,
+          content: mediaRef,
+        })),
+      ];
+
+      await createCommunityPost({
+        title: postTitle.trim(),
+        category,
+        topic,
+        blocks,
+      });
+
       navigate('/community');
-    } catch {
+    } catch (error) {
+      setSubmitError(getErrorMessage(error, '게시글 작성에 실패했습니다.'));
       setSubmitting(false);
     }
   };
@@ -168,12 +242,12 @@ export function CommunityWritePage() {
         <div className="community-write">
           <div className="community-write__head">
             <button
-              type="button"
+              aria-label="뒤로"
               className="community-write__back"
               onClick={() => navigate('/community')}
-              aria-label="뒤로"
+              type="button"
             >
-              <span className="community-write__back-chevron" aria-hidden>
+              <span aria-hidden className="community-write__back-chevron">
                 <ChevronIcon />
               </span>
             </button>
@@ -187,12 +261,12 @@ export function CommunityWritePage() {
             <select
               className="community-write__select"
               id="community-write-category"
+              onChange={(event) => setCategory(event.target.value)}
               value={category}
-              onChange={(e) => setCategory(e.target.value)}
             >
-              {COMMUNITY_WRITE_CATEGORIES.map((c) => (
-                <option key={c} value={c}>
-                  {c}
+              {COMMUNITY_WRITE_CATEGORIES.map((option) => (
+                <option key={option} value={option}>
+                  {option}
                 </option>
               ))}
             </select>
@@ -205,12 +279,12 @@ export function CommunityWritePage() {
             <select
               className="community-write__select"
               id="community-write-topic"
+              onChange={(event) => setTopic(event.target.value)}
               value={topic}
-              onChange={(e) => setTopic(e.target.value)}
             >
-              {COMMUNITY_WRITE_TOPICS.map((t) => (
-                <option key={t} value={t}>
-                  {t}
+              {COMMUNITY_WRITE_TOPICS.map((option) => (
+                <option key={option} value={option}>
+                  {option}
                 </option>
               ))}
             </select>
@@ -224,10 +298,10 @@ export function CommunityWritePage() {
               className="community-write__input"
               id="community-write-title"
               maxLength={COMMUNITY_WRITE_TITLE_MAX}
+              onChange={(event) => setPostTitle(event.target.value)}
               placeholder="제목을 입력해 주세요."
               type="text"
               value={postTitle}
-              onChange={(e) => setPostTitle(e.target.value)}
             />
           </div>
 
@@ -240,36 +314,39 @@ export function CommunityWritePage() {
                 className="community-write__textarea"
                 id="community-write-body"
                 maxLength={COMMUNITY_WRITE_BODY_MAX}
+                onChange={(event) => setBody(event.target.value)}
                 placeholder="내용을 입력해 주세요."
                 value={body}
-                onChange={(e) => setBody(e.target.value)}
               />
             </div>
-            <p className="community-write__char-count" aria-live="polite">
+            <p aria-live="polite" className="community-write__char-count">
               {body.length}/{COMMUNITY_WRITE_BODY_MAX}
             </p>
           </div>
 
           <input
-            ref={fileInputRef}
             accept="image/*"
+            aria-label="이미지 업로드"
             className="sr-only"
             id={photoInputId}
             multiple
-            onChange={(e) => onPickPhotos(e.target.files)}
+            onChange={(event) => onPickPhotos(event.target.files)}
+            ref={fileInputRef}
             type="file"
           />
 
-          <p className="community-write__label">이미지 ({photos.length}/{COMMUNITY_WRITE_PHOTO_MAX})</p>
+          <p className="community-write__label">
+            이미지 ({photos.length}/{COMMUNITY_WRITE_PHOTO_MAX})
+          </p>
           <div className="community-write__photos">
-            {photos.map((p) => (
-              <div key={p.id} className="community-write__photo-thumb">
-                <img alt="" src={p.url} />
+            {photos.map((photo) => (
+              <div className="community-write__photo-thumb" key={photo.id}>
+                <img alt="" src={photo.url} />
                 <button
-                  type="button"
-                  className="community-write__photo-remove"
                   aria-label="사진 삭제"
-                  onClick={() => removePhoto(p.id)}
+                  className="community-write__photo-remove"
+                  onClick={() => removePhoto(photo.id)}
+                  type="button"
                 >
                   ×
                 </button>
@@ -277,9 +354,9 @@ export function CommunityWritePage() {
             ))}
             {photos.length < COMMUNITY_WRITE_PHOTO_MAX ? (
               <button
-                type="button"
                 className="community-write__photo-add"
                 onClick={() => fileInputRef.current?.click()}
+                type="button"
               >
                 <CameraGlyph40 />
                 <p className="community-write__photo-count">
@@ -290,13 +367,25 @@ export function CommunityWritePage() {
           </div>
 
           <div className="community-write__submit-wrap">
+            {submitError ? (
+              <p
+                role="status"
+                style={{ color: '#d14b4b', fontSize: 13, marginBottom: 8, textAlign: 'center' }}
+              >
+                {submitError}
+              </p>
+            ) : null}
             <button
+              className={`community-write__submit${
+                canSubmit
+                  ? ' community-write__submit--enabled'
+                  : ' community-write__submit--disabled'
+              }`}
+              disabled={!canSubmit || submitting}
+              onClick={() => void onSubmit()}
               type="button"
-              className={`community-write__submit${canSubmit ? ' community-write__submit--enabled' : ' community-write__submit--disabled'}`}
-              disabled={!canSubmit}
-              onClick={onSubmit}
             >
-              작성완료
+              {submitting ? '작성 중...' : '작성완료'}
             </button>
           </div>
         </div>

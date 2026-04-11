@@ -1,22 +1,32 @@
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
-import { fetchPostComments, fetchPostDetail, createComment, deleteCommentApi, toggleReaction, type CommentTreeDto, type PostDetailDto } from '../api/community';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
+import {
+  createCommunityComment,
+  deleteCommunityComment,
+  fetchCommunityPostComments,
+  fetchCommunityPostDetail,
+  toggleCommunityReaction,
+  type CommunityAdjacentPostDto,
+  type CommunityCommentDto,
+  type CommunityCommentTreeDto,
+  type CommunityPostBlockDto,
+  type CommunityPostDetailDto,
+} from '../api/community';
+import { ApiError } from '../api/client';
 import { CommunityPostReportConfirmModal } from '../components/community/CommunityPostReportConfirmModal';
 import { CommunityReportModal } from '../components/community/CommunityReportModal';
 import { CommunityReplyDeleteModal } from '../components/community/CommunityReplyDeleteModal';
 import { HomeFooter } from '../components/home/HomeFooter';
 import { HomeHeader } from '../components/home/HomeHeader';
 import { HEADER_SEARCH_KEYWORD_SUGGESTIONS } from '../config/searchSuggestions';
-import { isMockMode } from '../config/publicEnv';
+import { resolveProfileImageUrl } from '../config/media';
 import { loadAuthSession } from '../data/authSession';
-import {
-  getCommunityPostBySlug,
-  type CommunityDetailComment,
-  type CommunityDetailCommentAction,
-  type CommunityDetailCommentThread,
+import type {
+  CommunityDetailComment,
+  CommunityDetailCommentAction,
+  CommunityDetailCommentThread,
 } from '../data/communityPostDetail';
 
-/** Figma `like 24x24` — 기본(미선택) */
 function LikeGlyph24Outline() {
   return (
     <svg aria-hidden="true" fill="none" height="24" viewBox="0 0 24 24" width="24">
@@ -30,7 +40,6 @@ function LikeGlyph24Outline() {
   );
 }
 
-/** Figma 6406:63865 `like on 24x24` — 채운 하트 */
 function LikeGlyph24On() {
   return (
     <svg aria-hidden="true" fill="none" height="24" viewBox="0 0 24 24" width="24">
@@ -68,7 +77,6 @@ function SendGlyph24() {
   );
 }
 
-/** Figma post detail — siren / alert entry for 게시글 신고 */
 function SirenGlyph30() {
   return (
     <svg aria-hidden="true" fill="none" height="30" viewBox="0 0 30 30" width="30">
@@ -84,16 +92,26 @@ function SirenGlyph30() {
         strokeLinejoin="round"
         strokeWidth="1.4"
       />
-      <path d="M12 21h6l-.6 2.3a1 1 0 0 1-1 .7h-2.8a1 1 0 0 1-1-.7L12 21Z" stroke="currentColor" strokeLinejoin="round" strokeWidth="1.3" />
+      <path
+        d="M12 21h6l-.6 2.3a1 1 0 0 1-1 .7h-2.8a1 1 0 0 1-1-.7L12 21Z"
+        stroke="currentColor"
+        strokeLinejoin="round"
+        strokeWidth="1.3"
+      />
     </svg>
   );
 }
 
 function AuthorChevron16() {
   return (
-    <span className="community-post-detail__author-chevron" aria-hidden>
+    <span aria-hidden className="community-post-detail__author-chevron">
       <svg fill="none" viewBox="0 0 10 10">
-        <path d="M2.5 3.75L5 6.25L7.5 3.75" stroke="currentColor" strokeLinecap="round" strokeWidth="1.2" />
+        <path
+          d="M2.5 3.75L5 6.25L7.5 3.75"
+          stroke="currentColor"
+          strokeLinecap="round"
+          strokeWidth="1.2"
+        />
       </svg>
     </span>
   );
@@ -102,40 +120,133 @@ function AuthorChevron16() {
 function actionLabel(action: CommunityDetailCommentAction): string {
   if (action === 'reply') return '답글 달기';
   if (action === 'report') return '신고하기';
-  return '답글 삭제';
+  return '삭제하기';
+}
+
+function formatDateLabel(value: string | null | undefined) {
+  if (!value) {
+    return '';
+  }
+
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return value;
+  }
+
+  const year = String(parsed.getFullYear()).slice(-2);
+  const month = String(parsed.getMonth() + 1).padStart(2, '0');
+  const day = String(parsed.getDate()).padStart(2, '0');
+  return `${year}.${month}.${day}`;
+}
+
+function getErrorMessage(error: unknown, fallback: string) {
+  if (error instanceof ApiError) {
+    return error.message;
+  }
+
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+
+  return fallback;
+}
+
+function resolveMediaUrl(ref: string | null | undefined) {
+  if (!ref) {
+    return undefined;
+  }
+  return resolveProfileImageUrl(ref) ?? ref;
+}
+
+function countComments(threads: CommunityCommentTreeDto[]) {
+  return threads.reduce((sum, thread) => sum + 1 + thread.replies.length, 0);
+}
+
+function mapCommentActions(comment: CommunityCommentDto, currentUserId: string | null) {
+  // 백엔드 MAX_DEPTH = 1 → depth ≥ 1 인 대댓글에는 답글 불가
+  const canReply = comment.depth < 1;
+
+  if (currentUserId && String(comment.authorUserId) === currentUserId) {
+    return (canReply ? ['reply', 'delete'] : ['delete']) as CommunityDetailCommentAction[];
+  }
+
+  return (canReply ? ['reply', 'report'] : ['report']) as CommunityDetailCommentAction[];
+}
+
+function mapCommentToViewModel(
+  comment: CommunityCommentDto,
+  currentUserId: string | null
+): CommunityDetailComment {
+  const authorLabel =
+    currentUserId && String(comment.authorUserId) === currentUserId
+      ? `${comment.authorNickname ?? '밴더유저'}(나)`
+      : comment.authorNickname ?? '밴더유저';
+
+  return {
+    actions: mapCommentActions(comment, currentUserId),
+    author: authorLabel,
+    avatar: resolveMediaUrl(comment.authorProfileImageRef) ?? '',
+    body: comment.content,
+    id: String(comment.commentId),
+    time: formatDateLabel(comment.createdAt),
+  };
+}
+
+function mapCommentThreads(
+  threads: CommunityCommentTreeDto[],
+  currentUserId: string | null
+): CommunityDetailCommentThread[] {
+  return threads.map((thread) => ({
+    replies: thread.replies.map((reply) => mapCommentToViewModel(reply, currentUserId)),
+    root: mapCommentToViewModel(thread.comment, currentUserId),
+  }));
+}
+
+function resolveAdjacentPath(item: CommunityAdjacentPostDto | null | undefined) {
+  if (!item) {
+    return null;
+  }
+
+  const identifier = item.postId ?? item.slug;
+  if (identifier === undefined || identifier === null || identifier === '') {
+    return null;
+  }
+
+  return `/community/post/${identifier}`;
 }
 
 function CommentMeta({
-  time,
   actions,
   onActionClick,
+  time,
 }: {
-  time: string;
   actions: CommunityDetailCommentAction[];
   onActionClick?: (action: CommunityDetailCommentAction) => void;
+  time: string;
 }) {
   const nodes: ReactNode[] = [];
   nodes.push(<span key="t">{time}</span>);
   for (let i = 0; i < actions.length; i += 1) {
-    const a = actions[i];
+    const action = actions[i];
     nodes.push(<span className="community-post-detail__meta-dot" key={`d-${i}`} />);
     nodes.push(
-      <button key={`action-${i}-${a}`} onClick={() => onActionClick?.(a)} type="button">
-        {actionLabel(a)}
-      </button>,
+      <button key={`action-${i}-${action}`} onClick={() => onActionClick?.(action)} type="button">
+        {actionLabel(action)}
+      </button>
     );
   }
   return <div className="community-post-detail__comment-meta">{nodes}</div>;
 }
 
 function CommentContent({ comment }: { comment: CommunityDetailComment }) {
-  const paras = comment.body.split('\n').filter(Boolean);
+  const paragraphs = comment.body.split('\n').filter(Boolean);
+
   if (comment.mention) {
     return (
       <div className="community-post-detail__comment-text">
-        {paras.map((line, i) => (
-          <p key={`${line}-${i}`}>
-            {i === 0 ? (
+        {paragraphs.map((line, index) => (
+          <p key={`${line}-${index}`}>
+            {index === 0 ? (
               <>
                 <span className="community-post-detail__mention">@{comment.mention}</span>{' '}
                 {line}
@@ -148,9 +259,10 @@ function CommentContent({ comment }: { comment: CommunityDetailComment }) {
       </div>
     );
   }
+
   return (
     <div className="community-post-detail__comment-text">
-      {paras.map((line) => (
+      {paragraphs.map((line) => (
         <p key={line}>{line}</p>
       ))}
     </div>
@@ -166,36 +278,56 @@ function CommentBlock({
 }) {
   return (
     <div className="community-post-detail__comment-row">
-      <img alt="" className="community-post-detail__comment-avatar" height="34" src={comment.avatar} width="34" />
+      {comment.avatar ? (
+        <img
+          alt=""
+          className="community-post-detail__comment-avatar"
+          height="34"
+          src={comment.avatar}
+          width="34"
+        />
+      ) : (
+        <div
+          className="community-post-detail__comment-avatar"
+          style={{ background: '#e5eaf0' }}
+        />
+      )}
       <div className="community-post-detail__comment-body">
         <div className="community-post-detail__comment-author">
           {comment.author}
           {comment.authorNote ? <> {comment.authorNote}</> : null}
         </div>
         <CommentContent comment={comment} />
-        <CommentMeta actions={comment.actions} onActionClick={onCommentAction} time={comment.time} />
+        <CommentMeta
+          actions={comment.actions}
+          onActionClick={onCommentAction}
+          time={comment.time}
+        />
       </div>
     </div>
   );
 }
 
 function CommentThreadView({
-  thread,
   onCommentAction,
+  thread,
 }: {
-  thread: CommunityDetailCommentThread;
   onCommentAction?: (commentId: string, action: CommunityDetailCommentAction) => void;
+  thread: CommunityDetailCommentThread;
 }) {
   return (
     <div className="community-post-detail__comment-block">
-      <CommentBlock comment={thread.root} onCommentAction={(a) => onCommentAction?.(thread.root.id, a)} />
+      <CommentBlock
+        comment={thread.root}
+        onCommentAction={(action) => onCommentAction?.(thread.root.id, action)}
+      />
       {thread.replies.length > 0 ? (
         <div className="community-post-detail__replies">
-          {thread.replies.map((r) => (
+          {thread.replies.map((reply) => (
             <CommentBlock
-              comment={r}
-              key={r.id}
-              onCommentAction={(a) => onCommentAction?.(r.id, a)}
+              comment={reply}
+              key={reply.id}
+              onCommentAction={(action) => onCommentAction?.(reply.id, action)}
             />
           ))}
         </div>
@@ -204,16 +336,50 @@ function CommentThreadView({
   );
 }
 
+function renderPostBlocks(blocks: CommunityPostBlockDto[]) {
+  return blocks
+    .slice()
+    .sort((left, right) => (left.sortOrder ?? 0) - (right.sortOrder ?? 0))
+    .map((block, index) => {
+      const key = block.blockId ?? `${block.blockType}-${index}`;
+
+      if (block.blockType === 'IMAGE') {
+        const src = resolveMediaUrl(block.content) ?? block.content;
+        return (
+          <img
+            alt=""
+            className="community-post-detail__block-image"
+            key={key}
+            src={src}
+          />
+        );
+      }
+
+      if (block.blockType === 'CODE') {
+        return (
+          <pre className="community-post-detail__body" key={key}>
+            <code>{block.content}</code>
+          </pre>
+        );
+      }
+
+      return <p key={key} style={{ whiteSpace: 'pre-wrap' }}>{block.content}</p>;
+    });
+}
+
 export function CommunityPostDetailPage() {
   const navigate = useNavigate();
-  const { slug } = useParams<{ slug: string }>();
-  const isAuthenticated = Boolean(loadAuthSession());
+  const location = useLocation();
+  const { slug: postId } = useParams<{ slug: string }>();
+  const authSession = loadAuthSession();
+  const isAuthenticated = Boolean(authSession);
+  const currentUserId = authSession ? String(authSession.userId) : null;
 
-  // Mock mode: use static data; API mode: fetch from backend
-  const mockPost = isMockMode() ? getCommunityPostBySlug(slug) : null;
-  const [apiPost, setApiPost] = useState<PostDetailDto | null>(null);
-  const [apiComments, setApiComments] = useState<CommentTreeDto[]>([]);
-  const [apiLoading, setApiLoading] = useState(!isMockMode());
+  const [post, setPost] = useState<CommunityPostDetailDto | null>(null);
+  const [commentTrees, setCommentTrees] = useState<CommunityCommentTreeDto[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState('');
+  const [actionError, setActionError] = useState('');
 
   const [headerSearchOpen, setHeaderSearchOpen] = useState(false);
   const [headerSearchQuery, setHeaderSearchQuery] = useState('');
@@ -221,24 +387,62 @@ export function CommunityPostDetailPage() {
   const [draft, setDraft] = useState('');
   const [liked, setLiked] = useState(false);
   const [likesCount, setLikesCount] = useState(0);
-  const [commentThreads, setCommentThreads] = useState<CommunityDetailCommentThread[]>([]);
-  const [visibleCommentCount, setVisibleCommentCount] = useState(0);
   const [replyDeleteId, setReplyDeleteId] = useState<string | null>(null);
+  const [replyTo, setReplyTo] = useState<{
+    author: string;
+    body: string;
+    commentId: string;
+  } | null>(null);
+  const [submittingComment, setSubmittingComment] = useState(false);
+  const likeInFlight = useRef(false);
+  const commentInputRef = useRef<HTMLInputElement | null>(null);
   const [postReportConfirmOpen, setPostReportConfirmOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
 
   const filteredSuggestions = HEADER_SEARCH_KEYWORD_SUGGESTIONS.filter((item) =>
-    item.toLowerCase().includes(headerSearchQuery.toLowerCase()),
+    item.toLowerCase().includes(headerSearchQuery.toLowerCase())
   );
 
-  const handleSearchSubmit = useCallback(
-    (value: string) => {
-      const q = value.trim();
-      if (!q) return;
-      navigate(`/search?q=${encodeURIComponent(q)}`);
-    },
-    [navigate],
-  );
+  const loadComments = useCallback(async (targetPostId: string) => {
+    const nextComments = await fetchCommunityPostComments(targetPostId);
+    setCommentTrees(nextComments);
+    return nextComments;
+  }, []);
+
+  const loadPost = useCallback(async () => {
+    if (!postId) {
+      navigate('/community', { replace: true });
+      return;
+    }
+
+    setLoading(true);
+    setErrorMessage('');
+
+    try {
+      const [nextPost, nextComments] = await Promise.all([
+        fetchCommunityPostDetail(postId),
+        fetchCommunityPostComments(postId),
+      ]);
+      setPost(nextPost);
+      setLiked(Boolean(nextPost.likedByViewer));
+      setLikesCount(nextPost.likeCount);
+      setCommentTrees(nextComments);
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 401) {
+        navigate(`/login?returnTo=${encodeURIComponent(location.pathname)}`);
+        return;
+      }
+      setErrorMessage(getErrorMessage(error, '게시글을 불러오지 못했습니다.'));
+      setPost(null);
+      setCommentTrees([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [navigate, postId]);
+
+  useEffect(() => {
+    void loadPost();
+  }, [loadPost]);
 
   useEffect(() => {
     const handlePointerDown = (event: MouseEvent) => {
@@ -247,196 +451,157 @@ export function CommunityPostDetailPage() {
         setHeaderSearchOpen(false);
       }
     };
+
     document.addEventListener('mousedown', handlePointerDown);
     return () => document.removeEventListener('mousedown', handlePointerDown);
   }, []);
 
-  useEffect(() => {
-    if (isMockMode()) {
-      if (!slug || !getCommunityPostBySlug(slug)) {
-        navigate('/community', { replace: true });
+  const handleSearchSubmit = useCallback(
+    (value: string) => {
+      const query = value.trim();
+      if (!query) {
+        return;
       }
-      return;
-    }
-    if (!slug) {
-      navigate('/community', { replace: true });
-      return;
-    }
-    setApiLoading(true);
-    Promise.all([fetchPostDetail(slug), fetchPostComments(slug)])
-      .then(([data, comments]) => {
-        setApiPost(data);
-        setLikesCount(data.likeCount);
-        setVisibleCommentCount(data.commentCount);
-        setApiComments(comments);
-      })
-      .catch(() => {
-        navigate('/community', { replace: true });
-      })
-      .finally(() => {
-        setApiLoading(false);
-      });
-  }, [slug, navigate]);
+      navigate(`/search?q=${encodeURIComponent(query)}`);
+    },
+    [navigate]
+  );
 
-  useEffect(() => {
-    if (!mockPost) return;
-    setLiked(mockPost.likedByViewer ?? false);
-    setLikesCount(mockPost.likes);
-    setCommentThreads(
-      mockPost.commentThreads.map((t) => ({
-        root: { ...t.root },
-        replies: t.replies.map((r) => ({ ...r })),
-      })),
-    );
-    setVisibleCommentCount(mockPost.commentCount);
-  }, [mockPost]);
+  const commentThreads = useMemo(
+    () => mapCommentThreads(commentTrees, currentUserId),
+    [commentTrees, currentUserId]
+  );
+
+  const visibleCommentCount = countComments(commentTrees);
+  const previousPost = post?.adjacent?.prev ?? null;
+  const nextPost = post?.adjacent?.next ?? null;
 
   const toggleLike = useCallback(async () => {
-    if (!slug || isMockMode()) {
-      const wasLiked = liked;
-      setLiked(!wasLiked);
-      setLikesCount((c) => (wasLiked ? c - 1 : c + 1));
+    if (!postId || likeInFlight.current) {
       return;
     }
+
+    likeInFlight.current = true;
+    setActionError('');
+
     try {
-      const res = await toggleReaction(slug);
-      setLiked(res.liked);
-      setLikesCount((c) => (res.liked ? c + 1 : c - 1));
-    } catch {
-      const wasLiked = liked;
-      setLiked(!wasLiked);
-      setLikesCount((c) => (wasLiked ? c - 1 : c + 1));
+      const response = await toggleCommunityReaction(postId);
+      setLiked(response.liked);
+      // 낙관적 업데이트: 서버 응답에 likeCount가 없어 현재 카운트 기반으로 계산.
+      // 동시 요청 시 서버와 불일치 가능 - 실제 likeCount는 페이지 재조회 시 동기화됨.
+      setLikesCount((current) =>
+        response.liked ? current + 1 : Math.max(0, current - 1)
+      );
+    } catch (error) {
+      setActionError(getErrorMessage(error, '좋아요 처리에 실패했습니다.'));
+    } finally {
+      likeInFlight.current = false;
     }
-  }, [slug, liked]);
+  }, [postId]);
 
   const handleSubmitComment = useCallback(async () => {
-    if (!draft.trim() || !slug) return;
-    if (isMockMode()) return;
-    try {
-      await createComment(slug, { content: draft.trim() });
-      setDraft('');
-      const comments = await fetchPostComments(slug);
-      setApiComments(comments);
-    } catch {
-      // ignore
+    if (!postId || !draft.trim() || submittingComment) {
+      return;
     }
-  }, [draft, slug]);
 
-  const handleCommentAction = useCallback((commentId: string, action: CommunityDetailCommentAction) => {
-    if (action === 'delete') setReplyDeleteId(commentId);
-    if (action === 'report') setReportOpen(true);
-  }, []);
+    setSubmittingComment(true);
+    setActionError('');
+
+    try {
+      await createCommunityComment(postId, {
+        content: draft.trim(),
+        parentId: replyTo ? Number(replyTo.commentId) : undefined,
+      });
+      const nextComments = await loadComments(postId);
+      setDraft('');
+      setReplyTo(null);
+      if (post) {
+        setPost({ ...post, commentCount: countComments(nextComments) });
+      }
+    } catch (error) {
+      setActionError(getErrorMessage(error, '댓글 등록에 실패했습니다.'));
+    } finally {
+      setSubmittingComment(false);
+    }
+  }, [draft, loadComments, post, postId, replyTo, submittingComment]);
+
+  const handleCommentAction = useCallback(
+    (commentId: string, action: CommunityDetailCommentAction) => {
+      if (action === 'delete') {
+        setReplyDeleteId(commentId);
+        return;
+      }
+
+      if (action === 'report') {
+        setReportOpen(true);
+        return;
+      }
+
+      for (const thread of commentTrees) {
+        if (String(thread.comment.commentId) === commentId) {
+          setReplyTo({
+            author: thread.comment.authorNickname ?? '밴더유저',
+            body: thread.comment.content,
+            commentId,
+          });
+          commentInputRef.current?.focus();
+          return;
+        }
+
+        const reply = thread.replies.find(
+          (candidate) => String(candidate.commentId) === commentId
+        );
+        if (reply) {
+          setReplyTo({
+            author: reply.authorNickname ?? '밴더유저',
+            body: reply.content,
+            commentId,
+          });
+          commentInputRef.current?.focus();
+          return;
+        }
+      }
+    },
+    [commentTrees]
+  );
 
   const confirmPostReport = useCallback(() => {
     setPostReportConfirmOpen(false);
     setReportOpen(true);
   }, []);
 
-  const cancelPostReportConfirm = useCallback(() => setPostReportConfirmOpen(false), []);
+  const cancelPostReportConfirm = useCallback(() => {
+    setPostReportConfirmOpen(false);
+  }, []);
 
   const confirmReplyDelete = useCallback(async () => {
-    if (!replyDeleteId) return;
-    if (!isMockMode() && slug) {
-      try {
-        await deleteCommentApi(slug, replyDeleteId);
-        const comments = await fetchPostComments(slug);
-        setApiComments(comments);
-      } catch {
-        // ignore
-      }
+    if (!postId || !replyDeleteId) {
+      return;
     }
-    setCommentThreads((prev) =>
-      prev.map((t) => ({
-        ...t,
-        replies: t.replies.filter((r) => r.id !== replyDeleteId),
-      })),
-    );
-    setVisibleCommentCount((c) => Math.max(0, c - 1));
+
+    setActionError('');
+
+    try {
+      const deletingReplyTo =
+        replyTo && replyTo.commentId === replyDeleteId ? replyTo : null;
+      await deleteCommunityComment(postId, replyDeleteId);
+      const nextComments = await loadComments(postId);
+      if (post) {
+        setPost({ ...post, commentCount: countComments(nextComments) });
+      }
+      if (deletingReplyTo) {
+        setReplyTo(null);
+      }
+      setReplyDeleteId(null);
+    } catch (error) {
+      setActionError(getErrorMessage(error, '댓글 삭제에 실패했습니다.'));
+      setReplyDeleteId(null);
+    }
+  }, [loadComments, post, postId, replyDeleteId, replyTo]);
+
+  const cancelReplyDelete = useCallback(() => {
     setReplyDeleteId(null);
-  }, [replyDeleteId, slug]);
-
-  const cancelReplyDelete = useCallback(() => setReplyDeleteId(null), []);
-
-  if (isMockMode() && !mockPost) {
-    return null;
-  }
-
-  if (!isMockMode() && apiLoading) {
-    return (
-      <main className="community-post-detail">
-        <HomeHeader
-          authenticated={isAuthenticated}
-          filteredSuggestions={filteredSuggestions}
-          onGuestCta={() => navigate('/login')}
-          onSearchChange={(value) => {
-            setHeaderSearchQuery(value);
-            setHeaderSearchOpen(Boolean(value.trim()));
-          }}
-          onSearchClear={() => {
-            setHeaderSearchQuery('');
-            setHeaderSearchOpen(false);
-          }}
-          onSearchFocus={() => setHeaderSearchOpen(Boolean(headerSearchQuery.trim()))}
-          onSearchSubmit={handleSearchSubmit}
-          onSuggestionSelect={(value) => {
-            setHeaderSearchOpen(false);
-            handleSearchSubmit(value);
-          }}
-          searchOpen={headerSearchOpen}
-          searchQuery={headerSearchQuery}
-          searchRef={headerSearchRef}
-        />
-        <div className="community-post-detail__main" />
-        <HomeFooter />
-      </main>
-    );
-  }
-
-  if (!isMockMode() && !apiPost) {
-    return null;
-  }
-
-  // Derived display values — mock path uses mockPost, API path uses apiPost
-  const displayTitle = isMockMode() ? (mockPost!.title) : (apiPost!.title);
-  const displayAuthor = isMockMode() ? (mockPost!.author) : `사용자 ${apiPost!.authorUserId}`;
-  const displayAuthorAvatar = isMockMode() ? (mockPost!.authorAvatar) : '';
-  const displayPostedAt = isMockMode()
-    ? (mockPost!.postedAt)
-    : new Date(apiPost!.createdAt).toLocaleDateString('ko-KR', {
-        year: '2-digit',
-        month: '2-digit',
-        day: '2-digit',
-      });
-  const displayCategoryLabel = isMockMode() ? (mockPost!.categoryLabel) : '';
-
-  const displayCommentThreads: import('../data/communityPostDetail').CommunityDetailCommentThread[] = isMockMode()
-    ? commentThreads
-    : apiComments.map((tree) => ({
-        root: {
-          id: String(tree.comment.commentId),
-          author: `사용자 ${tree.comment.authorUserId}`,
-          avatar: '',
-          time: new Date(tree.comment.createdAt).toLocaleDateString('ko-KR', {
-            year: '2-digit',
-            month: '2-digit',
-            day: '2-digit',
-          }),
-          body: tree.comment.content,
-          actions: ['reply', 'report'] as import('../data/communityPostDetail').CommunityDetailCommentAction[],
-        },
-        replies: tree.replies.map((r) => ({
-          id: String(r.commentId),
-          author: `사용자 ${r.authorUserId}`,
-          avatar: '',
-          time: new Date(r.createdAt).toLocaleDateString('ko-KR', {
-            year: '2-digit',
-            month: '2-digit',
-            day: '2-digit',
-          }),
-          body: r.content,
-          actions: ['reply', 'report'] as import('../data/communityPostDetail').CommunityDetailCommentAction[],
-        })),
-      }));
+  }, []);
 
   return (
     <main className="community-post-detail">
@@ -464,176 +629,291 @@ export function CommunityPostDetailPage() {
       />
 
       <div className="community-post-detail__main">
-        <div className="community-post-detail__layout">
-          <article className="community-post-detail__article">
-            <div>
-              <div className="community-post-detail__post-head">
-                <div className="community-post-detail__title-block">
-                  {displayCategoryLabel ? (
-                    <span className="community-post-detail__category">{displayCategoryLabel}</span>
-                  ) : null}
-                  <h1 className="community-post-detail__title">{displayTitle}</h1>
-                </div>
-                <button
-                  aria-label="게시글 신고"
-                  className="community-post-detail__subscribe"
-                  onClick={() => setPostReportConfirmOpen(true)}
-                  type="button"
-                >
-                  <SirenGlyph30 />
-                </button>
-              </div>
-
-              <div className="community-post-detail__author-row">
-                {displayAuthorAvatar ? (
-                  <img
-                    alt=""
-                    className="community-post-detail__author-avatar"
-                    height="40"
-                    src={displayAuthorAvatar}
-                    width="40"
-                  />
-                ) : (
-                  <div className="community-post-detail__author-avatar" style={{ width: 40, height: 40, borderRadius: '50%', background: '#e0e0e0' }} />
-                )}
-                <div className="community-post-detail__author-meta">
-                  <div className="community-post-detail__author-name-row">
-                    <span className="community-post-detail__author-name">{displayAuthor}</span>
-                    <AuthorChevron16 />
-                  </div>
-                  <span className="community-post-detail__author-time">{displayPostedAt}</span>
-                </div>
-              </div>
-
-              {isMockMode() ? (
-                <p className="community-post-detail__body">{mockPost!.body}</p>
-              ) : (
-                <div className="community-post-detail__body">
-                  {apiPost!.blocks
-                    .slice()
-                    .sort((a, b) => a.sortOrder - b.sortOrder)
-                    .map((block, idx) => {
-                      if (block.blockType === 'IMAGE') {
-                        return (
-                          <img
-                            alt=""
-                            className="community-post-detail__block-image"
-                            key={block.blockId ?? idx}
-                            src={block.content}
-                          />
-                        );
-                      }
-                      return (
-                        <p key={block.blockId ?? idx}>{block.content}</p>
-                      );
-                    })}
-                </div>
-              )}
-            </div>
-
-            {isMockMode() ? (
-              <div className="community-post-detail__hero">
-                <img alt="" height="400" src={mockPost!.heroImage} width="1200" />
-              </div>
-            ) : null}
-
-            <div className="community-post-detail__stats">
-              <button
-                aria-label={liked ? '좋아요 취소' : '좋아요'}
-                aria-pressed={liked}
-                className="community-post-detail__stat"
-                onClick={() => {
-                  if (!isAuthenticated) {
-                    navigate(`/login?returnTo=${encodeURIComponent(`/community/post/${slug}`)}`);
-                    return;
-                  }
-                  toggleLike();
-                }}
-                type="button"
-              >
-                {liked ? <LikeGlyph24On /> : <LikeGlyph24Outline />}
-                <span>{likesCount}</span>
-              </button>
-              <div className="community-post-detail__stat">
-                <CommentGlyph24 />
-                <span>{visibleCommentCount}</span>
-              </div>
-            </div>
-
-            <div className="community-post-detail__nav-block">
-              {isMockMode() && mockPost ? (
-                <div className="community-post-detail__adjacent">
-                  <div className="community-post-detail__adjacent-row">
-                    <span className="community-post-detail__adjacent-label">이전으로</span>
-                    <div className="community-post-detail__adjacent-body">
-                      <p className="community-post-detail__adjacent-title">{mockPost.adjacent.prev.title}</p>
-                      <span className="community-post-detail__adjacent-date">{mockPost.adjacent.prev.date}</span>
-                    </div>
-                  </div>
-                  <div className="community-post-detail__adjacent-row">
-                    <span className="community-post-detail__adjacent-label">다음으로</span>
-                    <div className="community-post-detail__adjacent-body">
-                      <p className="community-post-detail__adjacent-title">{mockPost.adjacent.next.title}</p>
-                      <span className="community-post-detail__adjacent-date">{mockPost.adjacent.next.date}</span>
-                    </div>
-                  </div>
-                </div>
-              ) : null}
+        {loading ? (
+          <div className="community-post-detail__layout">
+            <article className="community-post-detail__article">
+              <p className="community-post-detail__body">게시글을 불러오는 중입니다.</p>
+            </article>
+          </div>
+        ) : errorMessage || !post ? (
+          <div className="community-post-detail__layout">
+            <article className="community-post-detail__article">
+              <p className="community-post-detail__body">{errorMessage}</p>
               <Link className="community-post-detail__back" to="/community">
                 목록으로
               </Link>
-            </div>
-          </article>
-
-          <aside className="community-post-detail__sidebar">
-            <div className="community-post-detail__comments-card">
+            </article>
+          </div>
+        ) : (
+          <div className="community-post-detail__layout">
+            <article className="community-post-detail__article">
               <div>
-                <h2 className="community-post-detail__comments-head">댓글 {visibleCommentCount}</h2>
-                <div className="community-post-detail__comments-scroll">
-                  {displayCommentThreads.map((thread) => (
-                    <CommentThreadView
-                      key={thread.root.id}
-                      onCommentAction={handleCommentAction}
-                      thread={thread}
+                <div className="community-post-detail__post-head">
+                  <div className="community-post-detail__title-block">
+                    {post.categoryLabel ? (
+                      <span className="community-post-detail__category">
+                        {post.categoryLabel}
+                      </span>
+                    ) : null}
+                    <h1 className="community-post-detail__title">{post.title}</h1>
+                  </div>
+                  <button
+                    aria-label="게시글 신고"
+                    className="community-post-detail__subscribe"
+                    onClick={() => setPostReportConfirmOpen(true)}
+                    type="button"
+                  >
+                    <SirenGlyph30 />
+                  </button>
+                </div>
+
+                <div className="community-post-detail__author-row">
+                  {resolveMediaUrl(post.authorProfileImageRef) ? (
+                    <img
+                      alt=""
+                      className="community-post-detail__author-avatar"
+                      height="40"
+                      src={resolveMediaUrl(post.authorProfileImageRef)}
+                      width="40"
                     />
-                  ))}
+                  ) : (
+                    <div
+                      className="community-post-detail__author-avatar"
+                      style={{
+                        background: '#e0e0e0',
+                        borderRadius: '50%',
+                        height: 40,
+                        width: 40,
+                      }}
+                    />
+                  )}
+                  <div className="community-post-detail__author-meta">
+                    <div className="community-post-detail__author-name-row">
+                      <span className="community-post-detail__author-name">
+                        {post.authorNickname ?? '밴더유저'}
+                      </span>
+                      <AuthorChevron16 />
+                    </div>
+                    <span className="community-post-detail__author-time">
+                      {formatDateLabel(post.createdAt)}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="community-post-detail__body">
+                  {renderPostBlocks(post.blocks)}
                 </div>
               </div>
-              <div className="community-post-detail__comment-input-wrap">
-                {isAuthenticated ? (
-                  <>
-                    <input
-                      className="community-post-detail__comment-input"
-                      onChange={(e) => setDraft(e.target.value)}
-                      placeholder="댓글을 입력해주세요."
-                      type="text"
-                      value={draft}
-                    />
-                    <button aria-label="댓글 보내기" className="community-post-detail__comment-send" onClick={handleSubmitComment} type="button">
-                      <SendGlyph24 />
-                    </button>
-                  </>
-                ) : (
-                  <button
-                    className="community-post-detail__comment-input community-post-detail__comment-login-prompt"
-                    onClick={() => navigate(`/login?returnTo=${encodeURIComponent(`/community/post/${slug}`)}`)}
-                    type="button"
-                    style={{ cursor: 'pointer', textAlign: 'left', color: '#999', border: '1px solid #e0e0e0', borderRadius: 8, padding: '10px 14px', background: '#fafafa', width: '100%' }}
-                  >
-                    댓글을 작성하려면 로그인해주세요.
-                  </button>
-                )}
+
+              <div className="community-post-detail__stats">
+                <button
+                  aria-label={liked ? '좋아요 취소' : '좋아요'}
+                  aria-pressed={liked}
+                  className="community-post-detail__stat"
+                  disabled={likeInFlight.current}
+                  onClick={() => {
+                    if (!isAuthenticated) {
+                      navigate(
+                        `/login?returnTo=${encodeURIComponent(`/community/post/${postId}`)}`
+                      );
+                      return;
+                    }
+                    void toggleLike();
+                  }}
+                  type="button"
+                >
+                  {liked ? <LikeGlyph24On /> : <LikeGlyph24Outline />}
+                  <span>{likesCount}</span>
+                </button>
+                <div className="community-post-detail__stat">
+                  <CommentGlyph24 />
+                  <span>{visibleCommentCount}</span>
+                </div>
               </div>
-            </div>
-          </aside>
-        </div>
+
+              {actionError ? (
+                <p
+                  className="community-post-detail__body"
+                  role="status"
+                  style={{ color: '#d14b4b', fontSize: 14, marginTop: -12 }}
+                >
+                  {actionError}
+                </p>
+              ) : null}
+
+              <div className="community-post-detail__nav-block">
+                {previousPost || nextPost ? (
+                  <div className="community-post-detail__adjacent">
+                    {previousPost ? (
+                      <div className="community-post-detail__adjacent-row">
+                        <span className="community-post-detail__adjacent-label">이전으로</span>
+                        <div className="community-post-detail__adjacent-body">
+                          {resolveAdjacentPath(previousPost) ? (
+                            <Link
+                              className="community-post-detail__adjacent-title"
+                              to={resolveAdjacentPath(previousPost) ?? '/community'}
+                            >
+                              {previousPost.title}
+                            </Link>
+                          ) : (
+                            <p className="community-post-detail__adjacent-title">
+                              {previousPost.title}
+                            </p>
+                          )}
+                          <span className="community-post-detail__adjacent-date">
+                            {previousPost.date ?? formatDateLabel(previousPost.createdAt)}
+                          </span>
+                        </div>
+                      </div>
+                    ) : null}
+                    {nextPost ? (
+                      <div className="community-post-detail__adjacent-row">
+                        <span className="community-post-detail__adjacent-label">다음으로</span>
+                        <div className="community-post-detail__adjacent-body">
+                          {resolveAdjacentPath(nextPost) ? (
+                            <Link
+                              className="community-post-detail__adjacent-title"
+                              to={resolveAdjacentPath(nextPost) ?? '/community'}
+                            >
+                              {nextPost.title}
+                            </Link>
+                          ) : (
+                            <p className="community-post-detail__adjacent-title">
+                              {nextPost.title}
+                            </p>
+                          )}
+                          <span className="community-post-detail__adjacent-date">
+                            {nextPost.date ?? formatDateLabel(nextPost.createdAt)}
+                          </span>
+                        </div>
+                      </div>
+                    ) : null}
+                  </div>
+                ) : null}
+                <Link className="community-post-detail__back" to="/community">
+                  목록으로
+                </Link>
+              </div>
+            </article>
+
+            <aside className="community-post-detail__sidebar">
+              <div className="community-post-detail__comments-card">
+                <div>
+                  <h2 className="community-post-detail__comments-head">
+                    댓글 {visibleCommentCount}
+                  </h2>
+                  <div className="community-post-detail__comments-scroll">
+                    {commentThreads.length > 0 ? (
+                      commentThreads.map((thread) => (
+                        <CommentThreadView
+                          key={thread.root.id}
+                          onCommentAction={handleCommentAction}
+                          thread={thread}
+                        />
+                      ))
+                    ) : (
+                      <p
+                        className="community-post-detail__body"
+                        style={{ color: '#6d7a87', fontSize: 14 }}
+                      >
+                        등록된 댓글이 없습니다.
+                      </p>
+                    )}
+                  </div>
+                </div>
+                <div className="community-post-detail__comment-input-wrap">
+                  {replyTo ? (
+                    <div className="community-post-detail__reply-preview">
+                      <div className="community-post-detail__reply-preview-bubble">
+                        <span className="community-post-detail__reply-preview-author">
+                          {replyTo.author}
+                        </span>
+                        <span className="community-post-detail__reply-preview-body">
+                          {replyTo.body.length > 60
+                            ? `${replyTo.body.slice(0, 60)}...`
+                            : replyTo.body}
+                        </span>
+                      </div>
+                      <button
+                        aria-label="답글 취소"
+                        className="community-post-detail__reply-preview-close"
+                        onClick={() => setReplyTo(null)}
+                        type="button"
+                      >
+                        &times;
+                      </button>
+                    </div>
+                  ) : null}
+                  {isAuthenticated ? (
+                    <>
+                      <input
+                        className="community-post-detail__comment-input"
+                        disabled={submittingComment}
+                        onChange={(event) => setDraft(event.target.value)}
+                        onKeyDown={(event) => {
+                          if (
+                            event.key === 'Enter' &&
+                            !event.nativeEvent.isComposing
+                          ) {
+                            void handleSubmitComment();
+                          }
+                        }}
+                        placeholder={
+                          replyTo
+                            ? `${replyTo.author}에게 답글...`
+                            : '댓글을 입력해주세요.'
+                        }
+                        ref={commentInputRef}
+                        type="text"
+                        value={draft}
+                      />
+                      <button
+                        aria-label="댓글 보내기"
+                        className="community-post-detail__comment-send"
+                        disabled={submittingComment}
+                        onClick={() => void handleSubmitComment()}
+                        type="button"
+                      >
+                        <SendGlyph24 />
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      className="community-post-detail__comment-input community-post-detail__comment-login-prompt"
+                      onClick={() =>
+                        navigate(
+                          `/login?returnTo=${encodeURIComponent(
+                            `/community/post/${postId}`
+                          )}`
+                        )
+                      }
+                      style={{
+                        background: '#fafafa',
+                        border: '1px solid #e0e0e0',
+                        borderRadius: 8,
+                        color: '#999',
+                        cursor: 'pointer',
+                        padding: '10px 14px',
+                        textAlign: 'left',
+                        width: '100%',
+                      }}
+                      type="button"
+                    >
+                      댓글을 작성하려면 로그인해주세요.
+                    </button>
+                  )}
+                </div>
+              </div>
+            </aside>
+          </div>
+        )}
       </div>
 
       <HomeFooter />
 
       <CommunityReplyDeleteModal
         onCancel={cancelReplyDelete}
-        onConfirm={confirmReplyDelete}
+        onConfirm={() => void confirmReplyDelete()}
         open={replyDeleteId != null}
       />
 

@@ -75,6 +75,100 @@ function seedPasswordResetDraft(
   window.sessionStorage.setItem('bander.passwordResetDraft', JSON.stringify(draft));
 }
 
+function seedAuthSession(
+  session: Record<string, unknown> = {
+    expiresAt: futureIso(30),
+    gatewayContextToken: 'gateway-context-token',
+    userId: 101,
+  }
+) {
+  window.sessionStorage.setItem('bander.authSession', JSON.stringify(session));
+}
+
+function buildMiniFeedItems(tab: 'written' | 'commented') {
+  return Array.from({ length: 5 }, (_, index) => ({
+    authorNickname: '뮤지션J',
+    category: tab === 'written' ? '꿀팁공유' : '공간리뷰',
+    commentCount: index + 1,
+    createdAt: `2026-04-10T0${index}:00:00.000Z`,
+    excerpt: `${tab} 탭 게시글 미리보기 ${index + 1}`,
+    likeCount: index + 3,
+    postId: index + 1,
+    thumbnailUrl: index < 2 ? `https://cdn.example.com/thumb-${index + 1}.png` : null,
+    title: `${tab === 'written' ? '작성한 글' : '댓글단 글'} 제목 ${index + 1}`,
+  }));
+}
+
+function createCommunityDetailComments() {
+  return [
+    {
+      comment: {
+        authorNickname: '연습집중중',
+        authorProfileImageRef: null,
+        authorUserId: 201,
+        commentId: 1,
+        content: '첫 댓글입니다.',
+        createdAt: '2026-04-10T09:00:00.000Z',
+        depth: 0,
+        parentId: null,
+        postId: 123,
+      },
+      replies: [
+        {
+          authorNickname: '내 닉네임',
+          authorProfileImageRef: null,
+          authorUserId: 101,
+          commentId: 2,
+          content: '삭제할 내 답글',
+          createdAt: '2026-04-10T09:05:00.000Z',
+          depth: 1,
+          parentId: 1,
+          postId: 123,
+        },
+        {
+          authorNickname: '다른 답글 작성자',
+          authorProfileImageRef: null,
+          authorUserId: 202,
+          commentId: 3,
+          content: '다른 답글',
+          createdAt: '2026-04-10T09:06:00.000Z',
+          depth: 1,
+          parentId: 1,
+          postId: 123,
+        },
+      ],
+    },
+    {
+      comment: {
+        authorNickname: 'band_123',
+        authorProfileImageRef: null,
+        authorUserId: 203,
+        commentId: 4,
+        content: '두 번째 댓글입니다.',
+        createdAt: '2026-04-10T09:10:00.000Z',
+        depth: 0,
+        parentId: null,
+        postId: 123,
+      },
+      replies: [],
+    },
+    {
+      comment: {
+        authorNickname: 'music_life',
+        authorProfileImageRef: null,
+        authorUserId: 204,
+        commentId: 5,
+        content: '세 번째 댓글입니다.',
+        createdAt: '2026-04-10T09:20:00.000Z',
+        depth: 0,
+        parentId: null,
+        postId: 123,
+      },
+      replies: [],
+    },
+  ];
+}
+
 beforeAll(() => {
   URL.createObjectURL = jest.fn(() => 'blob:profile-preview');
   URL.revokeObjectURL = jest.fn();
@@ -82,11 +176,337 @@ beforeAll(() => {
 
 beforeEach(() => {
   window.sessionStorage.clear();
+  let communityDetailComments = createCommunityDetailComments();
+  let communityLiked = false;
   global.fetch = jest.fn();
   (global.fetch as jest.Mock).mockImplementation(
     async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
       const method = init?.method ?? 'GET';
+
+      if (url.endsWith('/api/v1/home/feed') && method === 'GET') {
+        return apiSuccess({
+          categoryBubbles: [],
+          hotPosts: [],
+          recommendedSpaces: [],
+          reviewCards: [],
+          vendorCards: [],
+        });
+      }
+
+      if (url.includes('/api/v1/search/suggestions') && method === 'GET') {
+        return apiSuccess({
+          suggestions: [],
+        });
+      }
+
+      if (url.includes('/api/v1/search/rooms') && method === 'GET') {
+        return apiSuccess({
+          page: 0,
+          rooms: [
+            {
+              available: true,
+              category: '합주실',
+              description: '그랜드 피아노와 드럼이 준비된 합주실',
+              latitude: 37.555,
+              longitude: 126.923,
+              maxCapacity: 8,
+              minCapacity: 1,
+              parkingAvailable: true,
+              popularityScore: 100,
+              pricePerSlot: 10000,
+              roadAddress: '서울 마포구 서교동',
+              roomId: 11,
+              roomName: 'A룸 그랜드 피아노 대관',
+              roomSlug: 'a-room-grand-piano-rental',
+              slotUnit: '30MIN',
+              studioId: 22,
+              studioName: '업비트스튜디오',
+              studioSlug: 'upbeat-studio',
+              thumbnailUrl: 'https://cdn.example.com/a-room.png',
+            },
+            {
+              available: true,
+              category: '합주실',
+              description: '업라이트 피아노 연습실',
+              latitude: 37.556,
+              longitude: 126.924,
+              maxCapacity: 4,
+              minCapacity: 1,
+              parkingAvailable: false,
+              popularityScore: 90,
+              pricePerSlot: 12000,
+              roadAddress: '서울 마포구 동교동',
+              roomId: 12,
+              roomName: '영창 업라이트 피아노 연습실',
+              roomSlug: 'yeongchang-upright-room',
+              slotUnit: '30MIN',
+              studioId: 23,
+              studioName: '서울스트리트퍼포먼스',
+              studioSlug: 'seoul-street-performance',
+              thumbnailUrl: 'https://cdn.example.com/upright-room.png',
+            },
+            {
+              available: true,
+              category: '합주실',
+              description: '재즈 합주 공간',
+              latitude: 37.557,
+              longitude: 126.925,
+              maxCapacity: 6,
+              minCapacity: 1,
+              parkingAvailable: false,
+              popularityScore: 80,
+              pricePerSlot: 13000,
+              roadAddress: '서울 마포구 동교동',
+              roomId: 13,
+              roomName: '재즈 합주실',
+              roomSlug: 'jazz-ensemble-room',
+              slotUnit: '30MIN',
+              studioId: 24,
+              studioName: '예쎄뮤직',
+              studioSlug: 'yesse-music',
+              thumbnailUrl: 'https://cdn.example.com/jazz-room.png',
+            },
+            {
+              available: true,
+              category: '합주실',
+              description: '야마하 U3 피아노가 있는 룸',
+              latitude: 37.558,
+              longitude: 126.926,
+              maxCapacity: 4,
+              minCapacity: 1,
+              parkingAvailable: true,
+              popularityScore: 70,
+              pricePerSlot: 14000,
+              roadAddress: '서울 마포구 신수동',
+              roomId: 14,
+              roomName: '야마하 U3 피아노 연습실',
+              roomSlug: 'yamaha-u3-room',
+              slotUnit: '30MIN',
+              studioId: 25,
+              studioName: '자하브합주실',
+              studioSlug: 'jahav-room',
+              thumbnailUrl: 'https://cdn.example.com/u3-room.png',
+            },
+          ],
+          size: 20,
+          totalElements: 4,
+          totalPages: 1,
+        });
+      }
+
+      if (url.includes('/api/v1/search/vendors') && method === 'GET') {
+        return apiSuccess({
+          hasNext: false,
+          items: [
+            {
+              address: '서울 마포구',
+              description: '합주실 전문 업체',
+              id: 'vendor-1',
+              name: '유스뮤직',
+              slug: 'youth-music',
+              thumbnailUrl: 'https://cdn.example.com/vendor-1.png',
+            },
+            {
+              address: '서울 마포구',
+              description: '밴드 합주 전문',
+              id: 'vendor-2',
+              name: '방구석 뮤지션의 합주실',
+              slug: 'banggu-musician',
+              thumbnailUrl: 'https://cdn.example.com/vendor-2.png',
+            },
+            {
+              address: '서울 마포구',
+              description: '연습실 예약',
+              id: 'vendor-3',
+              name: '챗츠뮤직',
+              slug: 'chats-music',
+              thumbnailUrl: 'https://cdn.example.com/vendor-3.png',
+            },
+          ],
+          nextCursor: null,
+          size: 20,
+          totalCount: 3,
+        });
+      }
+
+      if (url.includes('/api/v1/search/posts') && method === 'GET') {
+        return apiSuccess({
+          hasNext: false,
+          items: [
+            {
+              authorUserId: 'neowmeow',
+              createdAt: '2026-04-10',
+              id: '1',
+              title: '서울 지역 연습실습실 가격 비교 정리했습니다 🎵',
+            },
+            {
+              authorUserId: 'bander',
+              createdAt: '2026-04-10',
+              id: '2',
+              title: '홍대 합주실 예약 후기 - 가성비 괜찮은 편입니다',
+            },
+            {
+              authorUserId: 'user-3',
+              createdAt: '2026-04-10',
+              id: '3',
+              title: '공간 임대/프린트 출력 있으면 본 계신가요?',
+            },
+            { authorUserId: 'user-4', createdAt: '2026-04-10', id: '4', title: '강남·신촌 연습실 월 대관 비교 (2026 기준)' },
+            { authorUserId: 'user-5', createdAt: '2026-04-10', id: '5', title: '[모집] 수요일 밤 합주 멤버 베이스 구해요' },
+            { authorUserId: 'user-6', createdAt: '2026-04-10', id: '6', title: '신림 소형 룸 이용 후기 (사진 많음)' },
+            { authorUserId: 'user-7', createdAt: '2026-04-10', id: '7', title: '보컬용 이펙터 추천 좀 해주세요!' },
+          ],
+          nextCursor: null,
+          size: 20,
+          totalCount: 7,
+        });
+      }
+
+      if (url.includes('/api/v1/posts?') && method === 'GET') {
+        return apiSuccess({
+          hasNext: false,
+          items: [
+            {
+              authorNickname: 'neowmeow',
+              category: '궁금해요',
+              commentCount: 5,
+              createdAt: '2026-04-10T08:30:00.000Z',
+              id: '123',
+              likes: 189,
+              postedAtLabel: '26.04.10',
+              thumbnailUrl: null,
+              title: '실 API 게시글 상세 테스트',
+            },
+          ],
+          page: 0,
+          size: 20,
+          totalCount: 1,
+        });
+      }
+
+      if (url.endsWith('/api/v1/spaces/slug/a-room-grand-piano-rental') && method === 'GET') {
+        return apiSuccess({
+          address: '서울시 마포구 독막로9길 31 지하 1층',
+          category: '합주실',
+          couponStripLabel: '사용 가능한 쿠폰',
+          description: '업비트스튜디오의 대표 그랜드 피아노 룸입니다.',
+          detailBenefitChips: [{ label: '그랜드피아노' }],
+          facilityChips: [{ key: 'parking', label: '주차 가능' }],
+          galleryUrls: [
+            'https://cdn.example.com/a-room.png',
+            'https://cdn.example.com/a-room-2.png',
+          ],
+          hashTags: ['#합주실', '#그랜드피아노'],
+          id: '11',
+          latitude: 37.555,
+          location: '서울 마포구 서교동',
+          longitude: 126.923,
+          notices: [{ body: '시설 이용 시 주의해 주세요.', imageUrl: null, title: '이용 안내' }],
+          operatingSummary: '매일 09:00 - 24:00',
+          operatingWeek: [{ hours: '09:00 - 24:00', isToday: true, weekday: '월' }],
+          policies: [{ body: '음식물 반입은 제한됩니다.', imageUrl: null, title: '환불 규정' }],
+          priceLabel: '10,000원',
+          priceSuffix: ' / 30분',
+          pricingLines: [{ label: '기본 요금', value: '10,000원' }],
+          rating: '5.0',
+          reviewCount: 12,
+          slug: 'a-room-grand-piano-rental',
+          stationDistanceLabel: '합정역 도보 5분',
+          studioId: '22',
+          studioName: '업비트스튜디오',
+          title: 'A룸 그랜드 피아노 대관',
+          trustBanner: '믿고 예약할 수 있는 공간',
+          vendor: { name: '업비트스튜디오', spaces: '15개의 공간' },
+          vendorSlug: 'upbeat-studio',
+        });
+      }
+
+      if (url.includes('/api/v1/spaces/22/reviews') && method === 'GET') {
+        return apiSuccess({
+          items: [],
+        });
+      }
+
+      if (url.endsWith('/api/v1/users/me/summary') && method === 'GET') {
+        return apiSuccess({
+          couponCountLabel: '0장',
+          displayName: '테스트유저',
+          email: 'bander@gmail.com',
+          pointsLabel: '0P',
+          profileImageRef: null,
+          reservationBadgeCount: 0,
+        });
+      }
+
+      if (url.includes('/api/v1/users/me/feed/posts') && method === 'GET') {
+        const params = new URL(url, 'http://localhost').searchParams;
+        const tab = params.get('tab') === 'commented' ? 'commented' : 'written';
+        return apiSuccess({
+          page: {
+            hasNext: false,
+            items: buildMiniFeedItems(tab),
+            page: 0,
+            size: 20,
+            totalCount: 5,
+          },
+          profile: {
+            bio: '안녕하세요 뮤지션J 입니다.',
+            joinLabel: '26.04 가입',
+            nickname: '뮤지션J',
+            profileImageUrl: 'https://cdn.example.com/profile.png',
+            tags: ['#록/메탈', '#밴드', '#피아노', '#기타'],
+          },
+          sort: params.get('sort') ?? 'latest',
+          tab,
+        });
+      }
+
+      if (url.endsWith('/api/v1/posts/123') && method === 'GET') {
+        return apiSuccess({
+          authorNickname: 'neowmeow',
+          authorProfileImageRef: null,
+          authorUserId: 999,
+          blocks: [
+            {
+              blockId: 1,
+              blockType: 'TEXT',
+              content: '실 API로 불러온 커뮤니티 상세 본문입니다.',
+              sortOrder: 0,
+            },
+          ],
+          categoryLabel: '궁금해요',
+          commentCount: 5,
+          createdAt: '2026-04-10T08:30:00.000Z',
+          likeCount: 189,
+          likedByViewer: communityLiked,
+          postId: 123,
+          status: 'PUBLISHED',
+          title: '실 API 게시글 상세 테스트',
+          updatedAt: '2026-04-10T08:30:00.000Z',
+          viewCount: 42,
+        });
+      }
+
+      if (url.endsWith('/api/v1/posts/123/comments') && method === 'GET') {
+        return apiSuccess(communityDetailComments);
+      }
+
+      if (url.endsWith('/api/v1/posts/123/reactions') && method === 'POST') {
+        communityLiked = !communityLiked;
+        return apiSuccess({ liked: communityLiked });
+      }
+
+      if (url.includes('/api/v1/posts/123/comments/') && method === 'DELETE') {
+        const commentId = Number(url.split('/').pop());
+        communityDetailComments = communityDetailComments
+          .map((thread) => ({
+            ...thread,
+            replies: thread.replies.filter((reply) => reply.commentId !== commentId),
+          }))
+          .filter((thread) => thread.comment.commentId !== commentId);
+        return apiSuccess(null);
+      }
 
       if (url.endsWith('/api/v1/auth/signup/request') && method === 'POST') {
         return apiSuccess({
@@ -208,20 +628,22 @@ test('navigates to the community page when clicking the header community link', 
   expect(screen.getByRole('heading', { name: '전체 커뮤니티' })).toBeInTheDocument();
 });
 
-test('renders my mini-feed page', () => {
+test('renders my mini-feed page', async () => {
+  seedAuthSession();
   renderAt('/my-minifeed');
 
   expect(screen.getByRole('heading', { level: 1, name: '내 미니피드' })).toBeInTheDocument();
   expect(screen.getByRole('tab', { name: '작성한 글' })).toHaveAttribute('aria-selected', 'true');
-  expect(screen.getByText('5개의 게시글')).toBeInTheDocument();
+  expect(await screen.findByText('5개의 게시글')).toBeInTheDocument();
 });
 
-test('my mini-feed commented tab matches Figma (6419:81316)', () => {
+test('my mini-feed commented tab matches Figma (6419:81316)', async () => {
+  seedAuthSession();
   renderAt('/my-minifeed?tab=commented');
 
   expect(screen.getByRole('tab', { name: '댓글단 글' })).toHaveAttribute('aria-selected', 'true');
   expect(screen.getByRole('tab', { name: '작성한 글' })).toHaveAttribute('aria-selected', 'false');
-  expect(screen.getByText('5개의 게시글')).toBeInTheDocument();
+  expect(await screen.findByText('5개의 게시글')).toBeInTheDocument();
 });
 
 test('renders the community write page', () => {
@@ -239,32 +661,39 @@ test('community FAB opens the write page', () => {
   expect(screen.getByRole('heading', { level: 1, name: '글쓰기' })).toBeInTheDocument();
 });
 
-test('renders the community post detail page for a demo slug', () => {
-  renderAt('/community/post/vocal-effector-help');
+test('renders the community post detail page from API data', async () => {
+  renderAt('/community/post/123');
 
   expect(
-    screen.getByRole('heading', { level: 1, name: '보컬용 이펙터 추천 좀 해주세요!' }),
+    await screen.findByRole('heading', { level: 1, name: '실 API 게시글 상세 테스트' }),
   ).toBeInTheDocument();
   expect(screen.getByRole('heading', { name: '댓글 5' })).toBeInTheDocument();
   expect(screen.getByRole('link', { name: '목록으로' })).toHaveAttribute('href', '/community');
 });
 
-test('community post detail opens reply-delete modal and decrements count on confirm', () => {
-  renderAt('/community/post/vocal-effector-help');
+test('community post detail opens delete modal and decrements count on confirm', async () => {
+  seedAuthSession();
+  renderAt('/community/post/123');
 
-  fireEvent.click(screen.getAllByRole('button', { name: '답글 삭제' })[0]);
+  expect(await screen.findByRole('heading', { level: 1, name: '실 API 게시글 상세 테스트' })).toBeInTheDocument();
+
+  fireEvent.click(screen.getAllByRole('button', { name: '삭제하기' })[0]);
 
   expect(screen.getByRole('alertdialog')).toBeInTheDocument();
-  expect(screen.getByText('해당 답글을 삭제하시겠어요?')).toBeInTheDocument();
+  expect(screen.getByText('해당 댓글을 삭제하시겠어요?')).toBeInTheDocument();
 
   fireEvent.click(screen.getByRole('button', { name: '삭제' }));
 
-  expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
-  expect(screen.getByRole('heading', { name: '댓글 4' })).toBeInTheDocument();
+  await waitFor(() => {
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
+  });
+  expect(await screen.findByRole('heading', { name: '댓글 4' })).toBeInTheDocument();
 });
 
-test('community post detail opens post report confirm then report modal from 게시글 신고', () => {
-  renderAt('/community/post/vocal-effector-help');
+test('community post detail opens post report confirm then report modal from 게시글 신고', async () => {
+  renderAt('/community/post/123');
+
+  expect(await screen.findByRole('heading', { level: 1, name: '실 API 게시글 상세 테스트' })).toBeInTheDocument();
 
   fireEvent.click(screen.getByRole('button', { name: '게시글 신고' }));
 
@@ -280,8 +709,10 @@ test('community post detail opens post report confirm then report modal from 게
   expect(within(dialog).getByText('어떤 문제가 있나요?')).toBeInTheDocument();
 });
 
-test('community post detail opens report modal from comment 신고하기', () => {
-  renderAt('/community/post/vocal-effector-help');
+test('community post detail opens report modal from comment 신고하기', async () => {
+  renderAt('/community/post/123');
+
+  expect(await screen.findByRole('heading', { level: 1, name: '실 API 게시글 상세 테스트' })).toBeInTheDocument();
 
   fireEvent.click(screen.getAllByRole('button', { name: '신고하기' })[0]);
 
@@ -334,19 +765,19 @@ test('moves to the search results page when submitting the header search', async
 
   expect(await screen.findByRole('heading', { name: /합주.*검색 결과/ })).toBeInTheDocument();
   expect(screen.getByRole('button', { name: '업체' })).toBeInTheDocument();
-  expect(screen.getByText('4개의 공간')).toBeInTheDocument();
+  expect(await screen.findByText('4개의 공간')).toBeInTheDocument();
 });
 
 test('switches search result tabs and opens the community sort menu', async () => {
   renderAt('/search?q=합주');
 
   fireEvent.click(screen.getByRole('button', { name: '업체' }));
-  expect(screen.getByText('3개의 업체')).toBeInTheDocument();
-  expect(screen.getByText('유스뮤직')).toBeInTheDocument();
+  expect(await screen.findByText('3개의 업체')).toBeInTheDocument();
+  expect(await screen.findByText('유스뮤직')).toBeInTheDocument();
 
   fireEvent.click(screen.getByRole('button', { name: '커뮤니티' }));
-  expect(screen.getByText('7개의 게시글')).toBeInTheDocument();
-  expect(screen.getByText('서울 지역 연습실습실 가격 비교 정리했습니다 🎵')).toBeInTheDocument();
+  expect(await screen.findByText('7개의 게시글')).toBeInTheDocument();
+  expect(await screen.findByText('서울 지역 연습실습실 가격 비교 정리했습니다 🎵')).toBeInTheDocument();
 
   fireEvent.click(screen.getByRole('button', { name: '최신순' }));
   expect(screen.getByRole('button', { name: '좋아요 많은 순' })).toBeInTheDocument();
@@ -355,7 +786,7 @@ test('switches search result tabs and opens the community sort menu', async () =
 test('moves to the room detail page when clicking a space card', async () => {
   renderAt('/search?q=합주');
 
-  fireEvent.click(screen.getByText('A룸 그랜드 피아노 대관').closest('a') as HTMLAnchorElement);
+  fireEvent.click(await screen.findByText('A룸 그랜드 피아노 대관'));
 
   expect(
     await screen.findByRole('heading', { level: 1, name: 'A룸 그랜드 피아노 대관' })
@@ -605,7 +1036,7 @@ test('moves to the step-2 profile page after a valid step-1 submit', async () =>
     expect(window.sessionStorage.getItem('bander.signupDraft')).toContain('signup-token')
   );
   expect(await screen.findByLabelText('닉네임')).toHaveValue('활기찬다람쥐');
-  await waitFor(() => expect(screen.getByText('사용불가')).toBeInTheDocument());
+  expect(await screen.findByText('사용불가')).toBeInTheDocument();
   expect(screen.getByLabelText('프로필 사진 업로드')).toBeInTheDocument();
   expect(screen.getByText('서울특별시')).toBeInTheDocument();
   expect(screen.getByRole('button', { name: '다음' })).toBeDisabled();
@@ -617,7 +1048,7 @@ test('allows selecting a korea region and uploading a profile image on step 2', 
 
   expect(await screen.findByLabelText('닉네임')).toBeInTheDocument();
 
-  fireEvent.click(screen.getByText('서울특별시').closest('button') as HTMLButtonElement);
+  fireEvent.click(screen.getByRole('button', { name: '사는 지역 (선택)' }));
   fireEvent.click(screen.getByRole('option', { name: '부산광역시' }));
 
   const file = new File(['avatar'], 'avatar.png', { type: 'image/png' });
@@ -655,7 +1086,7 @@ test('moves from step 2 to the terms page when profile inputs become valid', asy
     await Promise.resolve();
   });
 
-  await waitFor(() => expect(screen.getByText('사용가능')).toBeInTheDocument());
+  expect(await screen.findByText('사용가능')).toBeInTheDocument();
   expect(screen.getByRole('button', { name: '다음' })).toBeEnabled();
 
   fireEvent.click(screen.getByRole('button', { name: '다음' }));
