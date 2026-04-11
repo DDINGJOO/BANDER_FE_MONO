@@ -409,25 +409,38 @@ export function CommunityPostDetailPage() {
     return nextComments;
   }, []);
 
+  // Stale response 가드: 인접글 링크로 빠르게 이동할 때 이전 postId 의 응답이
+  // 나중에 도착해서 새 postId 의 상태를 덮어쓰지 않도록 postId 별로 scope 검증.
+  const activePostIdRef = useRef<string | undefined>(postId);
+
   const loadPost = useCallback(async () => {
     if (!postId) {
       navigate('/community', { replace: true });
       return;
     }
 
+    activePostIdRef.current = postId;
+    const requestedPostId = postId;
     setLoading(true);
     setErrorMessage('');
 
     try {
       const [nextPost, nextComments] = await Promise.all([
-        fetchCommunityPostDetail(postId),
-        fetchCommunityPostComments(postId),
+        fetchCommunityPostDetail(requestedPostId),
+        fetchCommunityPostComments(requestedPostId),
       ]);
+      // 이미 다른 postId 로 이동했다면 stale 응답 — 상태 덮어쓰기 중단.
+      if (activePostIdRef.current !== requestedPostId) {
+        return;
+      }
       setPost(nextPost);
       setLiked(Boolean(nextPost.likedByViewer));
       setLikesCount(nextPost.likeCount);
       setCommentTrees(nextComments);
     } catch (error) {
+      if (activePostIdRef.current !== requestedPostId) {
+        return;
+      }
       if (error instanceof ApiError && error.status === 401) {
         navigate(`/login?returnTo=${encodeURIComponent(location.pathname)}`);
         return;
@@ -436,11 +449,19 @@ export function CommunityPostDetailPage() {
       setPost(null);
       setCommentTrees([]);
     } finally {
-      setLoading(false);
+      if (activePostIdRef.current === requestedPostId) {
+        setLoading(false);
+      }
     }
   }, [navigate, postId]);
 
   useEffect(() => {
+    // postId 변경 시 이전 post 의 입력 컨텍스트를 초기화한다.
+    // 이전 post 의 replyTo.commentId 가 다음 post 의 댓글 submit 에 실려
+    // 잘못된 부모 id 로 mis-threaded reply 가 되는 버그를 방지.
+    setReplyTo(null);
+    setDraft('');
+    setActionError('');
     void loadPost();
   }, [loadPost]);
 
