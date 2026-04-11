@@ -424,14 +424,68 @@
 
 .community-post-detail__comment-input-wrap {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 10px;
   width: 100%;
   min-height: 50px;
   padding: 8px 20px;
-  border-radius: 50px;
+  border-radius: 24px;
   background: #f6f8fa;
   box-sizing: border-box;
+}
+
+/* 카카오톡 스타일 답글 미리보기 bubble */
+.community-post-detail__reply-preview {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  margin-bottom: 2px;
+}
+
+.community-post-detail__reply-preview-bubble {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 12px;
+  background: #e8ecf1;
+  border-radius: 12px;
+  border-left: 3px solid #5b6bc0;
+  min-width: 0;
+}
+
+.community-post-detail__reply-preview-author {
+  font-size: 12px;
+  font-weight: 700;
+  color: #5b6bc0;
+  line-height: 16px;
+}
+
+.community-post-detail__reply-preview-body {
+  font-size: 13px;
+  font-weight: 400;
+  color: #555;
+  line-height: 18px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.community-post-detail__reply-preview-close {
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  border: 0;
+  border-radius: 50%;
+  background: #ccc;
+  color: #fff;
+  font-size: 14px;
+  line-height: 22px;
+  text-align: center;
+  cursor: pointer;
+  padding: 0;
 }
 
 .community-post-detail__comment-input {

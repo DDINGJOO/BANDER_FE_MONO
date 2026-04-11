@@ -7,7 +7,7 @@ export type CommunityReplyDeleteModalProps = {
   open: boolean;
 };
 
-/** Figma 6406:65324 — 답글 삭제 확인 */
+/** Figma 6406:65324 — 댓글 삭제 확인 */
 export function CommunityReplyDeleteModal({ onCancel, onConfirm, open }: CommunityReplyDeleteModalProps) {
   useEffect(() => {
     if (!open) return;
@@ -47,10 +47,10 @@ export function CommunityReplyDeleteModal({ onCancel, onConfirm, open }: Communi
         <div className="community-reply-del-modal__body">
           <div className="community-reply-del-modal__text">
             <p className="community-reply-del-modal__title" id="community-reply-del-modal-title">
-              답글 삭제
+              댓글 삭제
             </p>
             <p className="community-reply-del-modal__desc" id="community-reply-del-modal-desc">
-              해당 답글을 삭제하시겠어요?
+              해당 댓글을 삭제하시겠어요?
             </p>
           </div>
           <div className="community-reply-del-modal__actions">

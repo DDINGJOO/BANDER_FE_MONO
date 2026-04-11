@@ -1,17 +1,20 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import {
+  fetchMyMiniFeed,
+  normalizeMiniFeedPage,
+  type MiniFeedPostDto,
+  type MiniFeedProfileDto,
+  type MiniFeedSort,
+  type MiniFeedTab,
+} from '../api/community';
+import { ApiError } from '../api/client';
 import { HomeFooter } from '../components/home/HomeFooter';
 import { HomeHeader } from '../components/home/HomeHeader';
 import { ChevronIcon } from '../components/shared/Icons';
+import { resolveProfileImageUrl } from '../config/media';
 import { HEADER_SEARCH_KEYWORD_SUGGESTIONS } from '../config/searchSuggestions';
 import { loadAuthSession } from '../data/authSession';
-import {
-  MINI_FEED_COMMENTED_POSTS,
-  MINI_FEED_PROFILE,
-  MINI_FEED_SORT_OPTIONS,
-  MINI_FEED_WRITTEN_POSTS,
-  type MiniFeedPost,
-} from '../data/myMiniFeed';
 
 function LikeGlyph14() {
   return (
@@ -53,21 +56,144 @@ function CommentGlyph14() {
   );
 }
 
-function MiniFeedPostCard({ post }: { post: MiniFeedPost }) {
+type MiniFeedCardModel = {
+  authorAvatar?: string;
+  authorName: string;
+  category?: string;
+  comments: number;
+  detailSlug?: string;
+  excerptLines: string[];
+  likes: number;
+  thumbnail?: string;
+  timeLabel: string;
+  title: string;
+};
+
+const SORT_OPTIONS: Array<{ label: string; value: MiniFeedSort }> = [
+  { label: '최신순', value: 'latest' },
+  { label: '인기순', value: 'popular' },
+  { label: '댓글 많은 순', value: 'comments' },
+];
+
+function formatDateLabel(value: string | null | undefined) {
+  if (!value) {
+    return '';
+  }
+
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return value;
+  }
+
+  const year = String(parsed.getFullYear()).slice(-2);
+  const month = String(parsed.getMonth() + 1).padStart(2, '0');
+  const day = String(parsed.getDate()).padStart(2, '0');
+  return `${year}.${month}.${day}`;
+}
+
+function getErrorMessage(error: unknown, fallback: string) {
+  if (error instanceof ApiError) {
+    return error.message;
+  }
+
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+
+  return fallback;
+}
+
+function resolveMediaUrl(ref: string | null | undefined) {
+  if (!ref) {
+    return undefined;
+  }
+  return resolveProfileImageUrl(ref) ?? ref;
+}
+
+function normalizeTags(tags: MiniFeedProfileDto['tags']) {
+  if (!tags) {
+    return [];
+  }
+
+  if (Array.isArray(tags)) {
+    return tags.filter(Boolean);
+  }
+
+  return tags
+    .split(',')
+    .map((tag) => tag.trim())
+    .filter(Boolean);
+}
+
+function normalizeJoinLabel(profile: MiniFeedProfileDto | null) {
+  if (!profile) {
+    return '';
+  }
+
+  if (profile.joinLabel) {
+    return profile.joinLabel;
+  }
+
+  const createdAt = formatDateLabel(profile.createdAt);
+  return createdAt ? `${createdAt} 가입` : '';
+}
+
+function toExcerptLines(post: MiniFeedPostDto) {
+  if (Array.isArray(post.excerptLines) && post.excerptLines.length > 0) {
+    return post.excerptLines;
+  }
+
+  const excerpt = (post.excerpt ?? '').trim();
+  if (!excerpt) {
+    return [];
+  }
+
+  return excerpt
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .slice(0, 2);
+}
+
+function mapMiniFeedPost(post: MiniFeedPostDto): MiniFeedCardModel {
+  const detailIdentifier = post.postId ?? post.id ?? post.detailSlug ?? post.slug ?? null;
+
+  return {
+    authorAvatar: resolveMediaUrl(
+      post.authorAvatarUrl ?? post.authorAvatar ?? post.authorProfileImageRef
+    ),
+    authorName: post.authorName ?? post.authorNickname ?? '밴더유저',
+    category: post.category ?? undefined,
+    comments: post.comments ?? post.commentCount ?? 0,
+    detailSlug: detailIdentifier !== null ? String(detailIdentifier) : undefined,
+    excerptLines: toExcerptLines(post),
+    likes: post.likes ?? post.likeCount ?? 0,
+    thumbnail: resolveMediaUrl(post.thumbnailUrl ?? post.thumbnail),
+    timeLabel: post.timeLabel ?? formatDateLabel(post.createdAt),
+    title: post.title,
+  };
+}
+
+function MiniFeedPostCard({ post }: { post: MiniFeedCardModel }) {
   const inner = (
     <div className="my-mini-feed-card__inner">
+      {post.category ? (
         <span className="my-mini-feed-card__category">{post.category}</span>
-        <div className="my-mini-feed-card__row">
-          <div className="my-mini-feed-card__body">
-            <h2 className="my-mini-feed-card__title">{post.title}</h2>
+      ) : null}
+      <div className="my-mini-feed-card__row">
+        <div className="my-mini-feed-card__body">
+          <h2 className="my-mini-feed-card__title">{post.title}</h2>
+          {post.excerptLines.length > 0 ? (
             <div className="my-mini-feed-card__excerpt">
-              {post.excerptLines.map((line, i) => (
-                <p key={i}>{line}</p>
+              {post.excerptLines.map((line, index) => (
+                <p key={`${line}-${index}`}>{line}</p>
               ))}
             </div>
-            <div className="my-mini-feed-card__meta">
-              <div className="my-mini-feed-card__meta-block">
-                <div className="my-mini-feed-card__meta-who">
+          ) : null}
+          <div className="my-mini-feed-card__meta">
+            <div className="my-mini-feed-card__meta-block">
+              <div className="my-mini-feed-card__meta-who">
+                {post.authorAvatar ? (
                   <img
                     alt=""
                     className="my-mini-feed-card__meta-avatar"
@@ -75,34 +201,40 @@ function MiniFeedPostCard({ post }: { post: MiniFeedPost }) {
                     src={post.authorAvatar}
                     width={16}
                   />
-                  <span className="my-mini-feed-card__meta-name">{post.authorName}</span>
-                </div>
-                <span className="my-mini-feed-card__dot" aria-hidden />
-                <span className="my-mini-feed-card__meta-time">{post.timeLabel}</span>
+                ) : (
+                  <div
+                    className="my-mini-feed-card__meta-avatar"
+                    style={{ background: '#d9dee4' }}
+                  />
+                )}
+                <span className="my-mini-feed-card__meta-name">{post.authorName}</span>
               </div>
-              <div className="my-mini-feed-card__stats">
-                <span className="my-mini-feed-card__stat">
-                  <LikeGlyph14 />
-                  {post.likes}
-                </span>
-                <span className="my-mini-feed-card__dot" aria-hidden />
-                <span className="my-mini-feed-card__stat">
-                  <CommentGlyph14 />
-                  {post.comments}
-                </span>
-              </div>
+              {post.timeLabel ? <span aria-hidden className="my-mini-feed-card__dot" /> : null}
+              <span className="my-mini-feed-card__meta-time">{post.timeLabel}</span>
+            </div>
+            <div className="my-mini-feed-card__stats">
+              <span className="my-mini-feed-card__stat">
+                <LikeGlyph14 />
+                {post.likes}
+              </span>
+              <span aria-hidden className="my-mini-feed-card__dot" />
+              <span className="my-mini-feed-card__stat">
+                <CommentGlyph14 />
+                {post.comments}
+              </span>
             </div>
           </div>
-          {post.thumbnail ? (
-            <img
-              alt=""
-              className="my-mini-feed-card__thumb"
-              height={80}
-              src={post.thumbnail}
-              width={80}
-            />
-          ) : null}
         </div>
+        {post.thumbnail ? (
+          <img
+            alt=""
+            className="my-mini-feed-card__thumb"
+            height={80}
+            src={post.thumbnail}
+            width={80}
+          />
+        ) : null}
+      </div>
     </div>
   );
 
@@ -120,45 +252,119 @@ function MiniFeedPostCard({ post }: { post: MiniFeedPost }) {
 export function MyMiniFeedPage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const feedTab = searchParams.get('tab') === 'commented' ? 'commented' : 'written';
+  const feedTab: MiniFeedTab =
+    searchParams.get('tab') === 'commented' ? 'commented' : 'written';
+  const authSession = loadAuthSession();
+  const isAuthenticated = Boolean(authSession);
 
-  const setFeedTab = (tab: 'written' | 'commented') => {
-    if (tab === 'commented') setSearchParams({ tab: 'commented' }, { replace: true });
-    else setSearchParams({}, { replace: true });
-  };
-
-  const isAuthenticated = Boolean(loadAuthSession());
   const [headerSearchOpen, setHeaderSearchOpen] = useState(false);
   const [headerSearchQuery, setHeaderSearchQuery] = useState('');
   const headerSearchRef = useRef<HTMLDivElement | null>(null);
   const sortRef = useRef<HTMLDivElement | null>(null);
   const [sortOpen, setSortOpen] = useState(false);
-  const [sortBy, setSortBy] = useState<string>(MINI_FEED_SORT_OPTIONS[0]);
-
-  const posts = feedTab === 'written' ? MINI_FEED_WRITTEN_POSTS : MINI_FEED_COMMENTED_POSTS;
+  const [sortBy, setSortBy] = useState<MiniFeedSort>('latest');
+  const [profile, setProfile] = useState<MiniFeedProfileDto | null>(null);
+  const [posts, setPosts] = useState<MiniFeedCardModel[]>([]);
+  const [totalCount, setTotalCount] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState('');
 
   const filteredSuggestions = HEADER_SEARCH_KEYWORD_SUGGESTIONS.filter((item) =>
-    item.toLowerCase().includes(headerSearchQuery.toLowerCase()),
+    item.toLowerCase().includes(headerSearchQuery.toLowerCase())
   );
+
+  const sortLabel = SORT_OPTIONS.find((option) => option.value === sortBy)?.label ?? '최신순';
+  const profileImageUrl = resolveMediaUrl(
+    profile?.profileImageUrl ?? profile?.profileImageRef
+  );
+  const profileTags = useMemo(() => normalizeTags(profile?.tags), [profile?.tags]);
+
+  const setFeedTab = (tab: MiniFeedTab) => {
+    if (tab === 'commented') {
+      setSearchParams({ tab: 'commented' }, { replace: true });
+      return;
+    }
+
+    setSearchParams({}, { replace: true });
+  };
 
   const handleSearchSubmit = useCallback(
     (value: string) => {
-      const q = value.trim();
-      if (!q) return;
-      navigate(`/search?q=${encodeURIComponent(q)}`);
+      const query = value.trim();
+      if (!query) {
+        return;
+      }
+      navigate(`/search?q=${encodeURIComponent(query)}`);
     },
-    [navigate],
+    [navigate]
   );
 
   useEffect(() => {
     const handlePointerDown = (event: MouseEvent) => {
       const target = event.target as Node;
-      if (!headerSearchRef.current?.contains(target)) setHeaderSearchOpen(false);
-      if (!sortRef.current?.contains(target)) setSortOpen(false);
+      if (!headerSearchRef.current?.contains(target)) {
+        setHeaderSearchOpen(false);
+      }
+      if (!sortRef.current?.contains(target)) {
+        setSortOpen(false);
+      }
     };
+
     document.addEventListener('mousedown', handlePointerDown);
     return () => document.removeEventListener('mousedown', handlePointerDown);
   }, []);
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      navigate('/login?returnTo=/my-minifeed');
+      return;
+    }
+
+    let active = true;
+
+    setLoading(true);
+    setErrorMessage('');
+
+    fetchMyMiniFeed({
+      page: 0,
+      size: 20,
+      sort: sortBy,
+      tab: feedTab,
+    })
+      .then((response) => {
+        if (!active) {
+          return;
+        }
+
+        const page = normalizeMiniFeedPage(response.page);
+        setProfile(response.profile);
+        setPosts(page.items.map(mapMiniFeedPost));
+        setTotalCount(page.totalCount);
+      })
+      .catch((error) => {
+        if (!active) {
+          return;
+        }
+
+        if (error instanceof ApiError && error.status === 401) {
+          navigate('/login?returnTo=/my-minifeed');
+          return;
+        }
+
+        setErrorMessage(getErrorMessage(error, '내 미니피드를 불러오지 못했습니다.'));
+        setPosts([]);
+        setTotalCount(0);
+      })
+      .finally(() => {
+        if (active) {
+          setLoading(false);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [feedTab, sortBy]);
 
   return (
     <main className="my-mini-feed-page">
@@ -188,12 +394,12 @@ export function MyMiniFeedPage() {
       <div className="my-mini-feed-page__main">
         <div className="my-mini-feed-page__title-row">
           <button
-            type="button"
+            aria-label="뒤로"
             className="my-mini-feed-page__back"
             onClick={() => navigate('/')}
-            aria-label="뒤로"
+            type="button"
           >
-            <span className="my-mini-feed-page__back-chevron" aria-hidden>
+            <span aria-hidden className="my-mini-feed-page__back-chevron">
               <ChevronIcon />
             </span>
           </button>
@@ -202,21 +408,30 @@ export function MyMiniFeedPage() {
 
         <div className="my-mini-feed-page__profile-row">
           <div className="my-mini-feed-page__profile-left">
-            <img
-              alt=""
-              className="my-mini-feed-page__avatar"
-              height={200}
-              src={MINI_FEED_PROFILE.profileImageUrl}
-              width={200}
-            />
+            {profileImageUrl ? (
+              <img
+                alt=""
+                className="my-mini-feed-page__avatar"
+                height={200}
+                src={profileImageUrl}
+                width={200}
+              />
+            ) : (
+              <div
+                className="my-mini-feed-page__avatar"
+                style={{ background: '#e5eaf0' }}
+              />
+            )}
             <div className="my-mini-feed-page__profile-text">
               <div>
-                <p className="my-mini-feed-page__nickname">{MINI_FEED_PROFILE.nickname}</p>
-                <p className="my-mini-feed-page__join">{MINI_FEED_PROFILE.joinLabel}</p>
+                <p className="my-mini-feed-page__nickname">
+                  {profile?.nickname ?? '내 프로필'}
+                </p>
+                <p className="my-mini-feed-page__join">{normalizeJoinLabel(profile)}</p>
               </div>
-              <p className="my-mini-feed-page__bio">{MINI_FEED_PROFILE.bio}</p>
+              <p className="my-mini-feed-page__bio">{profile?.bio ?? ''}</p>
               <div className="my-mini-feed-page__tags">
-                {MINI_FEED_PROFILE.tags.map((tag) => (
+                {profileTags.map((tag) => (
                   <span className="my-mini-feed-page__tag" key={tag}>
                     {tag}
                   </span>
@@ -231,7 +446,7 @@ export function MyMiniFeedPage() {
 
         <div className="my-mini-feed-page__tabs" role="tablist">
           <button
-            type="button"
+            aria-selected={feedTab === 'written'}
             className={
               feedTab === 'written'
                 ? 'my-mini-feed-page__tab my-mini-feed-page__tab--active'
@@ -239,12 +454,12 @@ export function MyMiniFeedPage() {
             }
             onClick={() => setFeedTab('written')}
             role="tab"
-            aria-selected={feedTab === 'written'}
+            type="button"
           >
             작성한 글
           </button>
           <button
-            type="button"
+            aria-selected={feedTab === 'commented'}
             className={
               feedTab === 'commented'
                 ? 'my-mini-feed-page__tab my-mini-feed-page__tab--active'
@@ -252,40 +467,43 @@ export function MyMiniFeedPage() {
             }
             onClick={() => setFeedTab('commented')}
             role="tab"
-            aria-selected={feedTab === 'commented'}
+            type="button"
           >
             댓글단 글
           </button>
         </div>
 
         <div className="my-mini-feed-page__feed-head">
-          <p className="my-mini-feed-page__count">{posts.length}개의 게시글</p>
+          <p className="my-mini-feed-page__count">
+            {loading ? '불러오는 중...' : `${totalCount}개의 게시글`}
+          </p>
           <div className="my-mini-feed-page__sort-wrap" ref={sortRef}>
             <button
-              type="button"
-              className="my-mini-feed-page__sort-trigger"
               aria-expanded={sortOpen}
-              onClick={() => setSortOpen((o) => !o)}
+              className="my-mini-feed-page__sort-trigger"
+              onClick={() => setSortOpen((current) => !current)}
+              type="button"
             >
-              {sortBy}
-              <span className="my-mini-feed-page__sort-chevron" aria-hidden>
+              {sortLabel}
+              <span aria-hidden className="my-mini-feed-page__sort-chevron">
                 <ChevronIcon />
               </span>
             </button>
             {sortOpen ? (
               <div className="my-mini-feed-page__sort-menu" role="listbox">
-                {MINI_FEED_SORT_OPTIONS.map((opt) => (
+                {SORT_OPTIONS.map((option) => (
                   <button
-                    type="button"
+                    aria-selected={sortBy === option.value}
                     className="my-mini-feed-page__sort-option"
-                    key={opt}
+                    key={option.value}
                     onClick={() => {
-                      setSortBy(opt);
+                      setSortBy(option.value);
                       setSortOpen(false);
                     }}
                     role="option"
+                    type="button"
                   >
-                    {opt}
+                    {option.label}
                   </button>
                 ))}
               </div>
@@ -293,13 +511,27 @@ export function MyMiniFeedPage() {
           </div>
         </div>
 
+        {errorMessage ? (
+          <p
+            className="my-mini-feed-page__bio"
+            role="status"
+            style={{ color: '#d14b4b', marginBottom: 20 }}
+          >
+            {errorMessage}
+          </p>
+        ) : null}
+
         <div className="my-mini-feed-page__list">
-          {posts.map((post, i) => (
-            <MiniFeedPostCard
-              key={`${feedTab}-${i}-${post.title}-${post.timeLabel}`}
-              post={post}
-            />
-          ))}
+          {!loading && posts.length === 0 ? (
+            <p className="my-mini-feed-page__bio">표시할 게시글이 없습니다.</p>
+          ) : (
+            posts.map((post, index) => (
+              <MiniFeedPostCard
+                key={post.detailSlug ?? `${feedTab}-${index}`}
+                post={post}
+              />
+            ))
+          )}
         </div>
       </div>
 

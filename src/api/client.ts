@@ -107,9 +107,10 @@ export function postJson<T>(path: string, body: unknown) {
   });
 }
 
-export function getJson<T>(path: string) {
+export function getJson<T>(path: string, options?: { signal?: AbortSignal }) {
   return requestJson<T>(path, {
     method: 'GET',
+    signal: options?.signal,
   });
 }
 
