@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { HomeFooter } from '../components/home/HomeFooter';
 import { HomeHeader } from '../components/home/HomeHeader';
 import { HEADER_SEARCH_KEYWORD_SUGGESTIONS } from '../config/searchSuggestions';
+import { isMockMode } from '../config/publicEnv';
 import { loadAuthSession } from '../data/authSession';
 import {
   APP_NOTIFICATIONS,
@@ -11,6 +12,8 @@ import {
   type NotificationIconKind,
   type NotificationTabFilter,
 } from '../data/notifications';
+import { fetchNotifications } from '../api/notifications';
+import { notificationsFromApiPage } from '../data/adapters/notificationsFromApi';
 import '../styles/notifications.css';
 
 /** Figma 6465:30579 — 헤더 알림과 동일 실루엣, 66px · Gray 4 톤 */
@@ -175,18 +178,46 @@ export function NotificationsPage() {
   const [headerSearchQuery, setHeaderSearchQuery] = useState('');
   const headerSearchRef = useRef<HTMLDivElement | null>(null);
   const [tab, setTab] = useState<NotificationTabFilter>('all');
+  const [items, setItems] = useState<readonly AppNotification[]>(
+    isMockMode() ? APP_NOTIFICATIONS : [],
+  );
+  const [loading, setLoading] = useState<boolean>(!isMockMode());
+  const [loadError, setLoadError] = useState<Error | null>(null);
+
+  useEffect(() => {
+    if (isMockMode()) return;
+    let cancelled = false;
+    setLoading(true);
+    setLoadError(null);
+    fetchNotifications(0, 50)
+      .then((page) => {
+        if (cancelled) return;
+        setItems(notificationsFromApiPage(page));
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        setLoadError(err instanceof Error ? err : new Error('알림 조회 실패'));
+        setItems([]);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const filteredSuggestions = HEADER_SEARCH_KEYWORD_SUGGESTIONS.filter((item) =>
     item.toLowerCase().includes(headerSearchQuery.toLowerCase()),
   );
 
   const { todayItems, weekItems } = useMemo(() => {
-    const filtered = filterNotifications(APP_NOTIFICATIONS, tab);
+    const filtered = filterNotifications(items, tab);
     return {
       todayItems: filtered.filter((n) => n.section === 'today'),
       weekItems: filtered.filter((n) => n.section === 'week'),
     };
-  }, [tab]);
+  }, [items, tab]);
 
   const onHeaderSearchSubmit = useCallback(
     (value: string) => {
@@ -209,8 +240,10 @@ export function NotificationsPage() {
 
   const demoEmpty = searchParams.get('empty') === '1';
   const empty =
-    demoEmpty ||
-    (todayItems.length === 0 && weekItems.length === 0);
+    !loading &&
+    (demoEmpty ||
+      Boolean(loadError) ||
+      (todayItems.length === 0 && weekItems.length === 0));
 
   return (
     <main className="notifications-page">
