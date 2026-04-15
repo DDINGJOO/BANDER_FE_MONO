@@ -98,7 +98,7 @@ export function completePasswordReset(
   password: string,
   passwordConfirm: string
 ) {
-  return postJson<{ userId: number }>('/api/v1/auth/password/reset/confirm', {
+  return postJson<{ userId: string }>('/api/v1/auth/password/reset/confirm', {
     password,
     passwordConfirm,
     passwordResetToken,

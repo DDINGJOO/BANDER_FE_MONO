@@ -3,7 +3,7 @@ import { getRedirectUri } from '../config/oauth';
 import type { OAuthProvider } from '../config/oauth';
 
 export type SocialLoginResponse = {
-  userId: number | string;
+  userId: string;
   gatewayContextToken: string;
   expiresAt: string;
   newUser: boolean;

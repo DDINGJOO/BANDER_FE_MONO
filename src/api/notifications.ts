@@ -15,7 +15,7 @@ export function fetchUnreadNotificationCount() {
   return getJson<UnreadCountDto>('/api/v1/notifications/unread-count');
 }
 
-export function markNotificationRead(notificationId: number) {
+export function markNotificationRead(notificationId: string) {
   return requestVoid(`/api/v1/notifications/${notificationId}/read`, {
     method: 'PATCH',
   });

@@ -213,7 +213,7 @@ export function chatRoomToThread(room: ChatRoomResponse): ChatThread {
 
 export function chatMessageToUiMessage(
   msg: ChatMessageResponse,
-  currentUserId: number | string,
+  currentUserId: string,
   partnerNickname?: string,
 ): ChatMessage {
   const time = formatChatTime(msg.createdAt);

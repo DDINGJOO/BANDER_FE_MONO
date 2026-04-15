@@ -15,7 +15,7 @@ export type SignupRegistrationResponse = {
   expiresAt: string;
   signupCompletionToken: string;
   status: string;
-  userId: number;
+  userId: string;
 };
 
 export type SignupTermResponse = {
@@ -33,7 +33,7 @@ export type SignupNicknameAvailabilityResponse = {
 
 export type SignupCompletionResponse = {
   status: string;
-  userId: number;
+  userId: string;
 };
 
 export type PasswordResetVerifyResponse = {
@@ -44,5 +44,5 @@ export type PasswordResetVerifyResponse = {
 export type LoginResponse = {
   expiresAt: string;
   gatewayContextToken: string;
-  userId: number | string;
+  userId: string;
 };

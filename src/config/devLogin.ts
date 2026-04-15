@@ -46,6 +46,6 @@ export function tryDevLoginBypass(email: string, password: string): LoginRespons
   return {
     expiresAt: new Date(Date.now() + 86400000 * 365).toISOString(),
     gatewayContextToken: 'dev-login-bypass-token',
-    userId: 900_001,
+    userId: '900001',
   };
 }

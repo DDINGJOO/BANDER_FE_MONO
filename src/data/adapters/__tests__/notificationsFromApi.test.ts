@@ -95,12 +95,12 @@ describe('notificationsFromApi adapter', () => {
 
   describe('notificationFromApi', () => {
     const base: NotificationApiDto = {
-      notificationId: 42,
+      notificationId: '42',
       type: 'BOOKING_CONFIRMED',
       title: '예약 확정',
       content: '예약이 확정되었습니다.',
       referenceType: 'BOOKING',
-      referenceId: 7,
+      referenceId: '7',
       read: false,
       createdAt: kstIsoLocal(2026, 4, 13, 11, 30),
     };
@@ -132,7 +132,7 @@ describe('notificationsFromApi adapter', () => {
       const page: SpringPage<NotificationApiDto> = {
         content: [
           {
-            notificationId: 1,
+            notificationId: '1',
             type: 'BOOKING_CREATED',
             title: 't1',
             content: 'c1',
@@ -142,7 +142,7 @@ describe('notificationsFromApi adapter', () => {
             createdAt: kstIsoLocal(2026, 4, 13, 11, 50),
           },
           {
-            notificationId: 2,
+            notificationId: '2',
             type: 'PAYMENT_APPROVED',
             title: 't2',
             content: '',

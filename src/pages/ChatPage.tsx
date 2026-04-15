@@ -77,7 +77,7 @@ export function ChatPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const authSession = loadAuthSession();
   const isAuthenticated = Boolean(authSession);
-  const currentUserId = authSession?.userId ?? 0;
+  const currentUserId = authSession?.userId ?? '';
 
   const [headerSearchOpen, setHeaderSearchOpen] = useState(false);
   const [headerSearchQuery, setHeaderSearchQuery] = useState('');

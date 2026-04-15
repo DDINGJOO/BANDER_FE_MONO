@@ -115,8 +115,8 @@ export function VendorDetailPage() {
               if (vendor.ownerUserId) {
                 try {
                   const room = await createChatRoom({
-                    targetUserId: Number(vendor.ownerUserId),
-                    vendorId: vendor.vendorId ? Number(vendor.vendorId) : undefined,
+                    targetUserId: vendor.ownerUserId,
+                    vendorId: vendor.vendorId ?? undefined,
                     vendorSlug: vendor.slug ?? undefined,
                   });
                   navigate(`/chat?t=${room.chatRoomId}`);

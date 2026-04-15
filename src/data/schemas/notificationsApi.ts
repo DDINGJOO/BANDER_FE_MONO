@@ -4,12 +4,12 @@
  */
 
 export type NotificationApiDto = {
-  notificationId: number;
+  notificationId: string;
   type: string;
   title: string;
   content: string;
   referenceType: string | null;
-  referenceId: number | null;
+  referenceId: string | null;
   read: boolean;
   createdAt: string;
 };

@@ -81,7 +81,7 @@ export function notificationFromApi(
   now: Date = new Date(),
 ): AppNotification {
   return {
-    id: String(dto.notificationId),
+    id: dto.notificationId,
     section: sectionForCreatedAt(dto.createdAt, now),
     category: categoryForNotificationType(dto.type),
     icon: iconForNotificationType(dto.type),

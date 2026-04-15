@@ -118,7 +118,7 @@ export function SpaceReservationPage() {
 
   const dateParam = searchParams.get('date') ?? '2025-08-20';
   const roomIdParam = searchParams.get('roomId');
-  const roomId = roomIdParam ? Number(roomIdParam) : null;
+  const roomId = roomIdParam ?? null;
 
   const updateTimelineNavState = () => {
     if (!timelineScrollRef.current) {
@@ -362,7 +362,7 @@ export function SpaceReservationPage() {
     const endsAt = slotLabelToIso(dateParam, `${String(endHour).padStart(2, '0')}:${String(endMinute).padStart(2, '0')}`);
 
     try {
-      const booking = await createBooking({ roomId: roomId ?? 0, startsAt, endsAt });
+      const booking = await createBooking({ roomId: roomId ?? '', startsAt, endsAt });
 
       const clientKey = getTossPaymentsClientKey();
       if (!clientKey || !booking.orderId) {
@@ -370,7 +370,7 @@ export function SpaceReservationPage() {
         return;
       }
 
-      sessionStorage.setItem('bander_pending_booking_id', String(booking.bookingId));
+      sessionStorage.setItem('bander_pending_booking_id', booking.bookingId);
 
       await requestTossPayment({
         clientKey,
