@@ -123,8 +123,8 @@ export function ReservationDetailPage() {
         searchParams.get('status'),
       );
       const mockDetail: BookingDetailResponse = {
-        bookingId: 1,
-        roomId: 1,
+        bookingId: '1',
+        roomId: '1',
         roomName: RESERVATION_DETAIL.spaceTitle,
         studioName: '유스뮤직',
         status: variant === 'pending' ? 'PENDING' : variant === 'completed' ? 'COMPLETED' : 'CONFIRMED',

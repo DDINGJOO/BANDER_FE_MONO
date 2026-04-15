@@ -3,7 +3,7 @@ import { getJson, patchJson, postJson, requestVoid } from './client';
 // --- Profile ---
 
 export type UserProfile = {
-  userId: number;
+  userId: string;
   nickname: string;
   bio: string | null;
   profileImageRef: string | null;
@@ -25,7 +25,7 @@ export type UpdateProfileRequest = {
 };
 
 export type UpdateProfileResponse = {
-  userId: number;
+  userId: string;
   nickname: string;
   bio: string | null;
   profileImageRef: string | null;
@@ -59,7 +59,7 @@ export function updateMyProfile(req: UpdateProfileRequest) {
 // --- Account ---
 
 export type AccountInfo = {
-  userId: number;
+  userId: string;
   email: string;
   status: string;
   createdAt: string;

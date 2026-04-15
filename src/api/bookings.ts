@@ -3,7 +3,7 @@ import { getJson, postJson } from './client';
 // --- Types ---
 
 export type CreateBookingRequest = {
-  roomId: number;
+  roomId: string;
   startsAt: string;
   endsAt: string;
 };
@@ -19,18 +19,18 @@ export type ConfirmPaymentRequest = {
 };
 
 export type BookingCommandResponse = {
-  bookingId: number;
+  bookingId: string;
   status: string;
   expiresAt: string | null;
   totalPrice: number;
   cancelledAt: string | null;
   orderId: string | null;
-  paymentId: number | null;
+  paymentId: string | null;
 };
 
 export type BookingDetailResponse = {
-  bookingId: number;
-  roomId: number;
+  bookingId: string;
+  roomId: string;
   roomName: string;
   studioName: string;
   status: string;
@@ -70,7 +70,7 @@ export type SpaceAvailabilityResponse = {
 };
 
 export type CreateReviewRequest = {
-  bookingId: number;
+  bookingId: string;
   rating: number;
   content: string;
   imageRefs?: string[];
@@ -85,7 +85,7 @@ export type CursorPageResponse<T> = {
 };
 
 export type RefundEstimateResponse = {
-  bookingId: number;
+  bookingId: string;
   totalPrice: number;
   refundRatePercent: number;
   cancellationFee: number;
@@ -127,7 +127,7 @@ export function getSpaceAvailability(spaceId: number | string, date: string) {
 }
 
 export function createReview(req: CreateReviewRequest) {
-  return postJson<{ reviewId: number }>('/api/v1/reviews', req);
+  return postJson<{ reviewId: string }>('/api/v1/reviews', req);
 }
 
 export function getMyReviews(params: { cursor?: string; size?: number } = {}) {
@@ -135,5 +135,5 @@ export function getMyReviews(params: { cursor?: string; size?: number } = {}) {
   if (params.cursor) query.set('cursor', params.cursor);
   if (params.size != null) query.set('size', String(params.size));
   const qs = query.toString();
-  return getJson<CursorPageResponse<{ reviewId: number; bookingId: number; rating: number; content: string; createdAt: string }>>(`/api/v1/users/me/reviews${qs ? `?${qs}` : ''}`);
+  return getJson<CursorPageResponse<{ reviewId: string; bookingId: string; rating: number; content: string; createdAt: string }>>(`/api/v1/users/me/reviews${qs ? `?${qs}` : ''}`);
 }

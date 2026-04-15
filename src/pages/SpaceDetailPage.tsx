@@ -488,8 +488,8 @@ export function SpaceDetailPage() {
                           try {
                             const vendorDto = await fetchVendorDetail(vendorSlug);
                             const room = await createChatRoom({
-                              targetUserId: Number(vendorDto.ownerUserId),
-                              vendorId: Number(vendorDto.vendorId),
+                              targetUserId: vendorDto.ownerUserId,
+                              vendorId: vendorDto.vendorId,
                               vendorSlug,
                             });
                             navigate(`/chat?t=${room.chatRoomId}`);

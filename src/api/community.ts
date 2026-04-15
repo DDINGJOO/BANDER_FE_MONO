@@ -12,7 +12,7 @@ export type PostBlockDto = {
 export type CommunityPostBlockDto = PostBlockDto;
 
 export type CommunityAdjacentPostDto = {
-  postId?: number | string | null;
+  postId?: string | null;
   slug?: string | null;
   title: string;
   date?: string | null;
@@ -209,7 +209,7 @@ export type MiniFeedTab = 'written' | 'commented';
 export type MiniFeedSort = 'latest' | 'popular' | 'comments';
 
 export type MiniFeedProfileDto = {
-  userId?: string | number;
+  userId?: string;
   nickname: string;
   joinLabel?: string | null;
   bio?: string | null;
@@ -220,8 +220,8 @@ export type MiniFeedProfileDto = {
 };
 
 export type MiniFeedPostDto = {
-  postId?: string | number;
-  id?: string | number;
+  postId?: string;
+  id?: string;
   title: string;
   category?: string | null;
   excerpt?: string | null;

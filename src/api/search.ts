@@ -2,8 +2,8 @@ import { getJson } from './client';
 import type { SearchSuggestionsResponseDto } from '../data/schemas/search';
 
 export type RoomSearchItem = {
-  roomId: number;
-  studioId: number;
+  roomId: string;
+  studioId: string;
   studioName: string;
   roomName: string;
   roomSlug: string;

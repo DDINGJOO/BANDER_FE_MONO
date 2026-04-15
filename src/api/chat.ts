@@ -6,8 +6,8 @@ export type ChatRoomType = 'VENDOR' | 'PERSONAL';
 
 export type ChatRoomResponse = {
   chatRoomId: string;
-  participantA: number;
-  participantB: number;
+  participantA: string;
+  participantB: string;
   status: 'ACTIVE' | 'ARCHIVED';
   chatRoomType: ChatRoomType;
   vendorId: string | null;
@@ -24,7 +24,7 @@ export type ChatMessageResponse = {
   messageId: string;
   chatRoomId: string;
   /** Backend serializes Long as string via @JsonFormat(shape = STRING) */
-  senderUserId: number | string;
+  senderUserId: string;
   content: string;
   messageType: 'TEXT' | 'IMAGE' | 'SYSTEM';
   readAt: string | null;
@@ -51,8 +51,8 @@ export type PageResponse<T> = {
 };
 
 export type CreateChatRoomRequest = {
-  targetUserId: number;
-  vendorId?: number;
+  targetUserId: string;
+  vendorId?: string;
   vendorSlug?: string;
 };
 
