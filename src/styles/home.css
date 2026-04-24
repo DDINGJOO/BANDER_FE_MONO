@@ -283,16 +283,9 @@
   background: rgba(0, 0, 0, 0.06);
 }
 
-.home-header__icon-button--alert::after {
-  content: '';
-  position: absolute;
-  right: 2px;
-  top: 2px;
-  width: 5px;
-  height: 5px;
-  border-radius: 999px;
-  background: var(--color-danger);
-}
+/* 미읽음 배지는 런타임에 count>0 일 때만 .home-header__icon-badge 스팬으로 표시한다.
+   기존 static ::after 빨간 점은 count=0 상태에서도 항상 노출되어 "알림 있음" 오해를
+   유도했으므로 제거 (home-header badge polling 연동 시 Codex 피드백). */
 
 .home-header__icon-badge {
   position: absolute;

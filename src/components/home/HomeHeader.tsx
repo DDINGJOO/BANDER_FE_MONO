@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { clearAuthSession } from '../../data/authSession';
+import { ApiError } from '../../api/client';
 import { fetchUnreadNotificationCount } from '../../api/notifications';
 import { getMySummary, logout as apiLogout, type UserMeSummary } from '../../api/users';
 import { isMockMode } from '../../config/publicEnv';
@@ -121,9 +122,13 @@ export function HomeHeader(props: HomeHeaderProps) {
       try {
         const res = await fetchUnreadNotificationCount();
         if (!cancelled) setUnreadCount(res?.count ?? 0);
-      } catch {
-        // 네트워크 실패 시 조용히 skip — 다음 tick 에 재시도. 세션 만료(401) 는
-        // 상위 라우터에서 로그인 화면으로 유도되므로 여기서 별도 처리하지 않는다.
+      } catch (err) {
+        // 401 (세션 만료) → 배지를 즉시 0 으로 비워 "로그아웃됐는데도 배지가 남아 있음"
+        // 오해를 방지 (라우터가 로그인 화면으로 redirect 하기 전 짧은 구간 UX).
+        // 그 외 일시 네트워크 오류는 이전 count 유지 — 다음 tick 에 재시도.
+        if (!cancelled && err instanceof ApiError && err.status === 401) {
+          setUnreadCount(0);
+        }
       }
     };
     load();
