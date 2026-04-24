@@ -1,7 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { clearAuthSession } from '../../data/authSession';
+import { fetchUnreadNotificationCount } from '../../api/notifications';
 import { getMySummary, logout as apiLogout, type UserMeSummary } from '../../api/users';
+import { isMockMode } from '../../config/publicEnv';
 import { resolveProfileImageUrl } from '../../config/media';
 import { resolveHomeProfileMenuModel, type HomeProfileMenuModel } from '../../types/homeProfileMenu';
 import { BrandMark } from '../shared/BrandMark';
@@ -51,6 +53,16 @@ let cachedUserSummary: UserMeSummary | null = null;
 const summarySubscribers = new Set<(s: UserMeSummary | null) => void>();
 let summaryFetchInFlight: Promise<UserMeSummary | null> | null = null;
 
+// 종 아이콘 미읽음 배지: 30초 폴링 (user-gateway → feed-service).
+// Backend 쪽 UnreadCountCache (Redis) 가 상수 시간 응답하므로 polling 비용은 낮다.
+// 화면에 100+ 정도까지 표시하고, 그 이상은 "99+" 로 압축한다.
+const UNREAD_POLL_INTERVAL_MS = 30_000;
+
+function formatUnreadBadge(count: number): string {
+  if (count > 99) return '99+';
+  return String(count);
+}
+
 function fetchUserSummaryOnce(): Promise<UserMeSummary | null> {
   if (cachedUserSummary) return Promise.resolve(cachedUserSummary);
   if (summaryFetchInFlight) return summaryFetchInFlight;
@@ -94,6 +106,31 @@ export function HomeHeader(props: HomeHeaderProps) {
     });
     return () => {
       summarySubscribers.delete(notify);
+    };
+  }, [authenticated]);
+
+  // 미읽음 알림 배지 — 로그인 상태일 때만 주기적으로 폴링. mock mode 는 skip.
+  const [unreadCount, setUnreadCount] = useState<number>(0);
+  useEffect(() => {
+    if (!authenticated || isMockMode()) {
+      setUnreadCount(0);
+      return;
+    }
+    let cancelled = false;
+    const load = async () => {
+      try {
+        const res = await fetchUnreadNotificationCount();
+        if (!cancelled) setUnreadCount(res?.count ?? 0);
+      } catch {
+        // 네트워크 실패 시 조용히 skip — 다음 tick 에 재시도. 세션 만료(401) 는
+        // 상위 라우터에서 로그인 화면으로 유도되므로 여기서 별도 처리하지 않는다.
+      }
+    };
+    load();
+    const timer = window.setInterval(load, UNREAD_POLL_INTERVAL_MS);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
     };
   }, [authenticated]);
 
@@ -271,11 +308,18 @@ export function HomeHeader(props: HomeHeaderProps) {
               <HeaderChatIcon />
             </Link>
             <Link
-              aria-label="알림"
+              aria-label={
+                unreadCount > 0 ? `알림 ${formatUnreadBadge(unreadCount)}개 있음` : '알림'
+              }
               className="home-header__icon-button home-header__icon-button--alert"
               to="/notifications"
             >
               <HeaderAlarmIcon />
+              {unreadCount > 0 ? (
+                <span aria-hidden="true" className="home-header__icon-badge">
+                  {formatUnreadBadge(unreadCount)}
+                </span>
+              ) : null}
             </Link>
             <div className="home-header__profile-wrap" ref={profileRootRef}>
               <button
