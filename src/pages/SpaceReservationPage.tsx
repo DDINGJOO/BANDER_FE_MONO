@@ -13,8 +13,10 @@ import { getAvailableCoupons } from '../api/coupons';
 import {
   getSpaceAvailability,
   createBooking,
+  type BookingCommandResponse,
   type SpaceAvailabilitySlot,
 } from '../api/bookings';
+import { useSagaPolling } from '../hooks/useSagaPolling';
 import { isMockMode, getTossPaymentsClientKey } from '../config/publicEnv';
 import { requestTossPayment } from '../utils/tossPayments';
 
@@ -110,6 +112,8 @@ export function SpaceReservationPage() {
   const [couponError, setCouponError] = useState<string | null>(null);
   const { downloadCoupon, downloadedCouponIds, downloadError } = useCouponDownloads();
   const [paymentResult, setPaymentResult] = useState<PaymentResultState>(null);
+  const [sagaId, setSagaId] = useState<string | null>(null);
+  const [sagaPending, setSagaPending] = useState(false);
   const [canScrollTimelineNext, setCanScrollTimelineNext] = useState(true);
   const [canScrollTimelinePrev, setCanScrollTimelinePrev] = useState(false);
   const [selectedOptionCounts, setSelectedOptionCounts] = useState<Record<string, number>>({
@@ -390,39 +394,77 @@ export function SpaceReservationPage() {
     const endsAt = slotLabelToIso(dateParam, `${String(endHour).padStart(2, '0')}:${String(endMinute).padStart(2, '0')}`);
 
     try {
-      const booking = await createBooking({
+      const result = await createBooking({
         roomId: roomId ?? '',
         startsAt,
         endsAt,
         couponId: selectedCouponId ?? undefined,
       });
-      const paidAmount = Number(booking.paidAmount ?? booking.totalPrice);
 
-      if (paidAmount <= 0) {
-        setPaymentResult('success');
+      if (result.kind === 'saga') {
+        // canary path: orchestrator returned 202 + sagaId. Polling handles the rest.
+        setSagaId(result.saga.sagaId);
+        setSagaPending(true);
         return;
       }
 
-      const clientKey = getTossPaymentsClientKey();
-      if (!clientKey || !booking.orderId) {
-        setPaymentResult('failed');
-        return;
-      }
-
-      sessionStorage.setItem('bander_pending_booking_id', booking.bookingId);
-
-      await requestTossPayment({
-        clientKey,
-        orderId: booking.orderId,
-        orderName: spaceCard.title + ' 예약',
-        amount: paidAmount,
-        successUrl: `${window.location.origin}/payment/success`,
-        failUrl: `${window.location.origin}/payment/fail`,
-      });
+      await proceedWithLegacyBooking(result.booking);
     } catch {
       setPaymentResult('failed');
     }
   };
+
+  const proceedWithLegacyBooking = async (booking: BookingCommandResponse) => {
+    const paidAmount = Number(booking.paidAmount ?? booking.totalPrice);
+
+    if (paidAmount <= 0) {
+      setPaymentResult('success');
+      return;
+    }
+
+    const clientKey = getTossPaymentsClientKey();
+    if (!clientKey || !booking.orderId) {
+      setPaymentResult('failed');
+      return;
+    }
+
+    sessionStorage.setItem('bander_pending_booking_id', booking.bookingId);
+
+    await requestTossPayment({
+      clientKey,
+      orderId: booking.orderId,
+      orderName: spaceCard.title + ' 예약',
+      amount: paidAmount,
+      successUrl: `${window.location.origin}/payment/success`,
+      failUrl: `${window.location.origin}/payment/fail`,
+    });
+  };
+
+  const sagaState = useSagaPolling(sagaPending ? sagaId : null);
+
+  useEffect(() => {
+    if (!sagaPending) return;
+    if (sagaState.timedOut) {
+      setSagaPending(false);
+      setPaymentResult('failed');
+      return;
+    }
+    if (sagaState.status === 'COMPLETED') {
+      setSagaPending(false);
+      const data = sagaState.data;
+      if (data?.bookingId) {
+        sessionStorage.setItem('bander_pending_booking_id', data.bookingId);
+      }
+      // orchestrator path completes payment server-side via PaymentService;
+      // surface success directly without driving toss-payments client SDK.
+      setPaymentResult('success');
+      return;
+    }
+    if (sagaState.status === 'FAILED') {
+      setSagaPending(false);
+      setPaymentResult('failed');
+    }
+  }, [sagaPending, sagaState.status, sagaState.timedOut, sagaState.data]);
 
   const handleDownloadCoupon = async (couponId: string) => {
     if (!isAuthenticated) {
@@ -829,6 +871,25 @@ export function SpaceReservationPage() {
         selectedCouponId={selectedCouponId}
         title={`적용 가능 쿠폰 ${couponCount}`}
       />
+
+      {sagaPending && modalRoot
+        ? createPortal(
+            <div className="space-reservation__modal" role="dialog" aria-live="polite">
+              <div className="space-reservation__modal-backdrop" />
+              <div className="space-reservation__result-dialog">
+                <h2>
+                  {sagaState.status === 'COMPENSATING' ? '취소 처리 중...' : '결제 준비 중...'}
+                </h2>
+                <p className="space-reservation__result-desc">
+                  {sagaState.status === 'COMPENSATING'
+                    ? '예약을 안전하게 취소하고 있습니다.'
+                    : '잠시만 기다려주세요. 예약을 처리하고 있습니다.'}
+                </p>
+              </div>
+            </div>,
+            modalRoot,
+          )
+        : null}
 
       {paymentResult && modalRoot
         ? createPortal(
