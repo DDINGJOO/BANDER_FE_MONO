@@ -26,6 +26,12 @@ export type SpringPage<T> = {
   empty: boolean;
 };
 
+export type NotificationCursorPage<T> = {
+  items: T[];
+  nextCursor: string | null;
+  hasNext: boolean;
+};
+
 export type UnreadCountDto = {
   count: number;
 };

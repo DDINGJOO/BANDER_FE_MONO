@@ -121,6 +121,13 @@ export function patchJson<T>(path: string, body: unknown) {
   });
 }
 
+export function patchVoid(path: string, body: unknown) {
+  return requestVoid(path, {
+    body: JSON.stringify(body),
+    method: 'PATCH',
+  });
+}
+
 export function deleteJson<T>(path: string) {
   return requestJson<T>(path, {
     method: 'DELETE',

@@ -4,13 +4,13 @@ import { HomeFooter } from '../components/home/HomeFooter';
 import { HomeHeader } from '../components/home/HomeHeader';
 import { ChevronIcon } from '../components/shared/Icons';
 import { HEADER_SEARCH_KEYWORD_SUGGESTIONS } from '../config/searchSuggestions';
-import { loadAuthSession } from '../data/authSession';
 import {
   formatPaymentAmountWon,
-  PAYMENT_HISTORY_ENTRIES,
+  getMyPaymentHistory,
   type PaymentHistoryEntry,
   type PaymentHistoryKind,
-} from '../data/paymentInfo';
+} from '../api/payments';
+import { loadAuthSession } from '../data/authSession';
 import '../styles/payment-info.css';
 
 type PaymentFilter = 'all' | PaymentHistoryKind;
@@ -63,15 +63,46 @@ export function PaymentInfoPage() {
   const [headerSearchQuery, setHeaderSearchQuery] = useState('');
   const headerSearchRef = useRef<HTMLDivElement | null>(null);
   const [filter, setFilter] = useState<PaymentFilter>('all');
+  const [entries, setEntries] = useState<PaymentHistoryEntry[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const filteredSuggestions = HEADER_SEARCH_KEYWORD_SUGGESTIONS.filter((item) =>
     item.toLowerCase().includes(headerSearchQuery.toLowerCase()),
   );
 
   const visibleEntries = useMemo(
-    () => filterEntries(PAYMENT_HISTORY_ENTRIES, filter),
-    [filter],
+    () => filterEntries(entries, filter),
+    [entries, filter],
   );
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    setLoading(true);
+    setErrorMessage(null);
+
+    getMyPaymentHistory({ page: 0, size: 100, signal: controller.signal })
+      .then((res) => {
+        setEntries(res.items ?? []);
+      })
+      .catch((error: unknown) => {
+        if (controller.signal.aborted) return;
+        setEntries([]);
+        setErrorMessage(
+          error instanceof Error
+            ? error.message
+            : '결제 내역을 불러오지 못했습니다.',
+        );
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) {
+          setLoading(false);
+        }
+      });
+
+    return () => controller.abort();
+  }, []);
 
   const onHeaderSearchSubmit = useCallback(
     (value: string) => {
@@ -158,8 +189,12 @@ export function PaymentInfoPage() {
           </div>
 
           <div className="payment-info__list">
-            {visibleEntries.length === 0 ? (
-              <p className="payment-info__empty">내역이 없습니다.</p>
+            {loading ? (
+              <p className="payment-info__empty">결제 내역을 불러오는 중입니다.</p>
+            ) : errorMessage ? (
+              <p className="payment-info__empty">{errorMessage}</p>
+            ) : visibleEntries.length === 0 ? (
+              <p className="payment-info__empty">결제 내역이 없습니다.</p>
             ) : (
               visibleEntries.map((entry) => (
                 <PaymentHistoryRow entry={entry} key={entry.id} />

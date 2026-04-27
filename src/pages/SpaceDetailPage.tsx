@@ -1,6 +1,7 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { createChatRoom } from '../api/chat';
+import { getAvailableCoupons } from '../api/coupons';
 import { fetchVendorDetail } from '../api/spaces';
 import { HomeFooter } from '../components/home/HomeFooter';
 import { HomeHeader } from '../components/home/HomeHeader';
@@ -15,6 +16,8 @@ import { CouponDownloadModal } from '../components/space/CouponDownloadModal';
 import { useCouponDownloads } from '../hooks/useCouponDownloads';
 import { useSpaceDetail } from '../hooks/useSpaceDetail';
 import { buildChatHref } from '../lib/chatRoutes';
+import { isMockMode } from '../config/publicEnv';
+import type { CouponAvailableItemDto } from '../data/schemas/coupon';
 
 type DetailCalendarDay = {
   day: number;
@@ -103,12 +106,50 @@ export function SpaceDetailPage() {
   const [summaryOperatingOpen, setSummaryOperatingOpen] = useState(false);
   const [descriptionExpanded, setDescriptionExpanded] = useState(false);
   const [couponModalOpen, setCouponModalOpen] = useState(false);
+  const [availableCoupons, setAvailableCoupons] = useState<CouponAvailableItemDto[]>([]);
+  const [couponLoading, setCouponLoading] = useState(false);
+  const [couponError, setCouponError] = useState<string | null>(null);
   const [banderPolicyOpen, setBanderPolicyOpen] = useState(false);
-  const { downloadCoupon, downloadedCouponIds } = useCouponDownloads();
+  const { downloadCoupon, downloadedCouponIds, downloadError } = useCouponDownloads();
   const galleryRef = useRef<HTMLElement | null>(null);
   const basicSectionRef = useRef<HTMLElement | null>(null);
   const detailSectionRef = useRef<HTMLElement | null>(null);
   const reviewsSectionRef = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    if (!slug || isMockMode()) {
+      return;
+    }
+    const controller = new AbortController();
+    setCouponLoading(true);
+    setCouponError(null);
+    getAvailableCoupons(slug, { signal: controller.signal })
+      .then((response) => setAvailableCoupons(response.coupons))
+      .catch((error) => {
+        if (!controller.signal.aborted) {
+          setCouponError(error instanceof Error ? error.message : '쿠폰을 불러오지 못했습니다.');
+        }
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) {
+          setCouponLoading(false);
+        }
+      });
+    return () => controller.abort();
+  }, [slug]);
+
+  const handleDownloadCoupon = async (couponId: string) => {
+    if (!isAuthenticated) {
+      navigate(`/login?returnTo=${encodeURIComponent(`/spaces/${slug}`)}`);
+      return;
+    }
+    try {
+      await downloadCoupon(couponId);
+      setCouponError(null);
+    } catch (error) {
+      setCouponError(error instanceof Error ? error.message : '쿠폰 다운로드에 실패했습니다.');
+    }
+  };
 
   const scrollToGallery = () => {
     galleryRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -683,9 +724,12 @@ export function SpaceDetailPage() {
       </section>
 
       <CouponDownloadModal
+        coupons={isMockMode() ? undefined : availableCoupons}
         downloadedCouponIds={downloadedCouponIds}
+        errorMessage={couponError ?? downloadError}
+        loading={couponLoading}
         onClose={() => setCouponModalOpen(false)}
-        onDownloadCoupon={downloadCoupon}
+        onDownloadCoupon={handleDownloadCoupon}
         open={couponModalOpen}
       />
 

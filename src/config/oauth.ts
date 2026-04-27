@@ -1,11 +1,11 @@
-import { getAppleClientId, getGoogleOAuthClientId, getKakaoJavaScriptKey } from './publicEnv';
+import { getAppleClientId, getGoogleOAuthClientId, getKakaoOAuthClientId } from './publicEnv';
 
 export type OAuthProvider = 'KAKAO' | 'GOOGLE' | 'APPLE';
 
 const REDIRECT_URI = `${window.location.origin}/auth/callback`;
 
 function buildKakaoAuthUrl(state: string): string {
-  const clientId = getKakaoJavaScriptKey();
+  const clientId = getKakaoOAuthClientId();
   if (!clientId) throw new Error('카카오 로그인 키가 설정되지 않았습니다.');
   const params = new URLSearchParams({
     client_id: clientId,

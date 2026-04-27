@@ -1,5 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { ApiError } from '../api/client';
+import { claimCoupon, getMyCoupons } from '../api/coupons';
+import { isMockMode } from '../config/publicEnv';
+import { loadAuthSession } from '../data/authSession';
 import { COUPON_ITEMS } from '../data/couponDownloadModal';
+import { OwnedCouponItemDto } from '../data/schemas/coupon';
 
 const STORAGE_KEY = 'bander_fe_downloaded_coupon_ids';
 
@@ -21,19 +26,66 @@ function readStoredIds(): string[] {
  */
 export function useCouponDownloads() {
   const [downloadedCouponIds, setDownloadedCouponIds] = useState<string[]>(readStoredIds);
+  const [ownedCoupons, setOwnedCoupons] = useState<OwnedCouponItemDto[]>([]);
+  const [loadingOwnedCoupons, setLoadingOwnedCoupons] = useState(false);
+  const [downloadError, setDownloadError] = useState<string | null>(null);
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(downloadedCouponIds));
   }, [downloadedCouponIds]);
 
-  const downloadCoupon = useCallback((id: string) => {
-    setDownloadedCouponIds((prev) => (prev.includes(id) ? prev : [...prev, id]));
+  const refreshOwnedCoupons = useCallback(async (options?: { signal?: AbortSignal }) => {
+    if (isMockMode() || !loadAuthSession()) {
+      return;
+    }
+    setLoadingOwnedCoupons(true);
+    try {
+      const response = await getMyCoupons(options);
+      setOwnedCoupons(response.items);
+      setDownloadedCouponIds(response.items.map((item) => item.couponId));
+    } finally {
+      setLoadingOwnedCoupons(false);
+    }
   }, []);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    refreshOwnedCoupons({ signal: controller.signal }).catch(() => undefined);
+    return () => controller.abort();
+  }, [refreshOwnedCoupons]);
+
+  const downloadCoupon = useCallback(async (id: string) => {
+    setDownloadError(null);
+    if (isMockMode()) {
+      setDownloadedCouponIds((prev) => (prev.includes(id) ? prev : [...prev, id]));
+      return;
+    }
+    try {
+      await claimCoupon(id);
+      await refreshOwnedCoupons();
+    } catch (error) {
+      if (error instanceof ApiError && error.code === 'COUPON-002') {
+        await refreshOwnedCoupons();
+        return;
+      }
+      const message = error instanceof Error ? error.message : '쿠폰 다운로드에 실패했습니다.';
+      setDownloadError(message);
+      throw error;
+    }
+  }, [refreshOwnedCoupons]);
 
   const allCouponsDownloaded = useMemo(
     () => COUPON_ITEMS.every((item) => downloadedCouponIds.includes(item.id)),
     [downloadedCouponIds]
   );
 
-  return { allCouponsDownloaded, downloadCoupon, downloadedCouponIds };
+  return {
+    allCouponsDownloaded,
+    downloadCoupon,
+    downloadError,
+    downloadedCouponIds,
+    loadingOwnedCoupons,
+    ownedCoupons,
+    refreshOwnedCoupons,
+  };
 }

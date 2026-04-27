@@ -26,6 +26,11 @@
 @import './reservation-detail.css';
 @import './review-write.css';
 @import './my-reviews.css';
+@import './my-scraps.css';
+@import './points.css';
+@import './coupons.css';
+@import './notices.css';
+@import './support.css';
 @import './review-view-modal.css';
 
 .kakao-map__fallback {

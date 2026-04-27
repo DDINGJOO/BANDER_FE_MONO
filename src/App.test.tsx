@@ -540,6 +540,21 @@ beforeEach(() => {
         });
       }
 
+      if (url.endsWith('/api/v1/auth/social/login') && method === 'POST') {
+        return apiSuccess({
+          email: 'social@example.com',
+          expiresAt: futureIso(30),
+          gatewayContextToken: 'social-gateway-token',
+          newUser: true,
+          nickname: '소셜밴더',
+          profileImageUrl: null,
+          roles: ['USER'],
+          signupCompletionExpiresAt: futureIso(30),
+          signupCompletionToken: 'social-signup-token',
+          userId: '202',
+        });
+      }
+
       if (url.includes('/api/v1/auth/signup/nickname/availability') && method === 'GET') {
         const nickname = new URL(url, 'http://localhost').searchParams.get('nickname');
         return apiSuccess({
@@ -958,6 +973,177 @@ test('forgot-password reset page shows completion modal and returns to login', a
   expect(await screen.findByRole('button', { name: '로그인' })).toBeInTheDocument();
 });
 
+test('renders my scraps page with 저장/최근 본 tabs', () => {
+  renderAt('/my-scraps');
+
+  expect(screen.getByRole('heading', { level: 1, name: '내 스크랩' })).toBeInTheDocument();
+  const savedTab = screen.getByRole('tab', { name: /저장\s+\d+/ });
+  const recentTab = screen.getByRole('tab', { name: /최근 본\s+\d+/ });
+  expect(savedTab).toHaveAttribute('aria-selected', 'true');
+  expect(recentTab).toHaveAttribute('aria-selected', 'false');
+
+  expect(screen.getAllByRole('link', { name: /Moon 합주실 룸/ }).length).toBeGreaterThan(0);
+
+  fireEvent.click(recentTab);
+  expect(recentTab).toHaveAttribute('aria-selected', 'true');
+  expect(savedTab).toHaveAttribute('aria-selected', 'false');
+  expect(screen.getAllByRole('link', { name: /GROOVE/ }).length).toBeGreaterThan(0);
+});
+
+test('my scraps: unscrapping in 저장 tab flips state in 최근 본 tab for the same space', () => {
+  renderAt('/my-scraps');
+
+  const savedTab = screen.getByRole('tab', { name: /저장\s+\d+/ });
+  const recentTab = screen.getByRole('tab', { name: /최근 본\s+\d+/ });
+
+  const moonOnSaved = screen.getByRole('link', { name: /^Moon 합주실 룸$/ }).closest('article');
+  expect(moonOnSaved).toBeTruthy();
+  fireEvent.click(within(moonOnSaved as HTMLElement).getByRole('button', { name: '스크랩 해제' }));
+
+  expect(screen.queryByRole('link', { name: /^Moon 합주실 룸$/ })).not.toBeInTheDocument();
+  expect(savedTab).toHaveAccessibleName(/저장\s+5/);
+
+  fireEvent.click(recentTab);
+  const moonOnRecent = screen.getByRole('link', { name: /^Moon 합주실 룸$/ }).closest('article');
+  expect(within(moonOnRecent as HTMLElement).getByRole('button', { name: '스크랩' })).toBeInTheDocument();
+});
+
+test('support page switches between FAQ and 1:1 문의 tabs', () => {
+  renderAt('/support');
+
+  expect(screen.getByRole('heading', { level: 1, name: '고객센터' })).toBeInTheDocument();
+  expect(screen.getByRole('tab', { name: 'FAQ' })).toHaveAttribute('aria-selected', 'true');
+  expect(screen.getByText('공간은 어떻게 예약하나요?')).toBeInTheDocument();
+
+  fireEvent.click(screen.getByRole('tab', { name: '1:1 문의' }));
+  expect(screen.getByRole('tab', { name: '1:1 문의' })).toHaveAttribute('aria-selected', 'true');
+  expect(screen.getByText('채팅에 답변이 계속 없어요.')).toBeInTheDocument();
+  expect(screen.getByRole('link', { name: '1:1 문의하기' })).toHaveAttribute('href', '/support/inquiry/new');
+});
+
+test('inquiry detail renders answered vs waiting states', () => {
+  const answered = render(
+    <MemoryRouter initialEntries={['/support/inquiry/inq-1']}>
+      <App />
+    </MemoryRouter>,
+  );
+  expect(screen.getByRole('heading', { level: 1, name: '채팅에 답변이 계속 없어요.' })).toBeInTheDocument();
+  expect(screen.getAllByText('답변완료').length).toBeGreaterThan(0);
+  answered.unmount();
+
+  renderAt('/support/inquiry/inq-2');
+  expect(screen.getByRole('heading', { level: 1, name: '해당 공간에 제대로 예약이 됐는지 확인하고 싶어요.' })).toBeInTheDocument();
+  expect(screen.getByText('답변대기')).toBeInTheDocument();
+});
+
+test('terms page shows legal articles and switches to policy tab', () => {
+  renderAt('/terms');
+
+  expect(screen.getByRole('heading', { level: 1, name: '이용약관' })).toBeInTheDocument();
+  expect(screen.getByRole('heading', { name: /제 1조 \(목적\)/ })).toBeInTheDocument();
+
+  fireEvent.click(screen.getByRole('tab', { name: '이용정책' }));
+  expect(screen.getByRole('heading', { name: /제 1조 \(이용정책의 목적\)/ })).toBeInTheDocument();
+});
+
+test('business apply page renders the three steps', () => {
+  renderAt('/business/apply');
+
+  expect(screen.getByText('Business')).toBeInTheDocument();
+  expect(screen.getByText('업체 정보를 알려주세요.')).toBeInTheDocument();
+  expect(screen.getByText('사업자 정보를 알려주세요.')).toBeInTheDocument();
+  expect(screen.getByText('신청서 제출 후 관리자 검토 및 승인처리돼요.')).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: '비즈니스 신청하러 가기' })).toBeInTheDocument();
+});
+
+test('notices page switches between 공지사항 and 이벤트 tabs', () => {
+  renderAt('/notices');
+
+  expect(screen.getByRole('heading', { level: 1, name: '공지사항/이벤트' })).toBeInTheDocument();
+  expect(screen.getByRole('link', { name: /개인정보 처리방침 개정안내/ })).toBeInTheDocument();
+
+  fireEvent.click(screen.getByRole('tab', { name: '이벤트' }));
+  expect(screen.getByRole('tab', { name: '이벤트' })).toHaveAttribute('aria-selected', 'true');
+  expect(screen.getByRole('link', { name: /내 공간 셀프캠 챌린지/ })).toBeInTheDocument();
+  expect(screen.queryByRole('link', { name: /개인정보 처리방침 개정안내/ })).not.toBeInTheDocument();
+
+  fireEvent.click(screen.getByRole('tab', { name: '종료' }));
+  expect(screen.getByRole('link', { name: /밴더 소문내고 선물받기/ })).toBeInTheDocument();
+  expect(screen.queryByRole('link', { name: /내 공간 셀프캠 챌린지/ })).not.toBeInTheDocument();
+});
+
+test('notice detail falls back to a synthesized stub when the slug has no explicit detail', () => {
+  renderAt('/notices/ios-update');
+
+  expect(screen.getByRole('heading', { level: 1, name: 'iOS 오류 업데이트 안내' })).toBeInTheDocument();
+  expect(screen.getByText(/상세 내용은 업데이트 예정입니다/)).toBeInTheDocument();
+  expect(screen.getByRole('link', { name: '목록으로' })).toHaveAttribute('href', '/notices');
+});
+
+test('notice detail renders body, winners, and navigates to list', () => {
+  renderAt('/notices/refer-bander-gift');
+
+  expect(screen.getByRole('heading', { level: 1, name: '밴더 소문내고 선물받기' })).toBeInTheDocument();
+  expect(screen.getByText('종료')).toBeInTheDocument();
+  expect(screen.getByRole('heading', { name: '당첨자 발표' })).toBeInTheDocument();
+  expect(screen.getByText('(1등) 해피트리')).toBeInTheDocument();
+  expect(screen.getByRole('link', { name: '목록으로' })).toHaveAttribute(
+    'href',
+    '/notices?tab=event',
+  );
+});
+
+test('coupons page renders register form and filters owned coupons', () => {
+  renderAt('/coupons');
+
+  expect(screen.getByRole('heading', { level: 1, name: '쿠폰' })).toBeInTheDocument();
+  expect(screen.getByRole('heading', { level: 2, name: '쿠폰등록' })).toBeInTheDocument();
+
+  const input = screen.getByLabelText('쿠폰 코드') as HTMLInputElement;
+  const registerBtn = screen.getByRole('button', { name: '등록' });
+  expect(registerBtn).toBeDisabled();
+
+  fireEvent.change(input, { target: { value: 'ABC-1234' } });
+  expect(registerBtn).toBeEnabled();
+
+  fireEvent.click(registerBtn);
+  expect(screen.getByRole('status')).toHaveTextContent('ABC-1234');
+  expect(input.value).toBe('');
+
+  expect(screen.getAllByText('[유스뮤직 전용]').length).toBeGreaterThanOrEqual(1);
+  expect(screen.getByText('3,000원')).toBeInTheDocument();
+
+  const usedTab = screen.getByRole('tab', { name: '사용완료' });
+  fireEvent.click(usedTab);
+  expect(usedTab).toHaveAttribute('aria-selected', 'true');
+  expect(screen.getByText('쿠폰이 없습니다.')).toBeInTheDocument();
+});
+
+test('points page shows coming soon state without dummy point history', () => {
+  renderAt('/points');
+
+  expect(screen.getByRole('heading', { level: 1, name: '포인트' })).toBeInTheDocument();
+  expect(screen.getByRole('heading', { level: 2, name: '추후 추가 예정' })).toBeInTheDocument();
+  expect(screen.getByText('포인트 기능은 준비 중입니다.')).toBeInTheDocument();
+  expect(screen.queryByText('룸 예약 포인트 사용')).not.toBeInTheDocument();
+  expect(screen.queryByText('회원가입 축하 포인트 지급')).not.toBeInTheDocument();
+});
+
+test('my scraps: scrapping in 최근 본 tab adds the space to the 저장 tab', () => {
+  renderAt('/my-scraps');
+
+  fireEvent.click(screen.getByRole('tab', { name: /최근 본\s+\d+/ }));
+
+  const grooveArticle = screen.getByRole('link', { name: /^GROOVE$/ }).closest('article');
+  fireEvent.click(within(grooveArticle as HTMLElement).getByRole('button', { name: '스크랩' }));
+
+  const savedTab = screen.getByRole('tab', { name: /저장\s+\d+/ });
+  expect(savedTab).toHaveAccessibleName(/저장\s+7/);
+
+  fireEvent.click(savedTab);
+  expect(screen.getByRole('link', { name: /^GROOVE$/ })).toBeInTheDocument();
+});
+
 test('renders the initial sign-up page before verification is requested', () => {
   renderAt('/signup');
 
@@ -1040,6 +1226,21 @@ test('moves to the step-2 profile page after a valid step-1 submit', async () =>
   expect(screen.getByLabelText('프로필 사진 업로드')).toBeInTheDocument();
   expect(screen.getByText('서울특별시')).toBeInTheDocument();
   expect(screen.getByRole('button', { name: '다음' })).toBeDisabled();
+});
+
+test('starts new social users on the step-2 profile page with provider email as login id', async () => {
+  const state = btoa(JSON.stringify({ provider: 'KAKAO', purpose: 'login', nonce: 'social-nonce' }));
+  window.sessionStorage.setItem('bander.oauthState', state);
+
+  renderAt(`/auth/callback?code=social-code&state=${encodeURIComponent(state)}`);
+
+  expect(await screen.findByText('social@example.com')).toBeInTheDocument();
+  expect(screen.getByLabelText('닉네임')).toHaveValue('소셜밴더');
+
+  const draft = JSON.parse(window.sessionStorage.getItem('bander.signupDraft') ?? '{}');
+  expect(draft.email).toBe('social@example.com');
+  expect(draft.signupCompletionToken).toBe('social-signup-token');
+  expect(draft.signupSource).toBe('SOCIAL');
 });
 
 test('allows selecting a korea region and uploading a profile image on step 2', async () => {

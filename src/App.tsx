@@ -19,6 +19,16 @@ import { MyReservationsPage } from './pages/MyReservationsPage';
 import { ReservationDetailPage } from './pages/ReservationDetailPage';
 import { ReviewWritePage } from './pages/ReviewWritePage';
 import { MyReviewsPage } from './pages/MyReviewsPage';
+import { MyScrapsPage } from './pages/MyScrapsPage';
+import { PointsPage } from './pages/PointsPage';
+import { CouponsPage } from './pages/CouponsPage';
+import { NoticesPage } from './pages/NoticesPage';
+import { NoticeDetailPage } from './pages/NoticeDetailPage';
+import { SupportPage } from './pages/SupportPage';
+import { InquiryNewPage } from './pages/InquiryNewPage';
+import { InquiryDetailPage } from './pages/InquiryDetailPage';
+import { TermsPage } from './pages/TermsPage';
+import { BusinessApplyPage } from './pages/BusinessApplyPage';
 import { NotificationSettingsPage } from './pages/NotificationSettingsPage';
 import { PaymentInfoPage } from './pages/PaymentInfoPage';
 import { NotificationsPage } from './pages/NotificationsPage';
@@ -61,6 +71,16 @@ function App() {
       <Route element={<ReservationDetailPage />} path="/reservation-detail" />
       <Route element={<ReviewWritePage />} path="/review/write" />
       <Route element={<MyReviewsPage />} path="/my-reviews" />
+      <Route element={<MyScrapsPage />} path="/my-scraps" />
+      <Route element={<PointsPage />} path="/points" />
+      <Route element={<CouponsPage />} path="/coupons" />
+      <Route element={<NoticesPage />} path="/notices" />
+      <Route element={<NoticeDetailPage />} path="/notices/:slug" />
+      <Route element={<SupportPage />} path="/support" />
+      <Route element={<InquiryNewPage />} path="/support/inquiry/new" />
+      <Route element={<InquiryDetailPage />} path="/support/inquiry/:id" />
+      <Route element={<TermsPage />} path="/terms" />
+      <Route element={<BusinessApplyPage />} path="/business/apply" />
       <Route element={<OAuthCallbackPage />} path="/auth/callback" />
       <Route element={<PaymentSuccessPage />} path="/payment/success" />
       <Route element={<PaymentFailPage />} path="/payment/fail" />

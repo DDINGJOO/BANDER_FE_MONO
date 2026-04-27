@@ -104,10 +104,7 @@ function getErrorMessage(error: unknown, fallback: string) {
 }
 
 function resolveMediaUrl(ref: string | null | undefined) {
-  if (!ref) {
-    return undefined;
-  }
-  return resolveProfileImageUrl(ref) ?? ref;
+  return resolveProfileImageUrl(ref);
 }
 
 function normalizeTags(tags: MiniFeedProfileDto['tags']) {

@@ -151,6 +151,37 @@
 - HTTP 상태코드: 4xx/5xx와 함께 위 본문을 주는 것을 권장
 - **401**: 프론트가 `clearAuthSession()` 호출 후 에러 throw — 재로그인 유도
 
+### 1.5 ID 타입 정책 (중요 — 백엔드 준수 필수)
+
+**식별자(ID) 시맨틱 필드에 한해** JSON `string`으로 직렬화합니다. **수치(count, price, 좌표, rating 등)는 기존대로 JSON number를 유지**하며, 전역으로 `Long`→`String` 매핑을 켜지 않습니다.
+
+**왜?**
+- JavaScript의 `Number`는 IEEE-754 double이라 `2^53 - 1 = 9007199254740991` 이상 정수에서 정밀도가 손실됩니다 (`JSON.parse('{"id": 9007199254740993}')` → `9007199254740992`).
+- 스노우플레이크/타임스탬프 기반 ID, auto-increment `BIGINT`가 2^53 임계를 넘으면 클라이언트가 **잘못된 ID**로 서버를 호출해 예약 취소/댓글 삭제 등이 엉뚱한 리소스에 꽂히는 버그가 발생합니다.
+- 반면 카운트·가격·좌표·별점은 범위가 작고 FE가 `number`로 수신하는 것을 전제로 UI가 작성되어 있어, 전역으로 `Long`을 문자열화하면 기존 계약이 전부 깨집니다.
+
+**적용 대상 (문자열화 해야 하는 ID 필드)**
+
+FE 스키마(`src/data/schemas/*.ts`, `src/api/*.ts`)에서 이미 `string`으로 타이핑되어 있는 아래 계열의 필드가 해당. 서버도 동일하게 `String`으로 내려야 함:
+
+`userId`, `authorUserId`, `ownerUserId`, `postId`, `commentId`, `parentId`, `bookingId`, `reservationId`, `roomId`(=spaceId), `studioId`, `vendorId`, `couponId`, `ownedCouponId`, `messageId`, `reviewId`, `orderId`, `paymentId`, `mediaRef`/`profileImageRef` 등 reference 키, 그리고 `id` 필드가 DB PK를 드러내는 경우 전부.
+
+**적용하지 않는 대상 (그대로 JSON number 유지)**
+
+`reviewCount`, `likeCount`, `commentCount`, `viewCount`, `unreadCount`, `pricePerSlot`, `points`/`pointBalance`/`amount`, `latitude`, `longitude`, `rating`, `pageIndex`, `totalCount` 등 의미상 **카운트·금액·좌표·평점·페이지 번호**. 이 값들은 2^53을 넘을 일이 없고, FE에서 산술 연산에 사용됩니다.
+
+**규칙**
+1. 전역 `ObjectMapper` 설정(`StdSerializers.Long` / `SimpleModule.addSerializer(Long.class, ToStringSerializer.instance)`)처럼 **모든 Long을 문자열로 바꾸는 설정은 사용 금지**. (기존 수치 필드까지 문자열이 되어 프론트 파싱이 깨진다.)
+2. 대신 **필드 단위로** `@JsonSerialize(using = ToStringSerializer.class)` 또는 **타입 래퍼 도입** 중 하나:
+   - (a) DTO 각 ID 필드에 어노테이션: `@JsonSerialize(using = ToStringSerializer.class) Long id;`
+   - (b) 전용 ID 래퍼 타입(예: `record EntityId(long value)`) + `JsonComponent`로 직렬화. 이후 DTO는 래퍼 타입만 사용.
+3. 요청 본문/경로 파라미터의 ID는 `String` 타입으로 수신(서버에서 `Long.parseLong()`). URL 예시: `/api/v1/posts/{postId}` → `"19283712..."` 형태의 문자열 파라미터.
+4. FE는 `id: string`을 이미 전제하므로 변경 불필요. 만약 일부 엔드포인트가 아직 `number`로 내려준다면 **그 엔드포인트만** 문자열로 바꾸고, 같은 PR에서 카운트·가격·좌표 필드가 변형되지 않았는지 회귀 확인.
+
+**검증**
+- 샘플 응답에서 ID 필드만 따옴표로 감싸져 있고(`"postId":"9007199254740993"`), 카운트/금액은 숫자 그대로(`"likeCount":189`, `"pricePerSlot":10000`)인지 확인.
+- FE에서 `typeof id === 'string'` 가드를 기본으로 가정. 숫자 ID 수신을 대비한 파싱 로직은 두지 않음(서버가 약속을 지킨다는 전제).
+
 ---
 
 ## 2. UC-01 ~ UC-03 계정·인증 (이미 프론트 연동 중)
@@ -825,6 +856,23 @@
 
 (실제 키는 제품 정책에 맞게)
 
+#### SSE 실시간 스트림 `/api/v1/notifications/stream` ⬜ FE 미연동
+
+- **Transport**: `Content-Type: text/event-stream`. 게이트웨이(edge-gateway)는 SSE 프록시 지원(`FlushInterval=-1`).
+- **인증**: 기존 세션 쿠키/게이트웨이 컨텍스트 토큰 그대로 사용. `EventSource`는 기본적으로 `withCredentials: true`로 열어야 함.
+- **이벤트 타입(권장)**:
+  - `event: notification.created` — 신규 알림 1건 (`AppNotification` JSON)
+  - `event: notification.read` — 특정 ID 읽음 처리 (`{ id }`)
+  - `event: unread.count` — 미확인 카운트 변경 (`{ count }`)
+- **재연결**: 서버는 `retry: 3000` hint. 클라이언트는 지수 백오프(2s → 4s → … → 30s)로 재시도하고, 401/세션 만료 시 스트림 종료.
+
+**FE 작업 현황**: `src/api/notifications.ts`에 REST 4개(`list`, `unread-count`, `read`, `read-all`)만 구현되어 있고 **SSE 구독 코드는 아직 없음(⬜)**. 추가 시 `src/api/notificationsStream.ts` 같은 별도 파일에 `subscribeNotifications(onEvent, onError)` 형태로 래퍼를 두고, 최상위 레이아웃(`HomeHeader` 또는 App 루트)에서 인증된 세션일 때만 구독·해제하도록 연결.
+
+**FE 수신 시 처리**:
+- `notification.created` → 헤더 뱃지 카운트 +1, 현재 `/notifications` 페이지가 열려있으면 목록 prepend
+- `notification.read` → 헤더 뱃지 카운트 -1, 현재 목록의 해당 항목 `read:true`로 업데이트
+- `unread.count` → 헤더 뱃지 숫자 덮어쓰기 (서버가 신뢰할 수 있는 카운트)
+
 ---
 
 ## 14. UC-15 결제 정보·내역
@@ -1020,8 +1068,170 @@
 
 ---
 
+## UC-MP: 최근 추가 목업 페이지 연동 가이드
+
+2026-04-20 기준 FE에 추가된 목업 전용 페이지와, 서버 연동 시 교체해야 할 지점·계약 요약. 모든 항목은 `src/data/*.ts` 목업 → 실 API로 치환하면 UI는 그대로 동작하도록 설계되어 있습니다.
+
+### 1) 스크랩 — `/my-scraps`
+
+| 구분 | Method | Path | 용도 |
+|:----:|--------|------|------|
+| ⬜ | GET | `/api/v1/users/me/scraps` | 저장 탭 리스트 (`OwnedSpaceCardDto[]`, 공간 카드와 동일 스키마 + `bookmarkSaved:true`) |
+| ⬜ | GET | `/api/v1/users/me/recent-views` | 최근 본 탭 리스트 (동일 스키마, `bookmarkSaved`는 저장 여부 반영) |
+| ⬜ | POST/DELETE | `/api/v1/spaces/{slug}/bookmarks` | 카드 내 스크랩 아이콘 토글 (`schemas/space.ts` `SpaceBookmarkToggleResponseDto`) |
+
+FE 교체 지점:
+- `src/data/myScraps.ts` (`MY_SCRAP_SAVED`, `MY_SCRAP_RECENT`) → API 호출로 치환
+- `src/pages/MyScrapsPage.tsx` `toggleScrap`는 단일 `savedSet` 기준 — 탭 간 상태 일관성을 보장하려면 서버 토글 응답을 단일 `savedSet`에 반영하는 로직을 유지할 것.
+
+### 2) 포인트 — `/points`
+
+| 구분 | Method | Path | 용도 |
+|:----:|--------|------|------|
+| ⬜ | GET | `/api/v1/users/me/points/balance` | `{ balance: number }` |
+| ⬜ | GET | `/api/v1/users/me/points/transactions?type=EARN\|SPEND&page=` | `PageDto<PointTransaction>` |
+
+`PointTransaction` 필드: `id, type(EARN\|SPEND), title, dateLabel, amount(양수 지급 / 음수 사용)`.
+
+FE 교체 지점: `src/data/myPoints.ts` (`MY_POINTS_BALANCE`, `MY_POINTS_TRANSACTIONS`).
+
+### 3) 쿠폰 — `/coupons`
+
+| 구분 | Method | Path | 용도 |
+|:----:|--------|------|------|
+| ⬜ | GET | `/api/v1/users/me/coupons?status=OWNED\|USED\|EXPIRED` | `UserCouponsResponseDto` (`schemas/coupon.ts`) — FE `MyCoupon` 매핑 필요 |
+| ⬜ | POST | `/api/v1/coupons/redeem` | 쿠폰 코드 등록 — 본문 `{ code: string }`, 응답 `{ ownedCouponId, title, ... }` |
+
+FE 교체 지점: `src/data/myCoupons.ts` (`MY_COUPONS`), `CouponsPage.onRegisterSubmit` 내 TODO 주석 참고.
+
+응답 스키마는 기존 `schemas/coupon.ts` `OwnedCouponItemDto`를 따르되, FE의 `MyCoupon`은 할인값(`discountValue: "3,000원"|"10%"`), 조건/기한 라인을 렌더용으로 미리 조합한 형태이므로 백엔드와 presentation 레이어를 분리하고 adapter 함수를 둘 것 (`data/adapters/myCouponsFromApi.ts`).
+
+### 4) 공지사항/이벤트 — `/notices`, `/notices/:slug`
+
+| 구분 | Method | Path | 용도 |
+|:----:|--------|------|------|
+| ⬜ | GET | `/api/v1/notices?tab=NOTICE\|EVENT&category=&status=&page=` | 목록. 공지: `category(공지\|업데이트\|정보\|기타)`, 이벤트: `status(진행중\|종료)` + 선택 `dDayLabel` |
+| ⬜ | GET | `/api/v1/notices/{slug}` | 상세. `NoticeDetail` (`src/data/notices.ts`) — `blocks: NoticeBlock[]`로 본문을 구조화해 수신할 것 |
+
+`NoticeBlock` 종류: `paragraph` / `heading` / `bullet.items[]` / `winners{title, message?, rows:[{rank, masked}]}`. 서버가 동일 JSON을 내려주면 `DetailBlock` 렌더러를 그대로 재사용 가능.
+
+FE 교체 지점:
+- `src/data/notices.ts` — `NOTICE_LIST`, `EVENT_LIST`, `NOTICE_DETAILS`, `getNoticeDetail`
+- `getNoticeDetail`은 현재 상세가 누락된 slug에 대해 stub paragraph를 합성하는 fallback이 포함되어 있음. 실 서버 연동 직후에는 404 처리로 전환 필요.
+
+### 5) 고객센터 — `/support`, `/support/inquiry/new`, `/support/inquiry/:id`
+
+| 구분 | Method | Path | 용도 |
+|:----:|--------|------|------|
+| ⬜ | GET | `/api/v1/support/faq?category=` | FAQ 목록 |
+| ⬜ | GET | `/api/v1/users/me/inquiries?status=` | 1:1 문의 목록 |
+| ⬜ | GET | `/api/v1/users/me/inquiries/{id}` | 1:1 문의 상세(질문 + 답변) |
+| ⬜ | POST | `/api/v1/inquiries` | 1:1 문의 등록. 본문: `{ category, title, body, imageRefs[] }` |
+| ⬜ | §17 | 파일 업로드 | 첨부 이미지 업로드 → `imageRef` 발급 |
+
+FE 교체 지점: `src/data/support.ts` (`FAQ_ITEMS`, `INQUIRY_LIST`, `INQUIRY_DETAILS`, `getInquiryDetail`), `src/pages/InquiryNewPage.tsx` `onSubmit` 내 TODO.
+
+### 6) 이용약관 — `/terms`
+
+| 구분 | Method | Path | 용도 |
+|:----:|--------|------|------|
+| ⬜ | GET | `/api/v1/terms?type=LEGAL\|POLICY` | 법적고지/이용정책 현행 본문 |
+
+FE 교체 지점: `src/data/termsContent.ts` (`LEGAL_ARTICLES`, `POLICY_ARTICLES`). 현재 mock 문구는 법무 확정본으로 교체 필요.
+
+### 7) 비즈니스 신청 — `/business/apply`
+
+| 구분 | Method | Path | 용도 |
+|:----:|--------|------|------|
+| ⬜ | POST | `/api/v1/business/applications` | 신청 접수 (회사/사업자/계좌/첨부) |
+| ⬜ | GET | `/api/v1/users/me/business/application` | 내 신청 상태 조회 |
+
+FE 교체 지점: `src/pages/BusinessApplyPage.tsx` `onClick` 내 mailto 링크 → 실제 신청 폼으로 라우팅하거나 외부 창 URL로 치환.
+
+### 8) 커뮤니티 — `/community`, `/community/post/:slug`, `/community/write`
+
+대부분의 경로가 이미 `src/api/community.ts`에 구현되어 호출되고 있으나, 목록/필터·미디어 업로드·신고 엔드포인트가 남아있음.
+
+| 구분 | Method | Path | 용도 |
+|:----:|--------|------|------|
+| ⬜ | GET | `/api/v1/posts?category=&sort=&keyword=&page=` | 피드 목록 (`CommunityPage` 카테고리·정렬·검색) |
+| ✅ | GET | `/api/v1/posts/{postId}` | 게시글 상세 (`fetchPostDetail`) |
+| ✅ | GET | `/api/v1/posts/{postId}/comments` | 댓글 트리 (`fetchPostComments`) |
+| ✅ | POST | `/api/v1/posts/{postId}/comments` | 댓글 작성 (`createComment`) |
+| ✅ | DELETE | `/api/v1/posts/{postId}/comments/{commentId}` | 댓글 삭제 (`deleteCommentApi`) |
+| ✅ | POST | `/api/v1/posts/{postId}/reactions` | 좋아요 토글 (`toggleReaction`) |
+| ✅ | POST | `/api/v1/posts` | 게시글 작성 (`createPost`) |
+| ✅ | POST | `/api/v1/media/uploads` | 업로드 grant 요청 (`requestPostInlineImageUpload`) → PUT 업로드 후 `mediaRef` 획득 |
+| ⬜ | POST | `/api/v1/posts/{postId}/reports` | 게시글 신고 (사유 코드·상세) |
+| ⬜ | POST | `/api/v1/posts/{postId}/comments/{commentId}/reports` | 댓글 신고 |
+
+FE 교체 지점:
+- 목록: `src/data/communityFeed.ts` (`MOCK_COMMUNITY_FEED`) → API 연동
+- 글쓰기: `src/data/communityWrite.ts` (카테고리 옵션) → `GET /api/v1/meta/community-categories` 같은 메타 API로 이관 검토
+- 신고: `src/data/communityReportModal.ts`의 사유 목록 → 서버에서 내려주고 FE는 enum만 관리
+
+### 9) 채팅 — `/chat`
+
+`src/api/chat.ts` 에 REST 엔드포인트가 모두 구현되어 있음. 실시간 전송은 gateway의 STOMP/WS 프록시 경로를 사용.
+
+| 구분 | Method | Path | 용도 |
+|:----:|--------|------|------|
+| ✅ | POST | `/api/v1/chat/rooms` | 채팅방 생성 또는 재사용 |
+| ✅ | GET | `/api/v1/chat/rooms?type=&page=` | 내 채팅방 목록 |
+| ✅ | GET | `/api/v1/chat/rooms/{roomId}` | 채팅방 상세 |
+| ✅ | GET | `/api/v1/chat/rooms/unread-count` | 미확인 메시지 수(헤더 뱃지) |
+| ✅ | GET | `/api/v1/chat/rooms/{roomId}/messages?cursor=&size=` | 메시지 페이지 |
+| ✅ | POST | `/api/v1/chat/rooms/{roomId}/messages` | 메시지 전송 |
+| ✅ | POST | `/api/v1/chat/rooms/{roomId}/messages/read` | 읽음 처리 (뷰 진입 시) |
+| ⬜ | WS/STOMP | `/ws/chat` (gateway 경유) | 실시간 푸시 — CLAUDE.md의 gateway 라우팅 맵 참고 |
+
+FE 교체 지점: `src/data/chatPage.ts` (`MOCK_CHAT_ROOMS`, `MOCK_MESSAGES`) → API + WS 스트림으로 치환.
+
+### 10) 내 미니피드 — `/my-minifeed`
+
+| 구분 | Method | Path | 용도 |
+|:----:|--------|------|------|
+| ✅ | GET | `/api/v1/users/me/feed/posts?tab=written\|commented&sort=latest\|popular&page=&size=` | `fetchMyMiniFeed` — 프로필 + 페이지 아이템 |
+
+FE 교체 지점: `src/data/myMiniFeed.ts`는 초기 렌더용 목업만 남겨두고 페이지는 실제 API를 호출 중. 서버 응답의 `profile.tags`·`items[].thumbnailUrl`만 적절히 매핑하면 FE 추가 작업 불필요.
+
+### 11) 신고·취소·쿠폰 다운로드 (모달에서 호출)
+
+여러 페이지에서 모달로 호출되는 소형 엔드포인트. 모달 UI는 이미 FE에 있으며 API만 붙이면 됨.
+
+| 구분 | Method | Path | 용도 | FE 파일 |
+|:----:|--------|------|------|--------|
+| ⬜ | POST | `/api/v1/bookings/{id}/cancel` | 예약 취소 — 본문 `{ reasonCode, reasonDetail? }` | `src/data/reservationCancelModal.ts` |
+| ⬜ | POST | `/api/v1/reviews/{id}/reports` | 리뷰 신고 | `src/data/reviewViewModal.ts` |
+| ⬜ | POST | `/api/v1/coupons/{couponId}/claim` | 공간 상세에서 쿠폰 다운로드 (schemas/coupon.ts `CouponClaimResponseDto`) | `src/data/couponDownloadModal.ts`, `src/hooks/useCouponDownloads.ts` |
+| ⬜ | GET | `/api/v1/coupons/available?spaceSlug=` | 공간 상세 쿠폰 바텀시트 목록 (`CouponsAvailableResponseDto`) | `src/components/space/CouponDownloadModal.tsx` |
+
+### 12) 정적 메타(FE 내장)
+
+FE에만 존재해도 무방하지만, 향후 서버 메타 API로 이관 가능한 항목:
+
+| FE 파일 | 내용 | 서버 이관 후보 |
+|---------|------|---------------|
+| `src/data/koreaRegions.ts` | 행정구역 enum | `GET /api/v1/meta/regions` |
+| `src/data/profileGenreInstrument.ts` | 장르·악기 선택지 | `GET /api/v1/meta/profile-options` |
+| `src/data/banderUsagePolicy.ts` | 밴더 이용정책 모달 본문 | UC-MP §6 이용약관 API의 `type=POLICY`와 통합 |
+| `src/data/mapPinAssets.ts` | 지도 핀 SVG 에셋 | FE 리소스로 유지 권장 |
+
+### 공통 권장 사항
+
+- FE에서 현재 `figma.com/api/mcp/asset/...` 형태의 목업 이미지 URL을 다수 사용. 실제 업로드된 미디어로 교체할 때는 `config/media.ts`의 `resolveProfileImageUrl` 패턴처럼 공용 resolver를 거치도록 할 것.
+- 모든 목업 데이터 파일은 상단 주석에 "서버 연동 시 대체 대상"과 엔드포인트를 명시. 리팩터 시 grep `서버 연동 시 대체 대상`으로 일괄 탐색 가능.
+- 페이지에서 API 호출을 붙일 때는 `src/api/` 하위에 파일을 새로 만들고 `getJson`/`postJson`을 사용. 토큰 주입·에러 래핑은 `client.ts`가 처리.
+- 기존 `src/api/*.ts`가 이미 구현된 엔드포인트(위 표의 ✅)는 페이지에서 바로 호출 가능. 남은 ⬜ 항목은 백엔드 스펙 확정 후 클라이언트 파일을 추가·확장하는 순서로 진행.
+
+---
+
 ## 문서 변경 이력
 
 | 날짜 | 내용 |
 |------|------|
+| 2026-04-20 | UC-14에 SSE 실시간 알림 스트림 섹션 추가 — FE 미연동(⬜) 상태와 이벤트 타입·재연결·처리 지침 명시 |
+| 2026-04-20 | §1.5 ID 타입 정책 보정 — ID 시맨틱 필드에만 `String` 직렬화 적용, 카운트·금액·좌표 등 수치는 JSON number 유지(전역 Long→String 금지) |
+| 2026-04-20 | UC-MP §8~§12 추가: 커뮤니티·채팅·내 미니피드·신고/취소/쿠폰 다운로드·정적 메타 보강, 중복된 공지 섹션 통합 |
+| 2026-04-20 | UC-MP 섹션 추가: 스크랩·포인트·쿠폰·공지사항/이벤트·고객센터·이용약관·비즈니스 신청 목업 페이지 연동 가이드 |
 | 2026-04-03 | 유즈케이스별 목적·필요성·구체 스키마로 전면 확장 (전달용) |

@@ -32,9 +32,14 @@ export function getGoogleMapsApiKey(): string | undefined {
   return optionalEnv('REACT_APP_GOOGLE_MAPS_API_KEY');
 }
 
-/** 카카오 JavaScript 키 (로그인/맵 등) */
+/** 카카오 JavaScript 키 (지도 SDK 등) */
 export function getKakaoJavaScriptKey(): string | undefined {
   return optionalEnv('REACT_APP_KAKAO_JAVASCRIPT_KEY');
+}
+
+/** 카카오 REST API 키 (OAuth 로그인 client_id) */
+export function getKakaoOAuthClientId(): string | undefined {
+  return optionalEnv('REACT_APP_KAKAO_REST_API_KEY') ?? optionalEnv('REACT_APP_KAKAO_JAVASCRIPT_KEY');
 }
 
 /** Google OAuth Client ID (소셜 로그인 등) */

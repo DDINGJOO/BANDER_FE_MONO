@@ -7,6 +7,12 @@ export type SocialLoginResponse = {
   gatewayContextToken: string;
   expiresAt: string;
   newUser: boolean;
+  roles?: string[];
+  email?: string | null;
+  nickname?: string | null;
+  profileImageUrl?: string | null;
+  signupCompletionToken?: string | null;
+  signupCompletionExpiresAt?: string | null;
 };
 
 export function socialLogin(provider: OAuthProvider, authorizationCode: string, state?: string) {

@@ -147,7 +147,7 @@ function ProfileMenuMiniFeedCta() {
 function ProfileMenuPointsCouponRow({ model }: Pick<HomeProfileMenuProps, 'model'>) {
   return (
     <div className="home-profile-menu__rewards">
-      <Link className="home-profile-menu__reward home-profile-menu__reward--points" to="/">
+      <Link className="home-profile-menu__reward home-profile-menu__reward--points" to="/points">
         <ProfileMenuPointIcon />
         <span className="home-profile-menu__reward-value">
           {model.pointsLabel}
@@ -156,7 +156,7 @@ function ProfileMenuPointsCouponRow({ model }: Pick<HomeProfileMenuProps, 'model
           </span>
         </span>
       </Link>
-      <Link className="home-profile-menu__reward home-profile-menu__reward--coupon" to="/">
+      <Link className="home-profile-menu__reward home-profile-menu__reward--coupon" to="/coupons">
         <ProfileMenuCouponIcon />
         <span className="home-profile-menu__reward-value home-profile-menu__reward-value--light">
           {model.couponCountLabel}
@@ -210,7 +210,12 @@ function ProfileMenuQuickNav({ model, onRequestClose }: Pick<HomeProfileMenuProp
         onNavigate={onRequestClose}
       />
       <ProfileMenuQuickItem icon={<ProfileMenuPostIcon />} label="내 게시글" onNavigate={onRequestClose} />
-      <ProfileMenuQuickItem icon={<ProfileMenuScrapIcon />} label="스크랩" onNavigate={onRequestClose} />
+      <ProfileMenuQuickItem
+        href="/my-scraps"
+        icon={<ProfileMenuScrapIcon />}
+        label="스크랩"
+        onNavigate={onRequestClose}
+      />
     </div>
   );
 }
@@ -219,8 +224,8 @@ const SETTINGS_ITEMS: readonly { label: string; to?: string }[] = [
   { label: '계정 설정', to: '/account/settings' },
   { label: '알림 설정', to: '/notification-settings' },
   { label: '결제 정보', to: '/payment-info' },
-  { label: '고객센터' },
-  { label: '약관정보' },
+  { label: '고객센터', to: '/support' },
+  { label: '약관정보', to: '/terms' },
 ];
 
 function ProfileMenuSettingsList({
@@ -252,7 +257,7 @@ function ProfileMenuSettingsList({
 
 function ProfileMenuBusinessBanner() {
   return (
-    <Link className="home-profile-menu__business" to="/">
+    <Link className="home-profile-menu__business" to="/business/apply">
       <div className="home-profile-menu__business-inner">
         <div className="home-profile-menu__business-copy">
           <p className="home-profile-menu__business-kicker">밴더 비즈니스</p>

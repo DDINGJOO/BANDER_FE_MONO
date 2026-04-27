@@ -2,6 +2,8 @@
  * 헤더 프로필 드롭다운 Figma 6052:30970 / 6048:30244
  * API 응답을 그대로 매핑할 수 있도록 필드 단위로 정의합니다.
  */
+import { DEFAULT_PROFILE_IMAGE_URL } from '../config/media';
+
 export type HomeProfileMenuModel = {
   /** 쿠폰 영역 우측 라벨 (예: 3개) */
   couponCountLabel: string;
@@ -16,13 +18,18 @@ export type HomeProfileMenuModel = {
 };
 
 export const DEFAULT_HOME_PROFILE_MENU_MODEL: HomeProfileMenuModel = {
-  couponCountLabel: '3개',
-  displayName: '뮤지션J님',
-  email: 'bander@gmail.com',
-  pointsLabel: '20,000P',
-  reservationBadgeCount: 3,
+  couponCountLabel: '0개',
+  displayName: '사용자님',
+  email: '',
+  pointsLabel: '0P',
+  profileImageUrl: DEFAULT_PROFILE_IMAGE_URL,
+  reservationBadgeCount: 0,
 };
 
 export function resolveHomeProfileMenuModel(partial?: Partial<HomeProfileMenuModel>): HomeProfileMenuModel {
-  return { ...DEFAULT_HOME_PROFILE_MENU_MODEL, ...partial };
+  const model = { ...DEFAULT_HOME_PROFILE_MENU_MODEL, ...partial };
+  return {
+    ...model,
+    profileImageUrl: model.profileImageUrl || DEFAULT_PROFILE_IMAGE_URL,
+  };
 }

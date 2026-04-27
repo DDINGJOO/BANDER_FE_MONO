@@ -2,6 +2,7 @@
  * 프로필 수정(/profile/edit) 전용 기본값.
  * API: GET/PATCH /api/v1/users/me/profile — {@link import('./schemas/user').UserProfileResponseDto}
  */
+import { DEFAULT_PROFILE_IMAGE_URL } from '../config/media';
 import type { UserProfileResponseDto } from './schemas/user';
 
 export type ProfileEditGender = 'female' | 'male';
@@ -52,6 +53,4 @@ export function formatProfileInstrumentsDisplay(instruments: string[]): string {
   return `악기 : ${instruments.join(', ')}`;
 }
 
-/** Figma MCP — 기본 프로필 사진 (만료 시 서버 URL로 교체) */
-export const PROFILE_EDIT_DEFAULT_PHOTO =
-  'https://www.figma.com/api/mcp/asset/51990e6d-0caa-4650-89bd-fe87643a702e';
+export const PROFILE_EDIT_DEFAULT_PHOTO = DEFAULT_PROFILE_IMAGE_URL;

@@ -59,6 +59,7 @@ beforeEach(() => {
 test('uploads selected images and submits a real API post payload', async () => {
   mockedUploadPostInlineImage.mockResolvedValue({
     mediaRef: 'media/post-inline-image/user/101/example.png',
+    mediaId: '01HZTESTUUID000000000000',
     ownershipTicket: 'test-ticket',
   });
   mockedCreatePost.mockResolvedValue({
@@ -107,6 +108,7 @@ test('uploads selected images and submits a real API post payload', async () => 
         {
           blockType: 'IMAGE',
           content: 'media/post-inline-image/user/101/example.png',
+          mediaId: '01HZTESTUUID000000000000',
           ownershipTicket: 'test-ticket',
         },
       ],

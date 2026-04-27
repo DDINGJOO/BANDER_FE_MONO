@@ -6,8 +6,10 @@ import { CouponDownloadModal } from '../components/space/CouponDownloadModal';
 import { ChevronIcon } from '../components/shared/Icons';
 import { loadAuthSession } from '../data/authSession';
 import { COUPON_ITEMS } from '../data/couponDownloadModal';
+import type { CouponAvailableItemDto } from '../data/schemas/coupon';
 import { HOME_SPACE_CARDS } from '../data/home';
 import { useCouponDownloads } from '../hooks/useCouponDownloads';
+import { getAvailableCoupons } from '../api/coupons';
 import {
   getSpaceAvailability,
   createBooking,
@@ -102,7 +104,11 @@ export function SpaceReservationPage() {
   });
   const [optionsOpen, setOptionsOpen] = useState(false);
   const [couponModalOpen, setCouponModalOpen] = useState(false);
-  const { downloadCoupon, downloadedCouponIds } = useCouponDownloads();
+  const [availableCoupons, setAvailableCoupons] = useState<CouponAvailableItemDto[]>([]);
+  const [selectedCouponId, setSelectedCouponId] = useState<string | null>(null);
+  const [couponLoading, setCouponLoading] = useState(false);
+  const [couponError, setCouponError] = useState<string | null>(null);
+  const { downloadCoupon, downloadedCouponIds, downloadError } = useCouponDownloads();
   const [paymentResult, setPaymentResult] = useState<PaymentResultState>(null);
   const [canScrollTimelineNext, setCanScrollTimelineNext] = useState(true);
   const [canScrollTimelinePrev, setCanScrollTimelinePrev] = useState(false);
@@ -174,6 +180,26 @@ export function SpaceReservationPage() {
       .then((res) => setAvailabilitySlots(res.slots))
       .catch(() => setAvailabilitySlots([]));
   }, [roomId, dateParam]);
+
+  useEffect(() => {
+    if (isMockMode() || !slug) return;
+    const controller = new AbortController();
+    setCouponLoading(true);
+    setCouponError(null);
+    getAvailableCoupons(slug, { signal: controller.signal })
+      .then((res) => setAvailableCoupons(res.coupons))
+      .catch((error) => {
+        if (!controller.signal.aborted) {
+          setCouponError(error instanceof Error ? error.message : '쿠폰을 불러오지 못했습니다.');
+        }
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) {
+          setCouponLoading(false);
+        }
+      });
+    return () => controller.abort();
+  }, [slug]);
 
   const timeColumns = useMemo(() => {
     return Array.from({ length: 24 }, (_, hour) => {
@@ -247,6 +273,8 @@ export function SpaceReservationPage() {
     agreements.collection && agreements.thirdParty && agreements.paymentAgency;
   const canSubmitPayment = requiredAgreementsChecked && selectedTimes.length > 0;
   const modalRoot = typeof document !== 'undefined' ? document.body : null;
+  const selectedCoupon = availableCoupons.find((coupon) => coupon.id === selectedCouponId) ?? null;
+  const couponCount = isMockMode() ? COUPON_ITEMS.length : availableCoupons.length;
 
   const setAllAgreements = (checked: boolean) => {
     setAgreements({
@@ -362,7 +390,18 @@ export function SpaceReservationPage() {
     const endsAt = slotLabelToIso(dateParam, `${String(endHour).padStart(2, '0')}:${String(endMinute).padStart(2, '0')}`);
 
     try {
-      const booking = await createBooking({ roomId: roomId ?? '', startsAt, endsAt });
+      const booking = await createBooking({
+        roomId: roomId ?? '',
+        startsAt,
+        endsAt,
+        couponId: selectedCouponId ?? undefined,
+      });
+      const paidAmount = Number(booking.paidAmount ?? booking.totalPrice);
+
+      if (paidAmount <= 0) {
+        setPaymentResult('success');
+        return;
+      }
 
       const clientKey = getTossPaymentsClientKey();
       if (!clientKey || !booking.orderId) {
@@ -376,12 +415,26 @@ export function SpaceReservationPage() {
         clientKey,
         orderId: booking.orderId,
         orderName: spaceCard.title + ' 예약',
-        amount: booking.totalPrice,
+        amount: paidAmount,
         successUrl: `${window.location.origin}/payment/success`,
         failUrl: `${window.location.origin}/payment/fail`,
       });
     } catch {
       setPaymentResult('failed');
+    }
+  };
+
+  const handleDownloadCoupon = async (couponId: string) => {
+    if (!isAuthenticated) {
+      navigate(`/login?returnTo=${encodeURIComponent(`/spaces/${slug}/reserve?date=${dateParam}${roomId ? `&roomId=${roomId}` : ''}`)}`);
+      return;
+    }
+    try {
+      await downloadCoupon(couponId);
+      setSelectedCouponId(couponId);
+      setCouponError(null);
+    } catch (error) {
+      setCouponError(error instanceof Error ? error.message : '쿠폰 다운로드에 실패했습니다.');
     }
   };
 
@@ -555,7 +608,9 @@ export function SpaceReservationPage() {
           <div className="space-reservation__discount-list">
             <button className="space-reservation__discount-input" onClick={() => setCouponModalOpen(true)} type="button">
               <span>쿠폰</span>
-              <span className="space-reservation__discount-input-value">적용 가능 {COUPON_ITEMS.length}장</span>
+              <span className="space-reservation__discount-input-value">
+                {selectedCoupon ? `${selectedCoupon.title} 적용` : `적용 가능 ${couponCount}장`}
+              </span>
               <ChevronIcon />
             </button>
             <div className="space-reservation__discount-input">
@@ -597,7 +652,7 @@ export function SpaceReservationPage() {
               </div>
               <div>
                 <span>쿠폰</span>
-                <strong>- 0원</strong>
+                <strong>{selectedCoupon ? `${selectedCoupon.discountLabel} 적용 예정` : '- 0원'}</strong>
               </div>
             </div>
             <div className="space-reservation__payment-total">
@@ -759,10 +814,20 @@ export function SpaceReservationPage() {
         : null}
 
       <CouponDownloadModal
+        coupons={isMockMode() ? undefined : availableCoupons}
         downloadedCouponIds={downloadedCouponIds}
+        errorMessage={couponError ?? downloadError}
+        loading={couponLoading}
         onClose={() => setCouponModalOpen(false)}
-        onDownloadCoupon={downloadCoupon}
+        onDownloadCoupon={handleDownloadCoupon}
+        onSelectCoupon={(couponId) => {
+          setSelectedCouponId(couponId);
+          setCouponModalOpen(false);
+        }}
         open={couponModalOpen}
+        selectable
+        selectedCouponId={selectedCouponId}
+        title={`적용 가능 쿠폰 ${couponCount}`}
       />
 
       {paymentResult && modalRoot

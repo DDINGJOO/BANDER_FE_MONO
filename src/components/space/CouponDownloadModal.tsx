@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { COUPON_ITEMS, COUPON_USAGE_ROOMS } from '../../data/couponDownloadModal';
+import { COUPON_ITEMS, COUPON_USAGE_ROOMS, type CouponDownloadItem } from '../../data/couponDownloadModal';
+import type { CouponAvailableItemDto } from '../../data/schemas/coupon';
 import { ChevronIcon } from '../shared/Icons';
 
 function CouponModalCloseIcon() {
@@ -40,22 +41,47 @@ function CouponCheckGlyph() {
 }
 
 type CouponDownloadModalProps = {
+  coupons?: CouponAvailableItemDto[];
   downloadedCouponIds: string[];
+  errorMessage?: string | null;
+  loading?: boolean;
   onClose: () => void;
-  onDownloadCoupon: (id: string) => void;
+  onDownloadCoupon: (id: string) => void | Promise<void>;
+  onSelectCoupon?: (id: string) => void;
   open: boolean;
+  selectable?: boolean;
+  selectedCouponId?: string | null;
   title?: string;
 };
 
+function toCouponViewItem(coupon: CouponAvailableItemDto): CouponDownloadItem {
+  return {
+    id: coupon.id,
+    metaNote: null,
+    subtitle: coupon.title,
+    terms: coupon.validUntilLabel ? [`기한 : ${coupon.validUntilLabel}까지`] : [],
+    usageSummary: coupon.spaceSlug ? '사용가능 : 현재 선택한 룸' : null,
+    valueMain: coupon.discountLabel,
+  };
+}
+
 export function CouponDownloadModal({
+  coupons,
   downloadedCouponIds,
+  errorMessage,
+  loading = false,
   onClose,
   onDownloadCoupon,
+  onSelectCoupon,
   open,
-  title = `적용 가능 쿠폰 ${COUPON_ITEMS.length}`,
+  selectable = false,
+  selectedCouponId = null,
+  title,
 }: CouponDownloadModalProps) {
   const [usageRoomsOpen, setUsageRoomsOpen] = useState(false);
   const modalRoot = typeof document !== 'undefined' ? document.body : null;
+  const couponItems = coupons ? coupons.map(toCouponViewItem) : COUPON_ITEMS;
+  const modalTitle = title ?? `적용 가능 쿠폰 ${couponItems.length}`;
 
   useEffect(() => {
     if (!open) {
@@ -77,14 +103,30 @@ export function CouponDownloadModal({
         aria-labelledby="coupon-download-modal-title"
       >
         <div className="space-reservation__coupon-modal-header">
-          <h2 id="coupon-download-modal-title">{title}</h2>
+          <h2 id="coupon-download-modal-title">{modalTitle}</h2>
           <button aria-label="닫기" className="space-reservation__coupon-modal-close" onClick={onClose} type="button">
             <CouponModalCloseIcon />
           </button>
         </div>
         <div className="space-reservation__coupon-list">
-          {COUPON_ITEMS.map((coupon) => {
+          {loading ? <p className="space-reservation__coupon-state">쿠폰을 불러오는 중입니다.</p> : null}
+          {!loading && errorMessage ? <p className="space-reservation__coupon-state">{errorMessage}</p> : null}
+          {!loading && !errorMessage && couponItems.length === 0 ? (
+            <p className="space-reservation__coupon-state">다운로드 가능한 쿠폰이 없습니다.</p>
+          ) : null}
+          {!loading && !errorMessage ? couponItems.map((coupon) => {
             const downloaded = downloadedCouponIds.includes(coupon.id);
+            const selected = selectedCouponId === coupon.id;
+            const actionDone = selectable ? selected : downloaded;
+            const actionLabel = selectable
+              ? selected
+                ? `${coupon.valueMain} 할인 쿠폰 적용됨`
+                : downloaded
+                  ? `${coupon.valueMain} 할인 쿠폰 적용`
+                  : `${coupon.valueMain} 할인 쿠폰 다운로드`
+              : downloaded
+                ? `${coupon.valueMain} 할인 쿠폰 다운로드 완료`
+                : `${coupon.valueMain} 할인 쿠폰 다운로드`;
 
             return (
               <div className="space-reservation__coupon-card" key={coupon.id}>
@@ -141,24 +183,26 @@ export function CouponDownloadModal({
                   </div>
                 </div>
                 <button
-                  aria-label={
-                    downloaded
-                      ? `${coupon.valueMain} 할인 쿠폰 다운로드 완료`
-                      : `${coupon.valueMain} 할인 쿠폰 다운로드`
-                  }
-                  className={`space-reservation__coupon-action ${downloaded ? 'space-reservation__coupon-action--done' : ''}`}
+                  aria-label={actionLabel}
+                  className={`space-reservation__coupon-action ${actionDone ? 'space-reservation__coupon-action--done' : ''}`}
                   onClick={() => {
-                    if (!downloaded) {
-                      onDownloadCoupon(coupon.id);
+                    if (selectable && downloaded) {
+                      onSelectCoupon?.(coupon.id);
+                      return;
                     }
+                    void Promise.resolve(onDownloadCoupon(coupon.id)).then(() => {
+                      if (selectable) {
+                        onSelectCoupon?.(coupon.id);
+                      }
+                    }).catch(() => undefined);
                   }}
                   type="button"
                 >
-                  {downloaded ? <CouponCheckGlyph /> : <CouponDownloadGlyph />}
+                  {actionDone || downloaded ? <CouponCheckGlyph /> : <CouponDownloadGlyph />}
                 </button>
               </div>
             );
-          })}
+          }) : null}
         </div>
         <div className="space-reservation__coupon-modal-footer">
           <button className="space-reservation__coupon-footer-btn" onClick={onClose} type="button">

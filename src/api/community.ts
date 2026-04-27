@@ -97,6 +97,8 @@ export type CreatePostRequest = {
   blocks: Array<{
     blockType: CommunityPostBlockType;
     content: string;
+    /** Required for IMAGE blocks under PR-G partial: media UUID from media-svc. */
+    mediaId?: string;
     /** Required for IMAGE blocks under PR-G partial: JWS ownership ticket from media-svc. */
     ownershipTicket?: string;
   }>;
@@ -177,14 +179,13 @@ export function requestPostInlineImageUpload(input: {
   contentLength: number;
   contentType: string;
   fileName: string;
-  ownerKey: string;
 }) {
   return postJson<MediaUploadGrantDto>('/api/v1/media/uploads', {
     contentLength: input.contentLength,
     contentType: input.contentType,
     fileName: input.fileName,
-    ownerKey: input.ownerKey,
-    ownerType: 'USER',
+    ownerKey: null,
+    ownerType: 'POST',
     targetType: 'POST_INLINE_IMAGE',
   });
 }
@@ -196,8 +197,8 @@ export function requestPostInlineImageUpload(input: {
  *   1. POST /api/v1/media/uploads → mediaRef + presignedUrl + ownershipTicket
  *   2. PUT to S3
  *   3. POST /api/v1/media/{mediaRef}/commit (sha256 + size verified server-side)
- *   4. Return { mediaRef, ownershipTicket } so the caller can thread the ticket into
- *      the IMAGE block when submitting the post.
+ *   4. Return the media UUID, public URL, and ownership ticket so the caller can
+ *      thread them into the IMAGE block when submitting the post.
  *
  * The commit step is performed eagerly (right after PUT) so the ticket reaches
  * COMMITTED state before the user submits the post. SQS auto-commit safety net
@@ -206,12 +207,11 @@ export function requestPostInlineImageUpload(input: {
 export async function uploadPostInlineImage(input: {
   file: File;
   ownerKey: string;
-}): Promise<{ mediaRef: string; ownershipTicket: string }> {
+}): Promise<{ mediaRef: string; mediaId: string; ownershipTicket: string }> {
   const grant = await requestPostInlineImageUpload({
     contentLength: input.file.size,
     contentType: input.file.type,
     fileName: input.file.name,
-    ownerKey: input.ownerKey,
   });
 
   const { putAndCommit } = await import('./media');
@@ -224,7 +224,8 @@ export async function uploadPostInlineImage(input: {
   });
 
   return {
-    mediaRef: grant.mediaRef,
+    mediaRef: grant.publicUrl || grant.mediaRef,
+    mediaId: grant.mediaRef,
     ownershipTicket: grant.ownershipTicket ?? '',
   };
 }

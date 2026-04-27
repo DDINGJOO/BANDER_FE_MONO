@@ -984,6 +984,16 @@
   flex-direction: column;
 }
 
+.space-reservation__coupon-state {
+  margin: 0;
+  padding: 28px 0;
+  color: var(--color-muted);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 20px;
+  text-align: center;
+}
+
 .space-reservation__option-item {
   display: flex;
   align-items: center;

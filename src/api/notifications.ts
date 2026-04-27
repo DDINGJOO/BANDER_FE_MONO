@@ -1,13 +1,13 @@
 import { getJson, requestVoid } from './client';
 import type {
+  NotificationCursorPage,
   NotificationApiDto,
-  SpringPage,
   UnreadCountDto,
 } from '../data/schemas/notificationsApi';
 
-export function fetchNotifications(page = 0, size = 20) {
-  return getJson<SpringPage<NotificationApiDto>>(
-    `/api/v1/notifications?page=${page}&size=${size}`,
+export function fetchNotifications(_page = 0, size = 20) {
+  return getJson<NotificationCursorPage<NotificationApiDto>>(
+    `/api/v1/notifications?limit=${size}`,
   );
 }
 

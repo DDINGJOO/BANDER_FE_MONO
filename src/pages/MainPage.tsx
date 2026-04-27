@@ -13,9 +13,44 @@ import { useHomeFeed } from '../hooks/useHomeFeed';
 import { searchRooms, searchVendors, type RoomSearchItem, type VendorSearchItem } from '../api/search';
 import { isMockMode } from '../config/publicEnv';
 
+function roomSearchItemToHomeSpace(room: RoomSearchItem) {
+  return {
+    title: room.roomName,
+    subtitle: room.description || '',
+    studio: room.studioName,
+    location: room.roadAddress || '',
+    price: `${room.pricePerSlot.toLocaleString()}원`,
+    rating: '',
+    image: room.thumbnailUrl ?? '',
+    detailPath: `/spaces/${room.roomSlug || room.roomId}`,
+  };
+}
+
+function vendorSearchItemToHomeCard(vendor: VendorSearchItem) {
+  return {
+    slug: vendor.slug || vendor.id,
+    name: vendor.name,
+    description: vendor.description,
+    location: vendor.address,
+    roomCount: '업체',
+    rating: '',
+    imageUrl: vendor.thumbnailUrl ?? '',
+    detailPath: `/vendors/${vendor.slug || vendor.id}`,
+  };
+}
+
+function HomeEmptyState({ description, title }: { description?: string; title: string }) {
+  return (
+    <div className="home-empty-state" role="status">
+      <p className="home-empty-state__title">{title}</p>
+      {description ? <p className="home-empty-state__description">{description}</p> : null}
+    </div>
+  );
+}
+
 export function MainPage({ previewAuthenticated = false }: { previewAuthenticated?: boolean }) {
   const navigate = useNavigate();
-  const { hotPosts, recommendedSpaces, reviewCards, categoryBubbles, vendorCards, loading } = useHomeFeed();
+  const { hotPosts, recommendedSpaces, reviewCards, vendorCards, loading, error } = useHomeFeed();
   const isAuthenticated = previewAuthenticated || Boolean(loadAuthSession());
   const [guestModalOpen, setGuestModalOpen] = useState(false);
   const [headerSearchOpen, setHeaderSearchOpen] = useState(false);
@@ -40,20 +75,17 @@ export function MainPage({ previewAuthenticated = false }: { previewAuthenticate
     setMainFilterKey((k) => k + 1);
   }, []);
 
-  const [vendorSort, setVendorSort] = useState<'popular' | 'latest' | 'relevance'>('popular');
-  const [filteredVendors, setFilteredVendors] = useState<VendorSearchItem[] | null>(null);
-  const [vendorQuery, setVendorQuery] = useState('');
+  const [popularVendors, setPopularVendors] = useState<VendorSearchItem[] | null>(null);
 
   // HomeHeader fetches /users/me/summary on its own and caches across pages,
   // so MainPage no longer needs to duplicate that work.
 
   useEffect(() => {
     if (isMockMode()) return;
-    const q = vendorQuery.trim() || undefined;
-    searchVendors({ q, sort: vendorSort, size: 8 })
-      .then((res) => setFilteredVendors(res.items))
-      .catch(() => {});
-  }, [vendorSort, vendorQuery]);
+    searchVendors({ sort: 'popular', size: 8 })
+      .then((res) => setPopularVendors(res.items))
+      .catch(() => setPopularVendors([]));
+  }, []);
 
   useEffect(() => {
     if (mainFilterKey === 0 || isMockMode()) return;
@@ -102,6 +134,14 @@ export function MainPage({ previewAuthenticated = false }: { previewAuthenticate
   }, [hotPosts]);
 
   const { suggestions: filteredSuggestions } = useSearchSuggestions(headerSearchQuery);
+  const spacesForSections = filteredSpaces
+    ? filteredSpaces.map(roomSearchItemToHomeSpace)
+    : recommendedSpaces;
+  const popularSpaces = spacesForSections.slice(0, 8);
+  const visibleVendorCards = vendorCards.length > 0
+    ? vendorCards
+    : (popularVendors ?? []).map(vendorSearchItemToHomeCard);
+  const homeFeedErrorMessage = error ? '홈 데이터를 불러오지 못했습니다.' : null;
 
   return (
     <main className="home-page">
@@ -155,13 +195,22 @@ export function MainPage({ previewAuthenticated = false }: { previewAuthenticate
             이달의 HOT 게시물 <span aria-hidden="true">❤️</span>
           </h2>
         </div>
-        <div className="home-post-carousel">
-          <div className="home-post-carousel__track" ref={hotPostsScrollRef}>
-            {hotPosts.slice(0, 5).map((post) => (
-              <HomePostCard key={post.title} {...post} />
-            ))}
+        {loading ? (
+          <HomeEmptyState title="게시물을 불러오는 중입니다." />
+        ) : hotPosts.length > 0 ? (
+          <div className="home-post-carousel">
+            <div className="home-post-carousel__track" ref={hotPostsScrollRef}>
+              {hotPosts.slice(0, 5).map((post) => (
+                <HomePostCard key={post.title} {...post} />
+              ))}
+            </div>
           </div>
-        </div>
+        ) : (
+          <HomeEmptyState
+            description={homeFeedErrorMessage ? '잠시 후 다시 시도해 주세요.' : '커뮤니티 활동이 쌓이면 이곳에 표시됩니다.'}
+            title={homeFeedErrorMessage ?? '아직 HOT 게시물이 없습니다.'}
+          />
+        )}
       </section>
 
       <section className="home-section" id="spaces">
@@ -170,30 +219,24 @@ export function MainPage({ previewAuthenticated = false }: { previewAuthenticate
         </div>
         <HomeSpaceExplorer
           onFilterChange={handleMainFilterChange}
-          spaces={filteredSpaces
-            ? filteredSpaces.map((r) => ({
-                title: r.roomName,
-                subtitle: r.description || '',
-                studio: r.studioName,
-                location: r.roadAddress || '',
-                price: `${r.pricePerSlot.toLocaleString()}원`,
-                rating: '',
-                image: '',
-                detailPath: `/spaces/${r.roomSlug || r.roomId}`,
-              }))
-            : recommendedSpaces
-          }
+          spaces={spacesForSections}
         />
+        {!loading && spacesForSections.length === 0 ? (
+          <HomeEmptyState
+            description={filteredSpaces ? '필터를 조정하거나 다른 키워드로 다시 검색해 보세요.' : '공간 데이터가 등록되면 이 영역에 표시됩니다.'}
+            title={filteredSpaces ? '조건에 맞는 공간이 없습니다.' : homeFeedErrorMessage ?? '아직 추천 공간이 없습니다.'}
+          />
+        ) : null}
       </section>
 
-      {vendorCards.length > 0 && (
-        <section className="home-section home-section--vendors" id="vendors">
-          <div className="home-section__heading home-section__heading--stack">
-            <h2>인기 업체</h2>
-            <p>검증된 음악 공간 업체를 만나보세요.</p>
-          </div>
+      <section className="home-section home-section--vendors" id="vendors">
+        <div className="home-section__heading home-section__heading--stack">
+          <h2>인기 업체</h2>
+          <p>검증된 음악 공간 업체를 만나보세요.</p>
+        </div>
+        {visibleVendorCards.length > 0 ? (
           <div className="home-space-grid">
-            {vendorCards.slice(0, 8).map((vendor) => (
+            {visibleVendorCards.slice(0, 8).map((vendor) => (
               <HomeSpaceCard
                 key={vendor.slug}
                 detailPath={vendor.detailPath}
@@ -207,30 +250,30 @@ export function MainPage({ previewAuthenticated = false }: { previewAuthenticate
               />
             ))}
           </div>
-        </section>
-      )}
+        ) : (
+          <HomeEmptyState
+            description="업체 데이터가 등록되면 이 영역에 표시됩니다."
+            title={homeFeedErrorMessage ?? '아직 인기 업체가 없습니다.'}
+          />
+        )}
+      </section>
 
       <section className="home-section home-section--popular-spaces" id="popular-spaces">
         <div className="home-section__heading home-section__heading--stack">
           <h2>인기 공간</h2>
         </div>
-        <div className="home-space-grid">
-          {(filteredSpaces
-            ? filteredSpaces.map((r) => ({
-                title: r.roomName,
-                subtitle: r.description || '',
-                studio: r.studioName,
-                location: r.roadAddress || '',
-                price: `${r.pricePerSlot.toLocaleString()}원`,
-                rating: '',
-                image: '',
-                detailPath: `/spaces/${r.roomSlug || r.roomId}`,
-              }))
-            : recommendedSpaces
-          ).slice(0, 8).map((space) => (
-            <HomeSpaceCard key={space.title} {...space} />
-          ))}
-        </div>
+        {popularSpaces.length > 0 ? (
+          <div className="home-space-grid">
+            {popularSpaces.map((space) => (
+              <HomeSpaceCard key={space.title} {...space} />
+            ))}
+          </div>
+        ) : (
+          <HomeEmptyState
+            description="공간 데이터가 등록되면 이 영역에 표시됩니다."
+            title={homeFeedErrorMessage ?? '아직 인기 공간이 없습니다.'}
+          />
+        )}
       </section>
 
       <section aria-label="공간 호스트 모집" className="home-host-cta">
@@ -248,11 +291,20 @@ export function MainPage({ previewAuthenticated = false }: { previewAuthenticate
           <h2>밴더 리얼 후기를 확인하세요.</h2>
           <p>게스트도 후기와 정보를 충분히 보고 공간을 비교할 수 있습니다.</p>
         </div>
-        <div className="home-review-grid">
-          {reviewCards.map((review, index) => (
-            <HomeReviewCard key={`review-${index}`} {...review} />
-          ))}
-        </div>
+        {loading ? (
+          <HomeEmptyState title="후기를 불러오는 중입니다." />
+        ) : reviewCards.length > 0 ? (
+          <div className="home-review-grid">
+            {reviewCards.map((review, index) => (
+              <HomeReviewCard key={`review-${index}`} {...review} />
+            ))}
+          </div>
+        ) : (
+          <HomeEmptyState
+            description="후기 데이터가 등록되면 이 영역에 표시됩니다."
+            title={homeFeedErrorMessage ?? '아직 등록된 후기가 없습니다.'}
+          />
+        )}
       </section>
 
       <section className="home-app-banner">

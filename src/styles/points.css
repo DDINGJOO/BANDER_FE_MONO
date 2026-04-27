@@ -1,0 +1,120 @@
+/* Figma 6150:34484 — 포인트 */
+
+.points-page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: #ffffff;
+}
+
+.points-page__main {
+  flex: 1 0 auto;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 40px 20px 80px;
+}
+
+.points {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 852px;
+  margin: 0 auto;
+  font-family: 'Pretendard', system-ui, sans-serif;
+  color: #000000;
+}
+
+.points__head {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  margin-bottom: 30px;
+}
+
+.points__back {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border: 1px solid #f0f2f5;
+  border-radius: 50px;
+  background: #ffffff;
+  padding: 0;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #000000;
+  box-sizing: border-box;
+}
+
+.points__back-chevron {
+  display: flex;
+  transform: rotate(180deg);
+}
+
+.points__back-chevron .signup-profile__chevron {
+  width: 20px;
+  height: 20px;
+}
+
+.points__title {
+  margin: 0;
+  font-size: 30px;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+  color: #000000;
+}
+
+.points-coming-soon {
+  box-sizing: border-box;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 320px;
+  padding: 56px 24px;
+  border: 1px solid #f0f2f5;
+  border-radius: 8px;
+  background: #fafbfc;
+  text-align: center;
+}
+
+.points-coming-soon__eyebrow {
+  margin: 0 0 10px;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 18px;
+  color: #8a94a3;
+}
+
+.points-coming-soon__title {
+  margin: 0;
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 34px;
+  color: #000000;
+}
+
+.points-coming-soon__description {
+  margin: 12px 0 0;
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 22px;
+  color: #5f6b7a;
+}
+
+@media (max-width: 640px) {
+  .points-page__main {
+    padding: 24px 16px 56px;
+  }
+
+  .points__title {
+    font-size: 24px;
+  }
+
+  .points-coming-soon {
+    min-height: 260px;
+    padding: 40px 18px;
+  }
+}

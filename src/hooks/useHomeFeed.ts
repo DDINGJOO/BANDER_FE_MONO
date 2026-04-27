@@ -41,12 +41,24 @@ export function useHomeFeed() {
   }, [mock]);
 
   return useMemo(() => {
-    if (mock || error) {
+    if (mock) {
       return {
         hotPosts: HOME_HOT_POSTS,
         recommendedSpaces: HOME_SPACE_CARDS,
         reviewCards: HOME_REVIEW_CARDS,
         categoryBubbles: HOME_CATEGORY_BUBBLES,
+        vendorCards: [],
+        loading: false,
+        error,
+      };
+    }
+
+    if (error) {
+      return {
+        hotPosts: [],
+        recommendedSpaces: [],
+        reviewCards: [],
+        categoryBubbles: [],
         vendorCards: [],
         loading: false,
         error,
@@ -66,12 +78,11 @@ export function useHomeFeed() {
     }
 
     const normalized = normalizeHomeFeedForUi(apiData);
-    // If API returns empty recommendedSpaces, fall back to mock data
     return {
-      hotPosts: normalized.hotPosts.length > 0 ? normalized.hotPosts : HOME_HOT_POSTS,
-      recommendedSpaces: normalized.recommendedSpaces.length > 0 ? normalized.recommendedSpaces : HOME_SPACE_CARDS,
-      reviewCards: normalized.reviewCards.length > 0 ? normalized.reviewCards : HOME_REVIEW_CARDS,
-      categoryBubbles: normalized.categoryBubbles.length > 0 ? normalized.categoryBubbles : HOME_CATEGORY_BUBBLES,
+      hotPosts: normalized.hotPosts,
+      recommendedSpaces: normalized.recommendedSpaces,
+      reviewCards: normalized.reviewCards,
+      categoryBubbles: normalized.categoryBubbles,
       vendorCards: normalized.vendorCards,
       loading: false,
       error: null,

@@ -48,6 +48,10 @@ function isSearchBar(props: HomeHeaderProps): props is HomeHeaderSearchBarProps 
   return props.variant !== 'icon';
 }
 
+function formatBadgeCount(count: number) {
+  return count > 99 ? '99+' : String(count);
+}
+
 // Module-level cache so cross-page navigation does not refetch or flicker.
 let cachedUserSummary: UserMeSummary | null = null;
 const summarySubscribers = new Set<(s: UserMeSummary | null) => void>();
@@ -146,6 +150,7 @@ export function HomeHeader(props: HomeHeaderProps) {
       }
     : undefined;
   const profileModel = resolveHomeProfileMenuModel(profileMenuPartial ?? derivedFromSummary);
+  const reservationBadgeCount = Math.max(0, profileModel.reservationBadgeCount);
 
   useEffect(() => {
     if (!profileOpen) {
@@ -271,7 +276,9 @@ export function HomeHeader(props: HomeHeaderProps) {
                 <Link to="/search/map">탐색</Link>
                 <Link className="home-header__reservation-link" to="/my-reservations">
                   <span>예약</span>
-                  <span className="home-header__reservation-badge">3</span>
+                  {reservationBadgeCount > 0 ? (
+                    <span className="home-header__reservation-badge">{formatBadgeCount(reservationBadgeCount)}</span>
+                  ) : null}
                 </Link>
               </>
             ) : (
@@ -294,7 +301,6 @@ export function HomeHeader(props: HomeHeaderProps) {
           <div className="home-header__auth-actions">
             <button aria-label="장바구니" className="home-header__icon-button home-header__icon-button--cart" type="button">
               <HeaderCartIcon />
-              <span className="home-header__icon-badge">8</span>
             </button>
             <button aria-label="찜 목록" className="home-header__icon-button" type="button">
               <HeaderWishlistIcon />

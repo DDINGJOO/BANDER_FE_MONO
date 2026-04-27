@@ -171,7 +171,7 @@ function normalizeItem(row: CommunityFeedApiItem): CommunityFeedCard {
   const excerpt =
     toNonEmptyString(row.excerpt) ??
     toNonEmptyString(row.content) ??
-    '본문 미리보기가 없습니다.';
+    '';
 
   const id = detailSlug ?? `${row.title}-${row.createdAt ?? 'community-feed-item'}`;
 

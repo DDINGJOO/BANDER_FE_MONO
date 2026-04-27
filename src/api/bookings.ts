@@ -6,6 +6,7 @@ export type CreateBookingRequest = {
   roomId: string;
   startsAt: string;
   endsAt: string;
+  couponId?: string;
 };
 
 export type CancelBookingRequest = {
@@ -26,6 +27,8 @@ export type BookingCommandResponse = {
   cancelledAt: string | null;
   orderId: string | null;
   paymentId: string | null;
+  paidAmount: number | null;
+  discountWon: number | null;
 };
 
 export type BookingDetailResponse = {

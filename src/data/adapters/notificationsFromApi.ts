@@ -1,5 +1,6 @@
 import type { AppNotification } from '../notifications';
 import type {
+  NotificationCursorPage,
   NotificationApiDto,
   SpringPage,
 } from '../schemas/notificationsApi';
@@ -93,8 +94,9 @@ export function notificationFromApi(
 }
 
 export function notificationsFromApiPage(
-  page: SpringPage<NotificationApiDto>,
+  page: NotificationCursorPage<NotificationApiDto> | SpringPage<NotificationApiDto>,
   now: Date = new Date(),
 ): AppNotification[] {
-  return page.content.map((dto) => notificationFromApi(dto, now));
+  const items = 'items' in page ? page.items : page.content;
+  return items.map((dto) => notificationFromApi(dto, now));
 }

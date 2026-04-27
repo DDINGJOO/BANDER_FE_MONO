@@ -1,15 +1,21 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { socialLogin, socialLink } from '../api/social';
 import { parseOAuthState } from '../config/oauth';
-import { saveAuthSession } from '../data/authSession';
+import { clearSignupDraft, saveAuthSession, saveSignupDraft } from '../data/authSession';
 
 export function OAuthCallbackPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [error, setError] = useState('');
+  const processingRef = useRef(false);
 
   useEffect(() => {
+    if (processingRef.current) {
+      return;
+    }
+    processingRef.current = true;
+
     const code = searchParams.get('code');
     const state = searchParams.get('state');
 
@@ -33,8 +39,19 @@ export function OAuthCallbackPage() {
             userId: result.userId,
           });
           if (result.newUser) {
+            if (!result.signupCompletionToken) {
+              throw new Error('소셜 회원가입 정보를 준비하지 못했습니다. 다시 시도해주세요.');
+            }
+            saveSignupDraft({
+              email: result.email ?? '',
+              nickname: result.nickname ?? undefined,
+              signupCompletionToken: result.signupCompletionToken,
+              signupSource: 'SOCIAL',
+              socialProvider: parsed.provider,
+            });
             navigate('/signup/profile', { replace: true });
           } else {
+            clearSignupDraft();
             navigate('/', { replace: true });
           }
         })

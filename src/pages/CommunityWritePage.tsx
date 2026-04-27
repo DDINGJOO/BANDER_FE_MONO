@@ -180,7 +180,7 @@ export function CommunityWritePage() {
     setSubmitError('');
 
     try {
-      let uploads: Array<{ mediaRef: string; ownershipTicket: string }> = [];
+      let uploads: Array<{ mediaRef: string; mediaId: string; ownershipTicket: string }> = [];
       if (photos.length > 0) {
         try {
           uploads = await Promise.all(photos.map((photo) => uploadPhoto(photo)));
@@ -194,12 +194,14 @@ export function CommunityWritePage() {
       const blocks: Array<{
         blockType: 'TEXT' | 'IMAGE' | 'CODE';
         content: string;
+        mediaId?: string;
         ownershipTicket?: string;
       }> = [
         { blockType: 'TEXT', content: body.trim() },
-        ...uploads.map(({ mediaRef, ownershipTicket }) => ({
+        ...uploads.map(({ mediaRef, mediaId, ownershipTicket }) => ({
           blockType: 'IMAGE' as const,
           content: mediaRef,
+          mediaId,
           ownershipTicket,
         })),
       ];

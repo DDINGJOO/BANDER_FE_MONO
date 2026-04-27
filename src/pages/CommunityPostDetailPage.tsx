@@ -152,17 +152,24 @@ function getErrorMessage(error: unknown, fallback: string) {
 }
 
 function resolveMediaUrl(ref: string | null | undefined) {
-  if (!ref) {
-    return undefined;
-  }
-  return resolveProfileImageUrl(ref) ?? ref;
+  return resolveProfileImageUrl(ref);
 }
 
 function countComments(threads: CommunityCommentTreeDto[]) {
-  return threads.reduce((sum, thread) => sum + 1 + thread.replies.length, 0);
+  // tombstone(deleted=true) 부모는 백엔드 Post.commentCount 에서 이미 차감되어 있으므로
+  // FE 클라이언트 카운트에서도 제외해야 백엔드 값과 일치한다.
+  return threads.reduce(
+    (sum, thread) => sum + (thread.comment.deleted ? 0 : 1) + thread.replies.length,
+    0
+  );
 }
 
 function mapCommentActions(comment: CommunityCommentDto, currentUserId: string | null) {
+  // 삭제된(tombstone) 댓글은 답글/신고/삭제 모두 불가
+  if (comment.deleted) {
+    return [] as CommunityDetailCommentAction[];
+  }
+
   // 백엔드 MAX_DEPTH = 1 → depth ≥ 1 인 대댓글에는 답글 불가
   const canReply = comment.depth < 1;
 
@@ -177,6 +184,17 @@ function mapCommentToViewModel(
   comment: CommunityCommentDto,
   currentUserId: string | null
 ): CommunityDetailComment {
+  if (comment.deleted) {
+    return {
+      actions: [],
+      author: '',
+      avatar: '',
+      body: '삭제된 댓글입니다',
+      id: String(comment.commentId),
+      time: formatDateLabel(comment.createdAt),
+    };
+  }
+
   const authorLabel =
     currentUserId && String(comment.authorUserId) === currentUserId
       ? `${comment.authorNickname ?? '밴더유저'}(나)`
@@ -186,7 +204,7 @@ function mapCommentToViewModel(
     actions: mapCommentActions(comment, currentUserId),
     author: authorLabel,
     avatar: resolveMediaUrl(comment.authorProfileImageRef) ?? '',
-    body: comment.content,
+    body: comment.content ?? '',
     id: String(comment.commentId),
     time: formatDateLabel(comment.createdAt),
   };
@@ -564,7 +582,7 @@ export function CommunityPostDetailPage() {
         if (String(thread.comment.commentId) === commentId) {
           setReplyTo({
             author: thread.comment.authorNickname ?? '밴더유저',
-            body: thread.comment.content,
+            body: thread.comment.content ?? '',
             commentId,
           });
           commentInputRef.current?.focus();
@@ -577,7 +595,7 @@ export function CommunityPostDetailPage() {
         if (reply) {
           setReplyTo({
             author: reply.authorNickname ?? '밴더유저',
-            body: reply.content,
+            body: reply.content ?? '',
             commentId,
           });
           commentInputRef.current?.focus();

@@ -7,6 +7,7 @@ import {
   timeLabelForCreatedAt,
 } from '../notificationsFromApi';
 import type {
+  NotificationCursorPage,
   NotificationApiDto,
   SpringPage,
 } from '../../schemas/notificationsApi';
@@ -128,6 +129,43 @@ describe('notificationsFromApi adapter', () => {
   });
 
   describe('notificationsFromApiPage', () => {
+    it('커서 Page items 배열을 순서대로 매핑', () => {
+      const page: NotificationCursorPage<NotificationApiDto> = {
+        items: [
+          {
+            notificationId: '1',
+            type: 'BOOKING_CREATED',
+            title: 't1',
+            content: 'c1',
+            referenceType: null,
+            referenceId: null,
+            read: false,
+            createdAt: kstIsoLocal(2026, 4, 13, 11, 50),
+          },
+          {
+            notificationId: '2',
+            type: 'PAYMENT_APPROVED',
+            title: 't2',
+            content: '',
+            referenceType: null,
+            referenceId: null,
+            read: true,
+            createdAt: kstIsoLocal(2026, 4, 12, 10, 0),
+          },
+        ],
+        nextCursor: null,
+        hasNext: false,
+      };
+
+      const result = notificationsFromApiPage(page, NOW);
+      expect(result).toHaveLength(2);
+      expect(result[0].id).toBe('1');
+      expect(result[0].section).toBe('today');
+      expect(result[1].id).toBe('2');
+      expect(result[1].section).toBe('week');
+      expect(result[1].message).toBe('t2'); // content 빈 문자열 → title fallback
+    });
+
     it('Spring Page content 배열을 순서대로 매핑', () => {
       const page: SpringPage<NotificationApiDto> = {
         content: [

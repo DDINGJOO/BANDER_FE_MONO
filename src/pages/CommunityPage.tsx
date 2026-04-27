@@ -179,7 +179,7 @@ export function CommunityPage() {
                   <div className="community-page__card-body">
                     <span className="community-page__category">{item.category}</span>
                     <h2 className="community-page__card-title">{item.title}</h2>
-                    <p className="community-page__excerpt">{item.excerpt}</p>
+                    {item.excerpt ? <p className="community-page__excerpt">{item.excerpt}</p> : null}
                     <div className="community-page__meta">
                       <span>{item.authorNickname}</span>
                       <span>{item.postedAtLabel}</span>

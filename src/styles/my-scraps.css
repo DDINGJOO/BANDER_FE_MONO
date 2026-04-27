@@ -1,0 +1,291 @@
+/* Figma 6054:3805 (저장) / 6406:76230 (최근 본) — 내 스크랩 */
+
+.my-scraps-page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: #ffffff;
+}
+
+.my-scraps-page__main {
+  flex: 1 0 auto;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 40px 20px 80px;
+}
+
+.my-scraps {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 1288px;
+  margin: 0 auto;
+  font-family: 'Pretendard', system-ui, sans-serif;
+  color: #000000;
+}
+
+.my-scraps__title {
+  margin: 0 0 40px;
+  font-size: 30px;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+  color: #000000;
+}
+
+.my-scraps__tabs {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  margin-bottom: 40px;
+  border-bottom: 1px solid #eef1f4;
+}
+
+.my-scraps__tab {
+  appearance: none;
+  position: relative;
+  border: 0;
+  background: transparent;
+  padding: 14px 18px 16px;
+  font-family: inherit;
+  font-size: 18px;
+  font-weight: 500;
+  line-height: 26px;
+  color: #a3a9b5;
+  cursor: pointer;
+  transition: color 120ms ease;
+}
+
+.my-scraps__tab:hover {
+  color: #444a55;
+}
+
+.my-scraps__tab--active {
+  font-weight: 700;
+  color: #000000;
+}
+
+.my-scraps__tab--active::after {
+  content: '';
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  bottom: -1px;
+  height: 2px;
+  background: #000000;
+  border-radius: 2px;
+}
+
+.my-scraps__empty {
+  margin: 80px 0;
+  text-align: center;
+  color: #6d7a87;
+  font-size: 15px;
+  line-height: 22px;
+}
+
+.my-scraps__grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  column-gap: 50px;
+  row-gap: 40px;
+}
+
+@media (max-width: 1200px) {
+  .my-scraps__grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    column-gap: 30px;
+  }
+}
+
+@media (max-width: 960px) {
+  .my-scraps__grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    column-gap: 24px;
+  }
+}
+
+@media (max-width: 720px) {
+  .my-scraps__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: 16px;
+    row-gap: 28px;
+  }
+
+  .my-scraps__title {
+    font-size: 24px;
+    margin-bottom: 24px;
+  }
+
+  .my-scraps-page__main {
+    padding: 24px 16px 56px;
+  }
+}
+
+/* --- Card --- */
+.my-scraps-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+.my-scraps-card__thumb-wrap {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 241 / 157;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #eef1f4;
+}
+
+.my-scraps-card__thumb-link {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.my-scraps-card__thumb {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.my-scraps-card__scrap {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.my-scraps-card__scrap svg {
+  display: block;
+}
+
+.my-scraps-card__body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.my-scraps-card__head {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.my-scraps-card__tags,
+.my-scraps-card__meta,
+.my-scraps-card__chips {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+}
+
+.my-scraps-card__tag {
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 16px;
+  color: #a3a9b5;
+  white-space: nowrap;
+}
+
+.my-scraps-card__dot {
+  width: 2px;
+  height: 2px;
+  border-radius: 50%;
+  background: #a3a9b5;
+  flex-shrink: 0;
+}
+
+.my-scraps-card__dot--muted {
+  background: #6d7a87;
+}
+
+.my-scraps-card__title-link {
+  display: block;
+  color: inherit;
+  text-decoration: none;
+  min-width: 0;
+}
+
+.my-scraps-card__title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 26px;
+  color: #000000;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.my-scraps-card__rating {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.my-scraps-card__rating-num {
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 18px;
+  color: #000000;
+}
+
+.my-scraps-card__location {
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 18px;
+  color: #6d7a87;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.my-scraps-card__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.my-scraps-card__price {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 2px;
+}
+
+.my-scraps-card__price-value {
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 24px;
+  color: #ffa20c;
+}
+
+.my-scraps-card__price-suffix {
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 18px;
+  color: #a3a9b5;
+}
+
+.my-scraps-card__chip {
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 18px;
+  color: #a3a9b5;
+  white-space: nowrap;
+}
