@@ -180,10 +180,10 @@ export function CommunityWritePage() {
     setSubmitError('');
 
     try {
-      let imageRefs: string[] = [];
+      let uploads: Array<{ mediaRef: string; ownershipTicket: string }> = [];
       if (photos.length > 0) {
         try {
-          imageRefs = await Promise.all(photos.map((photo) => uploadPhoto(photo)));
+          uploads = await Promise.all(photos.map((photo) => uploadPhoto(photo)));
         } catch {
           setSubmitError('일부 이미지 업로드에 실패했습니다. 다시 시도해 주세요.');
           setSubmitting(false);
@@ -191,11 +191,16 @@ export function CommunityWritePage() {
         }
       }
 
-      const blocks: Array<{ blockType: 'TEXT' | 'IMAGE' | 'CODE'; content: string }> = [
+      const blocks: Array<{
+        blockType: 'TEXT' | 'IMAGE' | 'CODE';
+        content: string;
+        ownershipTicket?: string;
+      }> = [
         { blockType: 'TEXT', content: body.trim() },
-        ...imageRefs.map((mediaRef) => ({
+        ...uploads.map(({ mediaRef, ownershipTicket }) => ({
           blockType: 'IMAGE' as const,
           content: mediaRef,
+          ownershipTicket,
         })),
       ];
 

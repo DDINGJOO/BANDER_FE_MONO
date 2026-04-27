@@ -18,6 +18,8 @@ export type UpdateProfileRequest = {
   nickname: string;
   bio?: string;
   profileImageRef?: string;
+  /** Required when profileImageRef changes (PR-H partial): JWS from grant API. */
+  ownershipTicket?: string;
   gender?: string;
   regionCode?: string;
   genres?: string;
@@ -65,6 +67,8 @@ export type AccountInfo = {
   createdAt: string;
   nickname: string;
   profileImageRef: string | null;
+  phoneMasked: string | null;
+  phoneVerified: boolean;
 };
 
 export function getMyAccount() {
@@ -118,6 +122,9 @@ export type ProfileImageUploadResponse = {
   uploadUrl: string;
   publicUrl: string;
   expiresAt: string;
+  /** JWS ownership ticket — required by PATCH /users/me/profile under PR-H partial. */
+  ownershipTicket?: string;
+  uploadHeaders?: Record<string, string>;
 };
 
 export function requestProfileImageUploadForEdit(

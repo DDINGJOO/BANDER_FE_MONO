@@ -78,6 +78,7 @@ export function SignupTermsPage() {
     setErrorMessage('');
 
     try {
+      const shouldStaySignedIn = draft.signupSource === 'SOCIAL';
       await completeSignup(
         draft.signupCompletionToken,
         draft.nickname ?? '활기찬다람쥐',
@@ -88,10 +89,11 @@ export function SignupTermsPage() {
           agreed: Boolean(agreements[termKey(item)]),
           termCode: item.termCode,
           version: item.version,
-        }))
+        })),
+        draft.profileImageOwnershipTicket,
       );
       clearSignupDraft();
-      navigate('/login');
+      navigate(shouldStaySignedIn ? '/' : '/login', { replace: shouldStaySignedIn });
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : '회원가입 완료에 실패했습니다.');
     } finally {

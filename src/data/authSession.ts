@@ -3,7 +3,11 @@ export type SignupDraft = {
   gender?: 'MALE' | 'FEMALE' | 'PREFER_NOT_TO_SAY';
   nickname?: string;
   profileImageRef?: string;
+  /** JWS ticket from signup-time profile-image grant — passed to completeSignup. */
+  profileImageOwnershipTicket?: string;
   regionCode?: string;
+  signupSource?: 'EMAIL' | 'SOCIAL';
+  socialProvider?: 'KAKAO' | 'GOOGLE' | 'APPLE';
   signupCompletionToken?: string;
   verifiedEmailToken?: string;
 };

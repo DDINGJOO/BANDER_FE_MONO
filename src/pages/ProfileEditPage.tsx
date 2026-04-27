@@ -493,24 +493,25 @@ export function ProfileEditPage() {
                 setSubmitError('');
                 try {
                   let imageRef: string | undefined;
+                  let ownershipTicket: string | undefined;
 
-                  // Upload new image if selected
+                  // Upload new image if selected — grant → S3 PUT → commit (eager)
                   if (selectedFile) {
                     const grant = await requestProfileImageUploadForEdit(
                       selectedFile.name,
                       selectedFile.type,
                       selectedFile.size,
                     );
-                    // PUT to presigned URL
-                    const uploadResp = await fetch(grant.uploadUrl, {
-                      method: 'PUT',
-                      headers: { 'Content-Type': selectedFile.type },
-                      body: selectedFile,
+                    const { putAndCommit } = await import('../api/media');
+                    await putAndCommit({
+                      mediaId: grant.profileImageRef,
+                      uploadUrl: grant.uploadUrl,
+                      uploadHeaders: grant.uploadHeaders,
+                      ownershipTicket: grant.ownershipTicket,
+                      file: selectedFile,
                     });
-                    if (!uploadResp.ok) {
-                      throw new Error('이미지 업로드에 실패했습니다.');
-                    }
                     imageRef = grant.profileImageRef;
+                    ownershipTicket = grant.ownershipTicket;
                   }
 
                   const mappedGender = gender === 'male' ? 'MALE' : 'FEMALE';
@@ -522,6 +523,7 @@ export function ProfileEditPage() {
                     genres: genres.join(',') || undefined,
                     instruments: instruments.join(',') || undefined,
                     profileImageRef: imageRef,
+                    ownershipTicket: imageRef ? ownershipTicket : undefined,
                   });
                   // Force header to refetch latest profile on next render.
                   invalidateUserSummaryCache();

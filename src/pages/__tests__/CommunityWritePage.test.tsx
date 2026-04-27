@@ -57,7 +57,10 @@ beforeEach(() => {
 });
 
 test('uploads selected images and submits a real API post payload', async () => {
-  mockedUploadPostInlineImage.mockResolvedValue('media/post-inline-image/user/101/example.png');
+  mockedUploadPostInlineImage.mockResolvedValue({
+    mediaRef: 'media/post-inline-image/user/101/example.png',
+    ownershipTicket: 'test-ticket',
+  });
   mockedCreatePost.mockResolvedValue({
     authorNickname: '작성자',
     authorProfileImageRef: null,
@@ -104,6 +107,7 @@ test('uploads selected images and submits a real API post payload', async () => 
         {
           blockType: 'IMAGE',
           content: 'media/post-inline-image/user/101/example.png',
+          ownershipTicket: 'test-ticket',
         },
       ],
       category: '궁금해요',

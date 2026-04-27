@@ -66,7 +66,12 @@ export function completeSignup(
   gender: 'MALE' | 'FEMALE' | 'PREFER_NOT_TO_SAY',
   regionCode: string,
   profileImageRef: string,
-  consents: Array<{ agreed: boolean; termCode: string; version: string }>
+  consents: Array<{ agreed: boolean; termCode: string; version: string }>,
+  /**
+   * JWS ownership ticket from the signup-time profile-image grant.
+   * Required by PR-H partial when profileImageRef !== DEFAULT_PROFILE_IMAGE_REF.
+   */
+  ownershipTicket?: string
 ) {
   return postJson<SignupCompletionResponse>('/api/v1/auth/signup/completion', {
     consents,
@@ -75,6 +80,7 @@ export function completeSignup(
     profileImageRef,
     regionCode,
     signupCompletionToken,
+    ownershipTicket,
   });
 }
 
@@ -110,6 +116,9 @@ export type ProfileImageUploadResponse = {
   uploadUrl: string;
   publicUrl: string;
   expiresAt: string;
+  /** JWS ownership ticket — required by completeSignup when image changes (PR-H partial). */
+  ownershipTicket?: string;
+  uploadHeaders?: Record<string, string>;
 };
 
 export function requestProfileImageUpload(

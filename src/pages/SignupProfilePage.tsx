@@ -9,17 +9,18 @@ import {
   SelectedCheckIcon,
   UnavailableIcon,
 } from '../components/shared/Icons';
+import { DEFAULT_PROFILE_IMAGE_REF, DEFAULT_PROFILE_IMAGE_URL } from '../config/media';
 import { KOREA_REGIONS } from '../data/auth';
 import { loadSignupDraft, saveSignupDraft } from '../data/authSession';
-
-const DEFAULT_PROFILE_IMAGE_REF = 'profile/default-v1';
 
 export function SignupProfilePage() {
   const navigate = useNavigate();
   const [gender, setGender] = useState<'male' | 'female' | null>(null);
   const [nickname, setNickname] = useState('활기찬다람쥐');
   const [region, setRegion] = useState('서울특별시');
-  const [profileImageUrl, setProfileImageUrl] = useState('');
+  const [loginEmail, setLoginEmail] = useState('');
+  const [isSocialSignup, setIsSocialSignup] = useState(false);
+  const [profileImageUrl, setProfileImageUrl] = useState(DEFAULT_PROFILE_IMAGE_URL);
   const [selectedImageFile, setSelectedImageFile] = useState<File | null>(null);
   const [nicknameAvailability, setNicknameAvailability] = useState<'idle' | 'checking' | 'available' | 'unavailable'>('idle');
   const [isRegionOpen, setIsRegionOpen] = useState(false);
@@ -38,6 +39,8 @@ export function SignupProfilePage() {
     if (draft.nickname) {
       setNickname(draft.nickname);
     }
+    setLoginEmail(draft.email ?? '');
+    setIsSocialSignup(draft.signupSource === 'SOCIAL');
     if (draft.regionCode) {
       setRegion(draft.regionCode);
     }
@@ -107,12 +110,13 @@ export function SignupProfilePage() {
     }
 
     const draft = loadSignupDraft();
-    if (!draft?.signupCompletionToken || !draft.email) {
+    if (!draft?.signupCompletionToken) {
       navigate('/signup', { replace: true });
       return;
     }
 
     let profileImageRef = DEFAULT_PROFILE_IMAGE_REF;
+    let profileImageOwnershipTicket: string | undefined;
 
     if (selectedImageFile) {
       try {
@@ -122,15 +126,16 @@ export function SignupProfilePage() {
           selectedImageFile.type,
           selectedImageFile.size,
         );
-        const uploadResp = await fetch(grant.uploadUrl, {
-          method: 'PUT',
-          body: selectedImageFile,
-          headers: { 'Content-Type': selectedImageFile.type },
+        const { putAndCommit } = await import('../api/media');
+        await putAndCommit({
+          mediaId: grant.profileImageRef,
+          uploadUrl: grant.uploadUrl,
+          uploadHeaders: grant.uploadHeaders,
+          ownershipTicket: grant.ownershipTicket,
+          file: selectedImageFile,
         });
-        if (!uploadResp.ok) {
-          throw new Error('이미지 업로드에 실패했습니다.');
-        }
         profileImageRef = grant.profileImageRef;
+        profileImageOwnershipTicket = grant.ownershipTicket;
       } catch {
         // fall back to default if upload fails
       }
@@ -141,6 +146,7 @@ export function SignupProfilePage() {
       gender: gender === 'male' ? 'MALE' : gender === 'female' ? 'FEMALE' : 'PREFER_NOT_TO_SAY',
       nickname: normalizedNickname,
       profileImageRef,
+      profileImageOwnershipTicket,
       regionCode: region.trim(),
     });
     navigate('/signup/terms');
@@ -218,6 +224,15 @@ export function SignupProfilePage() {
             </div>
 
             <div className="signup-profile__fields">
+              {isSocialSignup && loginEmail ? (
+                <div className="signup-section">
+                  <span className="signup-label">로그인 아이디</span>
+                  <div className="signup-input signup-input--readonly">
+                    <span className="signup-input__text">{loginEmail}</span>
+                  </div>
+                </div>
+              ) : null}
+
               <div className="signup-section">
                 <label className="signup-label" htmlFor="profileNickname">
                   닉네임

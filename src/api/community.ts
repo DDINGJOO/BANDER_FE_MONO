@@ -59,9 +59,18 @@ export type CommentDto = {
   authorUserId: string;
   authorNickname: string | null;
   authorProfileImageRef: string | null;
-  content: string;
+  /**
+   * 삭제된 댓글(tombstone) 인 경우 null. 자식 답글이 살아있을 때만 부모가 tombstone 으로 응답에 노출된다.
+   */
+  content: string | null;
   depth: number;
   createdAt: string;
+  /**
+   * 부모 댓글이 삭제되었지만 살아있는 자식 답글이 있어 tombstone 으로 노출되는 경우 true.
+   * true 인 경우 content/authorNickname/authorProfileImageRef 는 모두 null 이며, "삭제된 댓글입니다" 로 렌더한다.
+   * (구버전 응답 호환을 위해 optional. 미정의는 false 로 간주.)
+   */
+  deleted?: boolean;
 };
 
 export type CommunityCommentDto = CommentDto;
@@ -88,6 +97,8 @@ export type CreatePostRequest = {
   blocks: Array<{
     blockType: CommunityPostBlockType;
     content: string;
+    /** Required for IMAGE blocks under PR-G partial: JWS ownership ticket from media-svc. */
+    ownershipTicket?: string;
   }>;
 };
 
@@ -158,15 +169,9 @@ export type MediaUploadGrantDto = {
   expiresAt: string;
   targetType?: string;
   stubbed?: boolean;
+  /** JWS ownership ticket — required when applying to entity (PR-G/PR-H). */
+  ownershipTicket?: string;
 };
-
-function buildUploadHeaders(grant: MediaUploadGrantDto, file: File) {
-  const headers = new Headers(grant.uploadHeaders ?? {});
-  if (!headers.has('Content-Type') && file.type) {
-    headers.set('Content-Type', file.type);
-  }
-  return headers;
-}
 
 export function requestPostInlineImageUpload(input: {
   contentLength: number;
@@ -184,7 +189,24 @@ export function requestPostInlineImageUpload(input: {
   });
 }
 
-export async function uploadPostInlineImage(input: { file: File; ownerKey: string }) {
+/**
+ * Upload + commit a post inline image (ticket flow).
+ *
+ * Flow:
+ *   1. POST /api/v1/media/uploads → mediaRef + presignedUrl + ownershipTicket
+ *   2. PUT to S3
+ *   3. POST /api/v1/media/{mediaRef}/commit (sha256 + size verified server-side)
+ *   4. Return { mediaRef, ownershipTicket } so the caller can thread the ticket into
+ *      the IMAGE block when submitting the post.
+ *
+ * The commit step is performed eagerly (right after PUT) so the ticket reaches
+ * COMMITTED state before the user submits the post. SQS auto-commit safety net
+ * still covers the case where this commit call fails after a successful PUT.
+ */
+export async function uploadPostInlineImage(input: {
+  file: File;
+  ownerKey: string;
+}): Promise<{ mediaRef: string; ownershipTicket: string }> {
   const grant = await requestPostInlineImageUpload({
     contentLength: input.file.size,
     contentType: input.file.type,
@@ -192,17 +214,19 @@ export async function uploadPostInlineImage(input: { file: File; ownerKey: strin
     ownerKey: input.ownerKey,
   });
 
-  const uploadResponse = await fetch(grant.uploadUrl, {
-    body: input.file,
-    headers: buildUploadHeaders(grant, input.file),
-    method: 'PUT',
+  const { putAndCommit } = await import('./media');
+  await putAndCommit({
+    mediaId: grant.mediaRef,
+    uploadUrl: grant.uploadUrl,
+    uploadHeaders: grant.uploadHeaders,
+    ownershipTicket: grant.ownershipTicket,
+    file: input.file,
   });
 
-  if (!uploadResponse.ok) {
-    throw new Error('이미지 업로드에 실패했습니다.');
-  }
-
-  return grant.mediaRef;
+  return {
+    mediaRef: grant.mediaRef,
+    ownershipTicket: grant.ownershipTicket ?? '',
+  };
 }
 
 export type MiniFeedTab = 'written' | 'commented';
