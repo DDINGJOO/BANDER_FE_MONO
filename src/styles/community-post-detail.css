@@ -110,6 +110,18 @@
   max-width: 640px;
 }
 
+.community-post-detail__block-image {
+  display: block;
+  width: auto;
+  height: auto;
+  max-width: min(100%, 520px);
+  max-height: 360px;
+  margin: 14px 0;
+  border-radius: 12px;
+  background: #f4f6f8;
+  object-fit: contain;
+}
+
 .community-post-detail__author-row {
   display: flex;
   align-items: center;
@@ -638,6 +650,11 @@
 }
 
 @media (max-width: 767px) {
+  .community-post-detail__block-image {
+    max-width: 100%;
+    max-height: 280px;
+  }
+
   .community-post-detail__comments-card {
     min-height: 0;
     padding: 18px 16px;
