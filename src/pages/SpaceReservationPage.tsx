@@ -114,6 +114,9 @@ export function SpaceReservationPage() {
   const [paymentResult, setPaymentResult] = useState<PaymentResultState>(null);
   const [sagaId, setSagaId] = useState<string | null>(null);
   const [sagaPending, setSagaPending] = useState(false);
+  // Guard: once the saga polling response surfaces orderId/amount/customerKey,
+  // we open the Toss SDK exactly once. Polling continues until COMPLETED.
+  const tossLaunchedRef = useRef(false);
   const [canScrollTimelineNext, setCanScrollTimelineNext] = useState(true);
   const [canScrollTimelinePrev, setCanScrollTimelinePrev] = useState(false);
   const [selectedOptionCounts, setSelectedOptionCounts] = useState<Record<string, number>>({
@@ -403,6 +406,7 @@ export function SpaceReservationPage() {
 
       if (result.kind === 'saga') {
         // canary path: orchestrator returned 202 + sagaId. Polling handles the rest.
+        tossLaunchedRef.current = false;
         setSagaId(result.saga.sagaId);
         setSagaPending(true);
         return;
@@ -444,6 +448,40 @@ export function SpaceReservationPage() {
 
   useEffect(() => {
     if (!sagaPending) return;
+
+    // PR-2.8a: when the saga polling response first exposes orderId + amount,
+    // launch the Toss SDK once. Polling continues until COMPLETED.
+    const data = sagaState.data;
+    if (
+      !tossLaunchedRef.current &&
+      data?.orderId &&
+      typeof data.amount === 'number' &&
+      data.amount > 0
+    ) {
+      tossLaunchedRef.current = true;
+      const clientKey = getTossPaymentsClientKey();
+      if (!clientKey) {
+        setSagaPending(false);
+        setPaymentResult('failed');
+        return;
+      }
+      if (data.bookingId) {
+        sessionStorage.setItem('bander_pending_booking_id', data.bookingId);
+      }
+      void requestTossPayment({
+        clientKey,
+        orderId: data.orderId,
+        orderName: spaceCard.title + ' 예약',
+        amount: data.amount,
+        customerKey: data.customerKey,
+        successUrl: `${window.location.origin}/payment/success`,
+        failUrl: `${window.location.origin}/payment/fail`,
+      }).catch(() => {
+        setSagaPending(false);
+        setPaymentResult('failed');
+      });
+    }
+
     if (sagaState.timedOut) {
       setSagaPending(false);
       setPaymentResult('failed');
@@ -451,7 +489,6 @@ export function SpaceReservationPage() {
     }
     if (sagaState.status === 'COMPLETED') {
       setSagaPending(false);
-      const data = sagaState.data;
       if (data?.bookingId) {
         sessionStorage.setItem('bander_pending_booking_id', data.bookingId);
       }
@@ -464,7 +501,7 @@ export function SpaceReservationPage() {
       setSagaPending(false);
       setPaymentResult('failed');
     }
-  }, [sagaPending, sagaState.status, sagaState.timedOut, sagaState.data]);
+  }, [sagaPending, sagaState.status, sagaState.timedOut, sagaState.data, spaceCard.title]);
 
   const handleDownloadCoupon = async (couponId: string) => {
     if (!isAuthenticated) {

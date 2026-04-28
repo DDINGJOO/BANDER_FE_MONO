@@ -115,6 +115,14 @@ export type SagaStatusResponse = {
   updatedAt: string;
   currentStepIndex?: number;
   definition?: string;
+  /**
+   * Toss payment kickoff fields exposed by PR-2.8 backend once the saga has
+   * created the booking + payment. Frontend uses these to launch the Toss SDK
+   * once during polling (see SpaceReservationPage saga path).
+   */
+  orderId?: string;
+  amount?: number;
+  customerKey?: string;
 };
 
 export type CreateBookingResult =

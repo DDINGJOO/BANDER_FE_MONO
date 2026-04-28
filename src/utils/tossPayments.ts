@@ -9,11 +9,16 @@ export interface TossPaymentParams {
   failUrl: string;
   customerEmail?: string;
   customerName?: string;
+  /**
+   * Optional Toss customerKey. Saga path (PR-2.8a) supplies the backend-issued
+   * key from the polling response; legacy path falls back to anonymous.
+   */
+  customerKey?: string;
 }
 
 export async function requestTossPayment(params: TossPaymentParams): Promise<void> {
   const tossPayments = await loadTossPayments(params.clientKey);
-  const payment = tossPayments.payment({ customerKey: 'ANONYMOUS' });
+  const payment = tossPayments.payment({ customerKey: params.customerKey ?? 'ANONYMOUS' });
 
   await payment.requestPayment({
     method: 'CARD',
