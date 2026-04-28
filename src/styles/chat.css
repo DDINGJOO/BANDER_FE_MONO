@@ -248,12 +248,17 @@
 .chat-page__messages {
   flex: 1;
   min-height: 200px;
-  overflow-y: scroll;
+  overflow-y: auto;
   overflow-x: hidden;
   padding: 8px 20px 16px;
   display: flex;
   flex-direction: column;
-  justify-content: flex-end;
+}
+
+/* 빈 상태 (chat-page__empty) 만 컨테이너 안 가운데 정렬.
+   flex-end 를 컨테이너에 걸면 overflow 안의 위쪽 메시지로 스크롤이 안 올라감. */
+.chat-page__messages > .chat-page__empty {
+  margin: auto;
 }
 
 /* 스크롤바: 스크롤할 때만 표시 */

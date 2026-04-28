@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   type ChatMessageResponse,
@@ -22,6 +22,8 @@ import {
   chatRoomToThread,
 } from '../data/chatPage';
 import { useChatWebSocket } from '../hooks/useChatWebSocket';
+
+const MESSAGE_PAGE_SIZE = 30;
 
 function CameraGlyph24() {
   return (
@@ -93,7 +95,27 @@ export function ChatPage() {
   const [vendorDetailsMap, setVendorDetailsMap] = useState<Record<string, VendorDetailDto>>({});
   const messagesContainerRef = useRef<HTMLDivElement | null>(null);
 
+  // 무한 스크롤 — 위로 스크롤 시 더 오래된 메시지 페이지네이션
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [hasMoreOlder, setHasMoreOlder] = useState(false);
+  const [loadingOlder, setLoadingOlder] = useState(false);
+  const topSentinelRef = useRef<HTMLDivElement | null>(null);
+  // prepend 직전 scrollHeight 를 기억해서 useLayoutEffect 가 scrollTop 을 보정.
+  // append (WS 신규/sendMessage) 일 때는 false 라 기존처럼 맨 아래로 스크롤.
+  const isPrependingRef = useRef(false);
+  const prevScrollHeightRef = useRef(0);
+  // CRITICAL-2: 첫 페이지 로드 직후 sentinel 이 자동 트리거되어 cascade 되는 걸 막기 위한 게이트.
+  // 첫 페이지 set 후 한 frame 뒤에 true 로 전환해 사용자 의도 스크롤만 받음.
+  const observerEnabledRef = useRef(false);
+
   const activeRoomId = searchParams.get('t') ?? null;
+
+  // CRITICAL-1: in-flight fetch 가 끝나기 전에 방을 바꾸면 응답을 폐기하기 위한 latest activeRoomId.
+  // activeRoomId 가 위에서 선언된 다음에 ref 를 잡아야 hoisting 위반 안 함.
+  const activeRoomIdRef = useRef<string | null>(activeRoomId);
+  useEffect(() => {
+    activeRoomIdRef.current = activeRoomId;
+  }, [activeRoomId]);
 
   const filteredSuggestions = HEADER_SEARCH_KEYWORD_SUGGESTIONS.filter((item) =>
     item.toLowerCase().includes(headerSearchQuery.toLowerCase()),
@@ -188,20 +210,97 @@ export function ChatPage() {
   useEffect(() => {
     if (!activeRoomId) {
       setMessages([]);
+      setNextCursor(null);
+      setHasMoreOlder(false);
+      observerEnabledRef.current = false;
       return;
     }
-    getChatMessages(activeRoomId)
+    // 방 변경 시 prepend flag 가 살아있으면 첫 로드의 scroll-to-bottom 이
+    // 잘못 prepend 분기로 들어가므로 명시 reset.
+    isPrependingRef.current = false;
+    observerEnabledRef.current = false;
+    const requestedRoomId = activeRoomId;
+    getChatMessages(activeRoomId, { size: MESSAGE_PAGE_SIZE })
       .then((page) => {
+        // 응답 도착 전에 방이 바뀌었으면 폐기 (cross-room race)
+        if (activeRoomIdRef.current !== requestedRoomId) return;
         // 백엔드는 DESC(최신 먼저) 반환 → reverse해서 오래된 것이 위, 최신이 아래
         setMessages([...page.items].reverse());
+        setNextCursor(page.nextCursor);
+        setHasMoreOlder(page.hasNext);
+        // 한 frame 뒤에 observer 활성 — 첫 페이지 set 직후 자동 trigger cascade 방지
+        requestAnimationFrame(() => {
+          if (activeRoomIdRef.current === requestedRoomId) {
+            observerEnabledRef.current = true;
+          }
+        });
       })
       .catch((err) => {
         console.error('[ChatPage] getChatMessages failed:', err);
+        if (activeRoomIdRef.current !== requestedRoomId) return;
         setMessages([]);
+        setNextCursor(null);
+        setHasMoreOlder(false);
       });
     markAsRead(activeRoomId).catch((err) => {
       console.error('[ChatPage] markAsRead failed:', err);
     });
+  }, [activeRoomId]);
+
+  // 위로 스크롤 시 더 오래된 메시지 페이지네이션
+  const loadOlderMessages = useCallback(async () => {
+    if (!activeRoomId) return;
+    if (loadingOlder || !hasMoreOlder || !nextCursor) return;
+    const container = messagesContainerRef.current;
+    if (!container) return; // HIGH-2: container 가 null 이면 보정 불가
+    const requestedRoomId = activeRoomId;
+    setLoadingOlder(true);
+    prevScrollHeightRef.current = container.scrollHeight;
+    isPrependingRef.current = true;
+    try {
+      const page = await getChatMessages(activeRoomId, {
+        cursor: nextCursor,
+        size: MESSAGE_PAGE_SIZE,
+      });
+      // CRITICAL-1: 응답 도착 전에 방이 바뀌었으면 prepend 폐기
+      if (activeRoomIdRef.current !== requestedRoomId) {
+        isPrependingRef.current = false;
+        return;
+      }
+      const older = [...page.items].reverse(); // ASC (oldest-on-top)
+      setMessages((prev) => [...older, ...prev]);
+      setNextCursor(page.nextCursor);
+      setHasMoreOlder(page.hasNext);
+    } catch (err) {
+      console.error('[ChatPage] loadOlderMessages failed:', err);
+      isPrependingRef.current = false; // 실패 시 보정 skip
+    } finally {
+      setLoadingOlder(false);
+    }
+  }, [activeRoomId, loadingOlder, hasMoreOlder, nextCursor]);
+
+  // IntersectionObserver — top sentinel 이 viewport 진입 시 다음 페이지 로드.
+  // observer 자체는 activeRoomId 단위로만 재생성하고 callback 은 ref 로 latest 사용.
+  const loadOlderRef = useRef(loadOlderMessages);
+  useEffect(() => {
+    loadOlderRef.current = loadOlderMessages;
+  });
+  useEffect(() => {
+    const sentinel = topSentinelRef.current;
+    const container = messagesContainerRef.current;
+    if (!sentinel || !container) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        // CRITICAL-2: 첫 페이지 직후 cascade 방지 — observerEnabledRef 가 한 frame 뒤에 true.
+        if (!observerEnabledRef.current) return;
+        if (entries[0]?.isIntersecting) {
+          loadOlderRef.current();
+        }
+      },
+      { root: container, rootMargin: '40px 0px 0px 0px', threshold: 0 },
+    );
+    observer.observe(sentinel);
+    return () => observer.disconnect();
   }, [activeRoomId]);
 
   // Load vendor detail for vendor-type rooms
@@ -221,10 +320,21 @@ export function ChatPage() {
     setMessages((prev) => [...prev, msg]);
   });
 
-  // 메시지 변경 시 맨 아래로 자동 스크롤
-  useEffect(() => {
+  // 메시지 변경 시 scroll 위치 결정.
+  // - prepend (오래된 메시지 페이지네이션) 시: 새로 추가된 만큼 scrollTop 보정 →
+  //   사용자가 보던 메시지가 화면 같은 위치에 머물게.
+  // - append (WS 신규 / sendMessage / 첫 로드) 시: 기존처럼 맨 아래로.
+  // useLayoutEffect 사용 — DOM paint 전에 보정해야 한 프레임 점프 방지.
+  useLayoutEffect(() => {
     const el = messagesContainerRef.current;
-    if (el) el.scrollTop = el.scrollHeight;
+    if (!el) return;
+    if (isPrependingRef.current) {
+      const diff = el.scrollHeight - prevScrollHeightRef.current;
+      el.scrollTop = el.scrollTop + diff;
+      isPrependingRef.current = false;
+    } else {
+      el.scrollTop = el.scrollHeight;
+    }
   }, [messages]);
 
   const setThread = (roomId: string) => {
@@ -443,6 +553,31 @@ export function ChatPage() {
             <p className="chat-page__date-pill">{todayLabel}</p>
 
             <div className="chat-page__messages" ref={messagesContainerRef}>
+              {/* HIGH-1: sentinel 은 항상 mount, hasMoreOlder 일 때만 display 로 노출.
+                  conditional render 가 ref attach/detach 와 effect 의존성을 어긋나게 만드는
+                  fragile 패턴 회피. */}
+              <div
+                ref={topSentinelRef}
+                aria-hidden
+                style={{
+                  height: 1,
+                  display: hasMoreOlder ? 'block' : 'none',
+                }}
+              />
+              {loadingOlder ? (
+                <p
+                  role="status"
+                  aria-live="polite"
+                  style={{
+                    textAlign: 'center',
+                    padding: '8px 0',
+                    color: '#888',
+                    fontSize: 12,
+                  }}
+                >
+                  이전 메시지를 불러오는 중...
+                </p>
+              ) : null}
               {showEmptyPrompt ? (
                 <div className="chat-page__empty">
                   <div className="chat-page__empty-illu" aria-hidden />
