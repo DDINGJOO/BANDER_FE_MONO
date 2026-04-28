@@ -62,6 +62,7 @@ function App() {
       <Route element={<SignupTermsPage />} path="/signup/terms" />
       <Route element={<ProfileEditPage />} path="/profile/edit" />
       <Route element={<MyMiniFeedPage />} path="/my-minifeed" />
+      <Route element={<MyMiniFeedPage />} path="/users/:userId/minifeed" />
       <Route element={<AccountSettingsPage />} path="/account/settings" />
       <Route element={<NotificationSettingsPage />} path="/notification-settings" />
       <Route element={<PaymentInfoPage />} path="/payment-info" />

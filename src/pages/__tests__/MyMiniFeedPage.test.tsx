@@ -16,16 +16,20 @@ jest.mock('../../api/community', () => {
   return {
     ...actual,
     fetchMyMiniFeed: jest.fn(),
+    fetchUserMiniFeed: jest.fn(),
   };
 });
 
 const mockedFetchMyMiniFeed = jest.mocked(communityApi.fetchMyMiniFeed);
+const mockedFetchUserMiniFeed = jest.mocked(communityApi.fetchUserMiniFeed);
 
 function renderPage(initialEntry = '/my-minifeed') {
   return render(
     <MemoryRouter initialEntries={[initialEntry]}>
       <Routes>
         <Route element={<MyMiniFeedPage />} path="/my-minifeed" />
+        <Route element={<MyMiniFeedPage />} path="/users/:userId/minifeed" />
+        <Route element={<div>login page</div>} path="/login" />
       </Routes>
     </MemoryRouter>
   );
@@ -169,4 +173,51 @@ test('fetches the profile feed and refetches on tab and sort changes', async () 
   });
 
   expect(await screen.findByText('인기 게시글 제목')).toBeInTheDocument();
+});
+
+test('loads another user mini feed without requiring login', async () => {
+  window.sessionStorage.clear();
+  mockedFetchUserMiniFeed.mockResolvedValue({
+    page: {
+      hasNext: false,
+      items: [
+        {
+          authorNickname: '타인',
+          category: '궁금해요',
+          commentCount: 3,
+          createdAt: '2026-04-10T09:00:00.000Z',
+          excerpt: '타인이 작성한 글 미리보기',
+          likeCount: 8,
+          postId: '306963773430693888',
+          title: '타인 피드 게시글',
+        },
+      ],
+      page: 0,
+      size: 20,
+      totalCount: 1,
+    },
+    profile: {
+      bio: '공개 미니피드입니다.',
+      joinLabel: '26.04 가입',
+      nickname: '타인',
+      profileImageUrl: null,
+      tags: ['#드럼'],
+    },
+    sort: 'latest',
+    tab: 'written',
+  });
+
+  renderPage('/users/306963773430693888/minifeed');
+
+  expect(await screen.findByRole('heading', { name: '타인 미니피드' })).toBeInTheDocument();
+  expect(mockedFetchUserMiniFeed).toHaveBeenCalledWith('306963773430693888', {
+    page: 0,
+    size: 20,
+    sort: 'latest',
+    tab: 'written',
+  });
+  expect(mockedFetchMyMiniFeed).not.toHaveBeenCalled();
+  expect(screen.getByText('타인 피드 게시글')).toBeInTheDocument();
+  expect(screen.queryByText('수정하기')).not.toBeInTheDocument();
+  expect(screen.queryByText('login page')).not.toBeInTheDocument();
 });

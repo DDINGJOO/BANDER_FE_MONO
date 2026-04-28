@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
   fetchMyMiniFeed,
+  fetchUserMiniFeed,
   normalizeMiniFeedPage,
   type MiniFeedPostDto,
   type MiniFeedProfileDto,
@@ -258,11 +259,14 @@ function MiniFeedPostCard({ post }: { post: MiniFeedCardModel }) {
 
 export function MyMiniFeedPage() {
   const navigate = useNavigate();
+  const { userId } = useParams<{ userId?: string }>();
   const [searchParams, setSearchParams] = useSearchParams();
   const feedTab: MiniFeedTab =
     searchParams.get('tab') === 'commented' ? 'commented' : 'written';
   const authSession = loadAuthSession();
   const isAuthenticated = Boolean(authSession);
+  const targetUserId = userId?.trim() ?? '';
+  const isPublicUserFeed = targetUserId.length > 0;
 
   const [headerSearchOpen, setHeaderSearchOpen] = useState(false);
   const [headerSearchQuery, setHeaderSearchQuery] = useState('');
@@ -285,6 +289,7 @@ export function MyMiniFeedPage() {
     profile?.profileImageUrl ?? profile?.profileImageRef
   );
   const profileTags = useMemo(() => normalizeTags(profile?.tags), [profile?.tags]);
+  const profileLabel = profile?.nickname ?? (isPublicUserFeed ? '사용자' : '내 프로필');
 
   const setFeedTab = (tab: MiniFeedTab) => {
     if (tab === 'commented') {
@@ -322,7 +327,7 @@ export function MyMiniFeedPage() {
   }, []);
 
   useEffect(() => {
-    if (!isAuthenticated) {
+    if (!isPublicUserFeed && !isAuthenticated) {
       navigate('/login?returnTo=/my-minifeed');
       return;
     }
@@ -332,12 +337,17 @@ export function MyMiniFeedPage() {
     setLoading(true);
     setErrorMessage('');
 
-    fetchMyMiniFeed({
+    const params = {
       page: 0,
       size: 20,
       sort: sortBy,
       tab: feedTab,
-    })
+    };
+    const request = isPublicUserFeed
+      ? fetchUserMiniFeed(targetUserId, params)
+      : fetchMyMiniFeed(params);
+
+    request
       .then((response) => {
         if (!active) {
           return;
@@ -353,12 +363,19 @@ export function MyMiniFeedPage() {
           return;
         }
 
-        if (error instanceof ApiError && error.status === 401) {
+        if (!isPublicUserFeed && error instanceof ApiError && error.status === 401) {
           navigate('/login?returnTo=/my-minifeed');
           return;
         }
 
-        setErrorMessage(getErrorMessage(error, '내 미니피드를 불러오지 못했습니다.'));
+        setErrorMessage(
+          getErrorMessage(
+            error,
+            isPublicUserFeed
+              ? '미니피드를 불러오지 못했습니다.'
+              : '내 미니피드를 불러오지 못했습니다.'
+          )
+        );
         setPosts([]);
         setTotalCount(0);
       })
@@ -371,7 +388,7 @@ export function MyMiniFeedPage() {
     return () => {
       active = false;
     };
-  }, [feedTab, sortBy]);
+  }, [feedTab, isAuthenticated, isPublicUserFeed, navigate, sortBy, targetUserId]);
 
   return (
     <main className="my-mini-feed-page">
@@ -403,14 +420,16 @@ export function MyMiniFeedPage() {
           <button
             aria-label="뒤로"
             className="my-mini-feed-page__back"
-            onClick={() => navigate('/')}
+            onClick={() => navigate(isPublicUserFeed ? '/community' : '/')}
             type="button"
           >
             <span aria-hidden className="my-mini-feed-page__back-chevron">
               <ChevronIcon />
             </span>
           </button>
-          <h1 className="my-mini-feed-page__heading">내 미니피드</h1>
+          <h1 className="my-mini-feed-page__heading">
+            {isPublicUserFeed ? `${profileLabel} 미니피드` : '내 미니피드'}
+          </h1>
         </div>
 
         <div className="my-mini-feed-page__profile-row">
@@ -432,7 +451,7 @@ export function MyMiniFeedPage() {
             <div className="my-mini-feed-page__profile-text">
               <div>
                 <p className="my-mini-feed-page__nickname">
-                  {profile?.nickname ?? '내 프로필'}
+                  {profileLabel}
                 </p>
                 <p className="my-mini-feed-page__join">{normalizeJoinLabel(profile)}</p>
               </div>
@@ -446,9 +465,11 @@ export function MyMiniFeedPage() {
               </div>
             </div>
           </div>
-          <Link className="my-mini-feed-page__edit" to="/profile/edit">
-            수정하기
-          </Link>
+          {isPublicUserFeed ? null : (
+            <Link className="my-mini-feed-page__edit" to="/profile/edit">
+              수정하기
+            </Link>
+          )}
         </div>
 
         <div className="my-mini-feed-page__tabs" role="tablist">

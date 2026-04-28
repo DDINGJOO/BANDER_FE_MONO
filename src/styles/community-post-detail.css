@@ -129,6 +129,67 @@
   gap: 5px;
 }
 
+.community-post-detail__author-menu-wrap {
+  position: relative;
+  display: inline-flex;
+  align-self: flex-start;
+}
+
+.community-post-detail__author-name-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+}
+
+.community-post-detail__author-name-button:hover .community-post-detail__author-name,
+.community-post-detail__author-name-button:focus-visible .community-post-detail__author-name,
+.community-post-detail__comment-author-button:hover,
+.community-post-detail__comment-author-button:focus-visible {
+  color: #ff8a00;
+}
+
+.community-post-detail__author-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  z-index: 40;
+  min-width: 124px;
+  padding: 6px;
+  border: 1px solid #e5eaf0;
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.14);
+}
+
+.community-post-detail__author-menu button {
+  display: block;
+  width: 100%;
+  border: 0;
+  border-radius: 7px;
+  padding: 9px 10px;
+  background: transparent;
+  color: #1f2933;
+  cursor: pointer;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 18px;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.community-post-detail__author-menu button:hover,
+.community-post-detail__author-menu button:focus-visible {
+  background: #fff6e7;
+  color: #ff8a00;
+}
+
 .community-post-detail__author-name {
   font-size: 15px;
   font-weight: 600;
@@ -364,6 +425,16 @@
   font-weight: 500;
   line-height: 18px;
   color: #000;
+}
+
+.community-post-detail__comment-author-button {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
 }
 
 .community-post-detail__comment-text {

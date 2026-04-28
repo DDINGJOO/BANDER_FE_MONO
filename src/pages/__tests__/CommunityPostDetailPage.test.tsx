@@ -36,6 +36,7 @@ function renderPage() {
         <Route element={<CommunityPostDetailPage />} path="/community/post/:slug" />
         <Route element={<div>community list</div>} path="/community" />
         <Route element={<div>login page</div>} path="/login" />
+        <Route element={<div>user feed</div>} path="/users/:userId/minifeed" />
       </Routes>
     </MemoryRouter>
   );
@@ -227,4 +228,70 @@ test('loads post detail, toggles like, creates a comment, and deletes an owned c
     expect(screen.getByRole('heading', { name: '댓글 2' })).toBeInTheDocument();
   });
   expect(screen.queryByText('내 답글')).not.toBeInTheDocument();
+});
+
+test('opens the post author menu and navigates to the author mini feed', async () => {
+  mockedFetchDetail.mockResolvedValue({
+    authorNickname: '작성자',
+    authorProfileImageRef: null,
+    authorUserId: "999",
+    blocks: [{ blockType: 'TEXT', content: '본문 내용', sortOrder: 0 }],
+    commentCount: 0,
+    createdAt: '2026-04-10T09:00:00.000Z',
+    likeCount: 4,
+    likedByViewer: false,
+    postId: "123",
+    status: 'PUBLISHED',
+    title: '실 API 게시글 상세',
+    updatedAt: '2026-04-10T09:00:00.000Z',
+    viewCount: 10,
+  });
+  mockedFetchComments.mockResolvedValue([]);
+
+  renderPage();
+
+  fireEvent.click(await screen.findByRole('button', { name: '작성자' }));
+  fireEvent.click(screen.getByRole('menuitem', { name: '피드보기' }));
+
+  expect(await screen.findByText('user feed')).toBeInTheDocument();
+});
+
+test('navigates to a commenter mini feed from the comment nickname', async () => {
+  mockedFetchDetail.mockResolvedValue({
+    authorNickname: '작성자',
+    authorProfileImageRef: null,
+    authorUserId: "999",
+    blocks: [{ blockType: 'TEXT', content: '본문 내용', sortOrder: 0 }],
+    commentCount: 1,
+    createdAt: '2026-04-10T09:00:00.000Z',
+    likeCount: 4,
+    likedByViewer: false,
+    postId: "123",
+    status: 'PUBLISHED',
+    title: '실 API 게시글 상세',
+    updatedAt: '2026-04-10T09:00:00.000Z',
+    viewCount: 10,
+  });
+  mockedFetchComments.mockResolvedValue([
+    {
+      comment: {
+        authorNickname: '다른 유저',
+        authorProfileImageRef: null,
+        authorUserId: "200",
+        commentId: "1",
+        content: '첫 댓글',
+        createdAt: '2026-04-10T09:10:00.000Z',
+        depth: 0,
+        parentId: null,
+        postId: "123",
+      },
+      replies: [],
+    },
+  ]);
+
+  renderPage();
+
+  fireEvent.click(await screen.findByRole('button', { name: '다른 유저' }));
+
+  expect(await screen.findByText('user feed')).toBeInTheDocument();
 });

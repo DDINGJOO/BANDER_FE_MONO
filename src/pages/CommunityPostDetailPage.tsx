@@ -208,6 +208,7 @@ function mapCommentToViewModel(
   return {
     actions: mapCommentActions(comment, currentUserId),
     author: authorLabel,
+    authorUserId: String(comment.authorUserId),
     avatar:
       resolveMediaUrl(comment.authorProfileImageRef, comment.authorProfileImageUrl) ?? '',
     body: comment.content ?? '',
@@ -237,6 +238,15 @@ function resolveAdjacentPath(item: CommunityAdjacentPostDto | null | undefined) 
   }
 
   return `/community/post/${identifier}`;
+}
+
+function resolveUserMiniFeedPath(userId: string | number | null | undefined) {
+  if (userId === undefined || userId === null) {
+    return null;
+  }
+
+  const normalized = String(userId).trim();
+  return normalized ? `/users/${encodeURIComponent(normalized)}/minifeed` : null;
 }
 
 function CommentMeta({
@@ -295,9 +305,11 @@ function CommentContent({ comment }: { comment: CommunityDetailComment }) {
 
 function CommentBlock({
   comment,
+  onAuthorClick,
   onCommentAction,
 }: {
   comment: CommunityDetailComment;
+  onAuthorClick?: (userId: string) => void;
   onCommentAction?: (action: CommunityDetailCommentAction) => void;
 }) {
   return (
@@ -318,7 +330,17 @@ function CommentBlock({
       )}
       <div className="community-post-detail__comment-body">
         <div className="community-post-detail__comment-author">
-          {comment.author}
+          {comment.authorUserId ? (
+            <button
+              className="community-post-detail__comment-author-button"
+              onClick={() => onAuthorClick?.(comment.authorUserId ?? '')}
+              type="button"
+            >
+              {comment.author}
+            </button>
+          ) : (
+            comment.author
+          )}
           {comment.authorNote ? <> {comment.authorNote}</> : null}
         </div>
         <CommentContent comment={comment} />
@@ -333,9 +355,11 @@ function CommentBlock({
 }
 
 function CommentThreadView({
+  onAuthorClick,
   onCommentAction,
   thread,
 }: {
+  onAuthorClick?: (userId: string) => void;
   onCommentAction?: (commentId: string, action: CommunityDetailCommentAction) => void;
   thread: CommunityDetailCommentThread;
 }) {
@@ -343,6 +367,7 @@ function CommentThreadView({
     <div className="community-post-detail__comment-block">
       <CommentBlock
         comment={thread.root}
+        onAuthorClick={onAuthorClick}
         onCommentAction={(action) => onCommentAction?.(thread.root.id, action)}
       />
       {thread.replies.length > 0 ? (
@@ -351,6 +376,7 @@ function CommentThreadView({
             <CommentBlock
               comment={reply}
               key={reply.id}
+              onAuthorClick={onAuthorClick}
               onCommentAction={(action) => onCommentAction?.(reply.id, action)}
             />
           ))}
@@ -426,6 +452,8 @@ export function CommunityPostDetailPage() {
   const commentInputRef = useRef<HTMLInputElement | null>(null);
   const [postReportConfirmOpen, setPostReportConfirmOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
+  const [authorMenuOpen, setAuthorMenuOpen] = useState(false);
+  const authorMenuRef = useRef<HTMLDivElement | null>(null);
 
   const filteredSuggestions = HEADER_SEARCH_KEYWORD_SUGGESTIONS.filter((item) =>
     item.toLowerCase().includes(headerSearchQuery.toLowerCase())
@@ -481,7 +509,7 @@ export function CommunityPostDetailPage() {
         setLoading(false);
       }
     }
-  }, [navigate, postId]);
+  }, [location.pathname, navigate, postId]);
 
   useEffect(() => {
     // postId 변경 시 이전 post 의 입력 컨텍스트를 초기화한다.
@@ -499,6 +527,9 @@ export function CommunityPostDetailPage() {
       if (!headerSearchRef.current?.contains(target)) {
         setHeaderSearchOpen(false);
       }
+      if (!authorMenuRef.current?.contains(target)) {
+        setAuthorMenuOpen(false);
+      }
     };
 
     document.addEventListener('mousedown', handlePointerDown);
@@ -512,6 +543,16 @@ export function CommunityPostDetailPage() {
         return;
       }
       navigate(`/search?q=${encodeURIComponent(query)}`);
+    },
+    [navigate]
+  );
+
+  const navigateToUserMiniFeed = useCallback(
+    (userId: string | number | null | undefined) => {
+      const path = resolveUserMiniFeedPath(userId);
+      if (path) {
+        navigate(path);
+      }
     },
     [navigate]
   );
@@ -623,6 +664,21 @@ export function CommunityPostDetailPage() {
 
   const cancelPostReportConfirm = useCallback(() => {
     setPostReportConfirmOpen(false);
+  }, []);
+
+  const handleAuthorChatClick = useCallback(() => {
+    setAuthorMenuOpen(false);
+    navigate('/chat');
+  }, [navigate]);
+
+  const handleAuthorFeedClick = useCallback(() => {
+    setAuthorMenuOpen(false);
+    navigateToUserMiniFeed(post?.authorUserId);
+  }, [navigateToUserMiniFeed, post?.authorUserId]);
+
+  const handleAuthorReportClick = useCallback(() => {
+    setAuthorMenuOpen(false);
+    setPostReportConfirmOpen(true);
   }, []);
 
   const confirmReplyDelete = useCallback(async () => {
@@ -742,11 +798,47 @@ export function CommunityPostDetailPage() {
                     />
                   )}
                   <div className="community-post-detail__author-meta">
-                    <div className="community-post-detail__author-name-row">
-                      <span className="community-post-detail__author-name">
-                        {post.authorNickname ?? '밴더유저'}
-                      </span>
-                      <AuthorChevron16 />
+                    <div
+                      className="community-post-detail__author-menu-wrap"
+                      ref={authorMenuRef}
+                    >
+                      <button
+                        aria-expanded={authorMenuOpen}
+                        aria-haspopup="menu"
+                        className="community-post-detail__author-name-button"
+                        onClick={() => setAuthorMenuOpen((current) => !current)}
+                        type="button"
+                      >
+                        <span className="community-post-detail__author-name">
+                          {post.authorNickname ?? '밴더유저'}
+                        </span>
+                        <AuthorChevron16 />
+                      </button>
+                      {authorMenuOpen ? (
+                        <div className="community-post-detail__author-menu" role="menu">
+                          <button
+                            onClick={handleAuthorChatClick}
+                            role="menuitem"
+                            type="button"
+                          >
+                            채팅하기
+                          </button>
+                          <button
+                            onClick={handleAuthorFeedClick}
+                            role="menuitem"
+                            type="button"
+                          >
+                            피드보기
+                          </button>
+                          <button
+                            onClick={handleAuthorReportClick}
+                            role="menuitem"
+                            type="button"
+                          >
+                            신고하기
+                          </button>
+                        </div>
+                      ) : null}
                     </div>
                     <span className="community-post-detail__author-time">
                       {formatDateLabel(post.createdAt)}
@@ -861,6 +953,7 @@ export function CommunityPostDetailPage() {
                       commentThreads.map((thread) => (
                         <CommentThreadView
                           key={thread.root.id}
+                          onAuthorClick={navigateToUserMiniFeed}
                           onCommentAction={handleCommentAction}
                           thread={thread}
                         />

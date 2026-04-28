@@ -20,6 +20,7 @@ export type CommunityDetailCommentAction = 'reply' | 'report' | 'delete';
 export type CommunityDetailComment = {
   id: string;
   author: string;
+  authorUserId?: string;
   /** 예: "(나)" */
   authorNote?: string;
   avatar: string;
