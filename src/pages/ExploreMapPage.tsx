@@ -48,6 +48,7 @@ export function ExploreMapPage() {
   const [headerSearchQuery, setHeaderSearchQuery] = useState('합주');
   const headerSearchRef = useRef<HTMLDivElement | null>(null);
   const [mapResetKey, setMapResetKey] = useState(0);
+  const [mobileListOpen, setMobileListOpen] = useState(false);
   const [savedByPath, setSavedByPath] = useState<Record<string, boolean>>(() => {
     const initial: Record<string, boolean> = {};
     for (const item of EXPLORE_MAP_LIST_ITEMS) {
@@ -110,7 +111,22 @@ export function ExploreMapPage() {
             <HomeSpaceExplorer variant="map" />
           </div>
 
-          <div className="explore-map-page__list">
+          <button
+            aria-controls="explore-map-visible-list"
+            aria-expanded={mobileListOpen}
+            aria-label={`지도 안 합주실 ${EXPLORE_MAP_LIST_ITEMS.length}곳 ${mobileListOpen ? '접기' : '목록 보기'}`}
+            className="explore-map-page__mobile-list-toggle"
+            onClick={() => setMobileListOpen((open) => !open)}
+            type="button"
+          >
+            <span>지도 안 합주실 {EXPLORE_MAP_LIST_ITEMS.length}곳</span>
+            <span aria-hidden>{mobileListOpen ? '접기' : '목록 보기'}</span>
+          </button>
+
+          <div
+            className={`explore-map-page__list${mobileListOpen ? ' explore-map-page__list--mobile-open' : ''}`}
+            id="explore-map-visible-list"
+          >
             {EXPLORE_MAP_LIST_ITEMS.map((item) => {
               const saved = savedByPath[item.detailPath] ?? false;
               return (

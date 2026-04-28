@@ -121,6 +121,19 @@
   gap: 5px;
 }
 
+.my-mini-feed-page__tag-block {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.my-mini-feed-page__tag-title {
+  color: #6d7a87;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 18px;
+}
+
 .my-mini-feed-page__tag {
   display: inline-flex;
   align-items: center;
@@ -155,7 +168,37 @@
   box-sizing: border-box;
 }
 
-.my-mini-feed-page__edit:hover {
+.my-mini-feed-page__chat {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-width: 160px;
+  padding: 14px 28px;
+  border: 0;
+  border-radius: 10px;
+  background: #111217;
+  color: #fff;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 22px;
+}
+
+.my-mini-feed-page__chat svg {
+  height: 20px;
+  width: 20px;
+}
+
+.my-mini-feed-page__chat:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.my-mini-feed-page__edit:hover,
+.my-mini-feed-page__chat:not(:disabled):hover {
   filter: brightness(0.97);
 }
 
@@ -449,7 +492,8 @@ a.my-mini-feed-card:hover {
     flex-direction: column;
   }
 
-  .my-mini-feed-page__edit {
+  .my-mini-feed-page__edit,
+  .my-mini-feed-page__chat {
     width: 100%;
   }
 

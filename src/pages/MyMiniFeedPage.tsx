@@ -9,10 +9,11 @@ import {
   type MiniFeedSort,
   type MiniFeedTab,
 } from '../api/community';
+import { createChatRoom } from '../api/chat';
 import { ApiError } from '../api/client';
 import { HomeFooter } from '../components/home/HomeFooter';
 import { HomeHeader } from '../components/home/HomeHeader';
-import { ChevronIcon } from '../components/shared/Icons';
+import { ChevronIcon, HeaderChatIcon } from '../components/shared/Icons';
 import { resolveProfileImageUrl } from '../config/media';
 import { HEADER_SEARCH_KEYWORD_SUGGESTIONS } from '../config/searchSuggestions';
 import { loadAuthSession } from '../data/authSession';
@@ -94,7 +95,10 @@ function formatDateLabel(value: string | null | undefined) {
 
 function getErrorMessage(error: unknown, fallback: string) {
   if (error instanceof ApiError) {
-    return error.message;
+    if (error.message && error.message !== '요청 처리에 실패했습니다.') {
+      return error.message;
+    }
+    return error.status > 0 ? `${fallback} (${error.status})` : fallback;
   }
 
   if (error instanceof Error && error.message) {
@@ -126,6 +130,13 @@ function normalizeTags(tags: MiniFeedProfileDto['tags']) {
     .split(',')
     .map((tag) => tag.trim())
     .filter(Boolean);
+}
+
+function normalizeUserId(userId: string | number | null | undefined) {
+  if (userId === undefined || userId === null) {
+    return '';
+  }
+  return String(userId).trim();
 }
 
 function normalizeJoinLabel(profile: MiniFeedProfileDto | null) {
@@ -265,7 +276,7 @@ export function MyMiniFeedPage() {
     searchParams.get('tab') === 'commented' ? 'commented' : 'written';
   const authSession = loadAuthSession();
   const isAuthenticated = Boolean(authSession);
-  const targetUserId = userId?.trim() ?? '';
+  const targetUserId = normalizeUserId(userId);
   const isPublicUserFeed = targetUserId.length > 0;
 
   const [headerSearchOpen, setHeaderSearchOpen] = useState(false);
@@ -291,6 +302,7 @@ export function MyMiniFeedPage() {
   );
   const profileTags = useMemo(() => normalizeTags(profile?.tags), [profile?.tags]);
   const profileLabel = profile?.nickname ?? (isPublicUserFeed ? '사용자' : '내 프로필');
+  const chatTargetUserId = normalizeUserId(profile?.userId) || targetUserId;
 
   const setFeedTab = (tab: MiniFeedTab) => {
     if (tab === 'commented') {
@@ -311,6 +323,25 @@ export function MyMiniFeedPage() {
     },
     [navigate]
   );
+
+  const handleStartChat = useCallback(async () => {
+    if (!chatTargetUserId) {
+      return;
+    }
+
+    const returnTo = `/users/${encodeURIComponent(chatTargetUserId)}/minifeed`;
+    if (!isAuthenticated) {
+      navigate(`/login?returnTo=${encodeURIComponent(returnTo)}`);
+      return;
+    }
+
+    try {
+      const room = await createChatRoom({ targetUserId: chatTargetUserId });
+      navigate(`/chat?t=${encodeURIComponent(String(room.chatRoomId))}`);
+    } catch (error) {
+      setErrorMessage(getErrorMessage(error, '채팅방을 만들지 못했습니다.'));
+    }
+  }, [chatTargetUserId, isAuthenticated, navigate]);
 
   useEffect(() => {
     const handlePointerDown = (event: MouseEvent) => {
@@ -456,17 +487,34 @@ export function MyMiniFeedPage() {
                 </p>
                 <p className="my-mini-feed-page__join">{normalizeJoinLabel(profile)}</p>
               </div>
-              <p className="my-mini-feed-page__bio">{profile?.bio ?? ''}</p>
-              <div className="my-mini-feed-page__tags">
-                {profileTags.map((tag) => (
-                  <span className="my-mini-feed-page__tag" key={tag}>
-                    {tag}
-                  </span>
-                ))}
-              </div>
+              {profile?.bio ? (
+                <p className="my-mini-feed-page__bio">{profile.bio}</p>
+              ) : null}
+              {profileTags.length > 0 ? (
+                <div className="my-mini-feed-page__tag-block" aria-label="선택한 장르와 악기">
+                  <span className="my-mini-feed-page__tag-title">장르 · 악기</span>
+                  <div className="my-mini-feed-page__tags">
+                    {profileTags.map((tag) => (
+                      <span className="my-mini-feed-page__tag" key={tag}>
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
             </div>
           </div>
-          {isPublicUserFeed ? null : (
+          {isPublicUserFeed ? (
+            <button
+              className="my-mini-feed-page__chat"
+              disabled={!chatTargetUserId}
+              onClick={handleStartChat}
+              type="button"
+            >
+              <HeaderChatIcon />
+              채팅하기
+            </button>
+          ) : (
             <Link className="my-mini-feed-page__edit" to="/profile/edit">
               수정하기
             </Link>

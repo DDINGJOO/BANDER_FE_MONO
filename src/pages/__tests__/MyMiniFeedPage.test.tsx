@@ -2,6 +2,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { MyMiniFeedPage } from '../MyMiniFeedPage';
 import * as communityApi from '../../api/community';
+import * as chatApi from '../../api/chat';
 
 jest.mock('../../components/home/HomeHeader', () => ({
   HomeHeader: () => <div data-testid="home-header" />,
@@ -20,8 +21,13 @@ jest.mock('../../api/community', () => {
   };
 });
 
+jest.mock('../../api/chat', () => ({
+  createChatRoom: jest.fn(),
+}));
+
 const mockedFetchMyMiniFeed = jest.mocked(communityApi.fetchMyMiniFeed);
 const mockedFetchUserMiniFeed = jest.mocked(communityApi.fetchUserMiniFeed);
+const mockedCreateChatRoom = jest.mocked(chatApi.createChatRoom);
 
 function renderPage(initialEntry = '/my-minifeed') {
   return render(
@@ -29,6 +35,7 @@ function renderPage(initialEntry = '/my-minifeed') {
       <Routes>
         <Route element={<MyMiniFeedPage />} path="/my-minifeed" />
         <Route element={<MyMiniFeedPage />} path="/users/:userId/minifeed" />
+        <Route element={<div>chat room</div>} path="/chat" />
         <Route element={<div>login page</div>} path="/login" />
       </Routes>
     </MemoryRouter>
@@ -201,6 +208,7 @@ test('loads another user mini feed without requiring login', async () => {
       joinLabel: '26.04 가입',
       nickname: '타인',
       profileImageUrl: null,
+      userId: '306963773430693888',
       tags: ['#드럼'],
     },
     sort: 'latest',
@@ -218,6 +226,56 @@ test('loads another user mini feed without requiring login', async () => {
   });
   expect(mockedFetchMyMiniFeed).not.toHaveBeenCalled();
   expect(screen.getByText('타인 피드 게시글')).toBeInTheDocument();
+  expect(screen.getByText('장르 · 악기')).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: '채팅하기' })).toBeInTheDocument();
   expect(screen.queryByText('수정하기')).not.toBeInTheDocument();
   expect(screen.queryByText('login page')).not.toBeInTheDocument();
+});
+
+test('creates a personal chat from another user mini feed using the string user id', async () => {
+  mockedFetchUserMiniFeed.mockResolvedValue({
+    page: {
+      hasNext: false,
+      items: [],
+      page: 0,
+      size: 20,
+      totalCount: 0,
+    },
+    profile: {
+      bio: '기타 연주자입니다.',
+      joinLabel: '26.04 가입',
+      nickname: '기타유저',
+      profileImageUrl: null,
+      userId: '307057320825716736',
+      tags: ['락', '기타'],
+    },
+    sort: 'latest',
+    tab: 'written',
+  });
+  mockedCreateChatRoom.mockResolvedValue({
+    chatRoomId: '900',
+    chatRoomType: 'PERSONAL',
+    createdAt: '2026-04-28T00:00:00.000Z',
+    lastMessageAt: null,
+    lastMessagePreview: null,
+    participantA: '101',
+    participantB: '307057320825716736',
+    partnerNickname: '기타유저',
+    partnerProfileImage: null,
+    status: 'ACTIVE',
+    unreadCount: 0,
+    vendorId: null,
+    vendorSlug: null,
+  });
+
+  renderPage('/users/307057320825716736/minifeed');
+
+  fireEvent.click(await screen.findByRole('button', { name: '채팅하기' }));
+
+  await waitFor(() => {
+    expect(mockedCreateChatRoom).toHaveBeenCalledWith({
+      targetUserId: '307057320825716736',
+    });
+  });
+  expect(await screen.findByText('chat room')).toBeInTheDocument();
 });
