@@ -244,26 +244,44 @@
 
 .community-post-detail__stat {
   border: 0;
-  padding: 0;
+  padding: 4px 6px;
   background: transparent;
   display: inline-flex;
   align-items: center;
-  gap: 2px;
+  gap: 6px;
   cursor: pointer;
-  font-size: 15px;
-  font-weight: 500;
-  line-height: 22px;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 24px;
   color: #000;
   font-family: inherit;
+  border-radius: 999px;
+  transition: background 0.16s ease, color 0.16s ease, transform 0.16s ease;
+}
+
+.community-post-detail__stat:hover {
+  background: #fff3f5;
+  transform: translateY(-1px);
 }
 
 .community-post-detail__stat svg {
-  width: 24px;
-  height: 24px;
+  flex: 0 0 auto;
+  width: 32px;
+  height: 32px;
+}
+
+.community-post-detail__stat--liked {
+  color: var(--community-like-on);
+}
+
+.community-post-detail__stat--comment:hover {
+  background: #fff8e6;
+  color: #f59f00;
 }
 
 .community-post-detail__like-fill {
   fill: var(--community-like-on);
+  filter: drop-shadow(0 5px 10px rgba(255, 77, 103, 0.22));
 }
 
 /* —— 인접 글 / 목록 —— */
@@ -654,8 +672,8 @@
 }
 
 .community-post-detail__mobile-comment-fab svg {
-  width: 24px;
-  height: 24px;
+  width: 28px;
+  height: 28px;
 }
 
 .community-post-detail__mobile-comment-fab:focus-visible,

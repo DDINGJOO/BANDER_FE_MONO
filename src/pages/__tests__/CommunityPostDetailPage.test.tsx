@@ -344,3 +344,28 @@ test('opens and closes the responsive floating comments window from the marker',
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 });
+
+test('renders the liked heart when the detail response says the viewer liked the post', async () => {
+  mockedFetchDetail.mockResolvedValue({
+    authorNickname: '작성자',
+    authorProfileImageRef: null,
+    authorUserId: "999",
+    blocks: [{ blockType: 'TEXT', content: '이미 좋아요한 글', sortOrder: 0 }],
+    commentCount: 0,
+    createdAt: '2026-04-10T09:00:00.000Z',
+    likeCount: 12,
+    likedByViewer: true,
+    postId: "123",
+    status: 'PUBLISHED',
+    title: '좋아요 상태 게시글',
+    updatedAt: '2026-04-10T09:00:00.000Z',
+    viewCount: 10,
+  });
+  mockedFetchComments.mockResolvedValue([]);
+
+  renderPage();
+
+  const likeButton = await screen.findByRole('button', { name: '좋아요 취소' });
+  expect(likeButton).toHaveAttribute('aria-pressed', 'true');
+  expect(likeButton).toHaveTextContent('12');
+});

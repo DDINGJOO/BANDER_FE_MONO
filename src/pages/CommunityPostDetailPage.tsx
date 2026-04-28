@@ -37,12 +37,13 @@ import type {
 
 function LikeGlyph24Outline() {
   return (
-    <svg aria-hidden="true" fill="none" height="24" viewBox="0 0 24 24" width="24">
+    <svg aria-hidden="true" fill="none" height="32" viewBox="0 0 32 32" width="32">
       <path
-        d="M12 20.1 4.6 13.2C3.26 11.98 3.04 10.13 3.94 8.68 4.82 7.27 6.64 6.92 8.04 7.7L12 10.2 15.96 7.7c1.4-.78 3.22-.43 4.1.98.9 1.45.68 3.3-.66 4.52L12 20.1Z"
+        d="M16 27.1 6.15 18.02C3.85 15.9 3.5 12.52 5.3 10.08c1.72-2.34 5.06-2.78 7.48-.98L16 11.5l3.22-2.4c2.42-1.8 5.76-1.36 7.48.98 1.8 2.44 1.45 5.82-.85 7.94L16 27.1Z"
+        strokeLinecap="round"
         stroke="currentColor"
         strokeLinejoin="round"
-        strokeWidth="1.5"
+        strokeWidth="2"
       />
     </svg>
   );
@@ -50,10 +51,16 @@ function LikeGlyph24Outline() {
 
 function LikeGlyph24On() {
   return (
-    <svg aria-hidden="true" fill="none" height="24" viewBox="0 0 24 24" width="24">
+    <svg aria-hidden="true" fill="none" height="32" viewBox="0 0 32 32" width="32">
       <path
         className="community-post-detail__like-fill"
-        d="M12 20.1 4.6 13.2C3.26 11.98 3.04 10.13 3.94 8.68 4.82 7.27 6.64 6.92 8.04 7.7L12 10.2 15.96 7.7c1.4-.78 3.22-.43 4.1.98.9 1.45.68 3.3-.66 4.52L12 20.1Z"
+        d="M16 27.1 6.15 18.02C3.85 15.9 3.5 12.52 5.3 10.08c1.72-2.34 5.06-2.78 7.48-.98L16 11.5l3.22-2.4c2.42-1.8 5.76-1.36 7.48.98 1.8 2.44 1.45 5.82-.85 7.94L16 27.1Z"
+      />
+      <path
+        d="M9.4 11.4c1.02-.72 2.34-.58 3.3.22"
+        stroke="#fff"
+        strokeLinecap="round"
+        strokeWidth="1.8"
       />
     </svg>
   );
@@ -61,13 +68,20 @@ function LikeGlyph24On() {
 
 function CommentGlyph24() {
   return (
-    <svg aria-hidden="true" fill="none" height="24" viewBox="0 0 24 24" width="24">
+    <svg aria-hidden="true" fill="none" height="32" viewBox="0 0 32 32" width="32">
       <path
-        d="M5.2 5.2h13.6v7.2h-6.26l-3.06 2.6v-2.6H5.2V5.2Z"
+        d="M7.5 8.2h17c1.3 0 2.35 1.05 2.35 2.35v8.7c0 1.3-1.05 2.35-2.35 2.35h-7.08l-5.26 4.04c-.7.54-1.72.04-1.72-.84v-3.2H7.5a2.35 2.35 0 0 1-2.35-2.35v-8.7C5.15 9.25 6.2 8.2 7.5 8.2Z"
+        fill="currentColor"
+        opacity="0.1"
+      />
+      <path
+        d="M7.5 8.2h17c1.3 0 2.35 1.05 2.35 2.35v8.7c0 1.3-1.05 2.35-2.35 2.35h-7.08l-5.26 4.04c-.7.54-1.72.04-1.72-.84v-3.2H7.5a2.35 2.35 0 0 1-2.35-2.35v-8.7C5.15 9.25 6.2 8.2 7.5 8.2Z"
+        strokeLinecap="round"
         stroke="currentColor"
         strokeLinejoin="round"
-        strokeWidth="1.4"
+        strokeWidth="2"
       />
+      <path d="M11.2 15.1h9.6M11.2 18.1h5.6" stroke="currentColor" strokeLinecap="round" strokeWidth="1.8" />
     </svg>
   );
 }
@@ -1127,7 +1141,7 @@ export function CommunityPostDetailPage() {
                 <button
                   aria-label={liked ? '좋아요 취소' : '좋아요'}
                   aria-pressed={liked}
-                  className="community-post-detail__stat"
+                  className={`community-post-detail__stat${liked ? ' community-post-detail__stat--liked' : ''}`}
                   disabled={likeInFlight.current}
                   onClick={() => {
                     if (!isAuthenticated) {
@@ -1143,7 +1157,7 @@ export function CommunityPostDetailPage() {
                   {liked ? <LikeGlyph24On /> : <LikeGlyph24Outline />}
                   <span>{likesCount}</span>
                 </button>
-                <div className="community-post-detail__stat">
+                <div className="community-post-detail__stat community-post-detail__stat--comment">
                   <CommentGlyph24 />
                   <span>{visibleCommentCount}</span>
                 </div>
