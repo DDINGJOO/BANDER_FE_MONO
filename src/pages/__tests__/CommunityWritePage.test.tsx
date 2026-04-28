@@ -61,6 +61,7 @@ test('uploads selected images and submits a real API post payload', async () => 
     mediaRef: 'media/post-inline-image/user/101/example.png',
     mediaId: '01HZTESTUUID000000000000',
     ownershipTicket: 'test-ticket',
+    imageUrl: 'https://cdn.example/originals/01HZTESTUUID000000000000/example.png',
   });
   mockedCreatePost.mockResolvedValue({
     authorNickname: '작성자',
@@ -110,6 +111,9 @@ test('uploads selected images and submits a real API post payload', async () => 
           content: 'media/post-inline-image/user/101/example.png',
           mediaId: '01HZTESTUUID000000000000',
           ownershipTicket: 'test-ticket',
+          // R1-G: denormalized CDN URL is threaded into the request body
+          // so the server can persist it alongside the mediaRef.
+          imageUrl: 'https://cdn.example/originals/01HZTESTUUID000000000000/example.png',
         },
       ],
       category: '궁금해요',
@@ -119,4 +123,50 @@ test('uploads selected images and submits a real API post payload', async () => 
   });
 
   expect(await screen.findByText('community list')).toBeInTheDocument();
+});
+
+test('omits imageUrl from the request body when the upload grant did not return one', async () => {
+  // Legacy/stub backend grant — publicUrl missing so uploadPostInlineImage
+  // returns imageUrl="". The page must skip the imageUrl key entirely so
+  // the server keeps post_block.image_url NULL (no empty-string poisoning).
+  mockedUploadPostInlineImage.mockResolvedValue({
+    mediaRef: 'media/post-inline-image/user/101/no-url.png',
+    mediaId: '01HZTESTUUID000000000001',
+    ownershipTicket: 'test-ticket-2',
+    imageUrl: '',
+  });
+  mockedCreatePost.mockResolvedValue({
+    authorNickname: '작성자',
+    authorProfileImageRef: null,
+    authorUserId: '101',
+    blocks: [],
+    commentCount: 0,
+    createdAt: '2026-04-10T10:00:00.000Z',
+    likeCount: 0,
+    postId: '124',
+    status: 'PUBLISHED',
+    title: 'URL 없는 글',
+    updatedAt: '2026-04-10T10:00:00.000Z',
+    viewCount: 0,
+  });
+
+  renderPage();
+
+  fireEvent.change(screen.getByLabelText('제목'), { target: { value: 'URL 없는 글' } });
+  fireEvent.change(screen.getByLabelText('본문'), { target: { value: '본문' } });
+
+  const fileInput = screen.getByLabelText('이미지 업로드') as HTMLInputElement;
+  const file = new File(['image-bytes'], 'no-url.png', { type: 'image/png' });
+  fireEvent.change(fileInput, { target: { files: [file] } });
+
+  fireEvent.click(screen.getByRole('button', { name: '작성완료' }));
+
+  await waitFor(() => {
+    expect(mockedCreatePost).toHaveBeenCalled();
+  });
+
+  const callArg = mockedCreatePost.mock.calls[0][0];
+  const imageBlock = callArg.blocks.find((b) => b.blockType === 'IMAGE');
+  expect(imageBlock).toBeDefined();
+  expect(imageBlock).not.toHaveProperty('imageUrl');
 });

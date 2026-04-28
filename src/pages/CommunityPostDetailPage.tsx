@@ -362,7 +362,11 @@ function renderPostBlocks(blocks: CommunityPostBlockDto[]) {
       const key = block.blockId ?? `${block.blockType}-${index}`;
 
       if (block.blockType === 'IMAGE') {
-        const src = resolveMediaUrl(block.content) ?? block.content;
+        // R1-G: prefer the denormalized CDN URL persisted on the block when
+        // present; fall back to ref-based resolution for legacy IMAGE rows
+        // that pre-date V7 (column NULL in DB).
+        const src =
+          resolveProfileImageUrl(block.content, block.imageUrl) ?? block.content;
         return (
           <img
             alt=""
