@@ -16,19 +16,25 @@ jest.mock('../../api/community', () => {
   return {
     ...actual,
     createCommunityPost: jest.fn(),
+    fetchCommunityPostDetail: jest.fn(),
     requestPostInlineImageUpload: jest.fn(),
+    updateCommunityPost: jest.fn(),
     uploadPostInlineImage: jest.fn(),
   };
 });
 
 const mockedCreatePost = jest.mocked(communityApi.createCommunityPost);
+const mockedFetchDetail = jest.mocked(communityApi.fetchCommunityPostDetail);
+const mockedUpdatePost = jest.mocked(communityApi.updateCommunityPost);
 const mockedUploadPostInlineImage = jest.mocked(communityApi.uploadPostInlineImage);
 
-function renderPage() {
+function renderPage(initialEntry = '/community/write') {
   return render(
-    <MemoryRouter initialEntries={['/community/write']}>
+    <MemoryRouter initialEntries={[initialEntry]}>
       <Routes>
         <Route element={<CommunityWritePage />} path="/community/write" />
+        <Route element={<CommunityWritePage />} path="/community/post/:slug/edit" />
+        <Route element={<div>post detail</div>} path="/community/post/:slug" />
         <Route element={<div>community list</div>} path="/community" />
         <Route element={<div>login page</div>} path="/login" />
       </Routes>
@@ -169,4 +175,75 @@ test('omits imageUrl from the request body when the upload grant did not return 
   const imageBlock = callArg.blocks.find((b) => b.blockType === 'IMAGE');
   expect(imageBlock).toBeDefined();
   expect(imageBlock).not.toHaveProperty('imageUrl');
+});
+
+test('loads an owned post and submits a string-id update payload', async () => {
+  mockedFetchDetail.mockResolvedValue({
+    authorNickname: '내 닉네임',
+    authorProfileImageRef: null,
+    authorUserId: '101',
+    blocks: [
+      { blockId: 'b1', blockType: 'TEXT', content: '기존 본문', sortOrder: 0 },
+      {
+        blockId: 'b2',
+        blockType: 'IMAGE',
+        content: 'media/post-inline-image/user/101/existing.png',
+        imageUrl: 'https://cdn.example/originals/existing.png',
+        sortOrder: 1,
+      },
+    ],
+    category: '궁금해요',
+    commentCount: 0,
+    createdAt: '2026-04-10T10:00:00.000Z',
+    likeCount: 0,
+    postId: '306963773430693888',
+    status: 'PUBLISHED',
+    title: '기존 제목',
+    topic: '일반',
+    updatedAt: '2026-04-10T10:00:00.000Z',
+    viewCount: 0,
+  });
+  mockedUpdatePost.mockResolvedValue({
+    authorNickname: '내 닉네임',
+    authorProfileImageRef: null,
+    authorUserId: '101',
+    blocks: [],
+    category: '궁금해요',
+    commentCount: 0,
+    createdAt: '2026-04-10T10:00:00.000Z',
+    likeCount: 0,
+    postId: '306963773430693888',
+    status: 'PUBLISHED',
+    title: '수정한 제목',
+    topic: '일반',
+    updatedAt: '2026-04-10T11:00:00.000Z',
+    viewCount: 0,
+  });
+
+  renderPage('/community/post/306963773430693888/edit');
+
+  expect(await screen.findByRole('heading', { name: '글 수정' })).toBeInTheDocument();
+  expect(screen.getByLabelText('제목')).toHaveValue('기존 제목');
+  expect(screen.getByLabelText('본문')).toHaveValue('기존 본문');
+
+  fireEvent.change(screen.getByLabelText('제목'), { target: { value: '수정한 제목' } });
+  fireEvent.change(screen.getByLabelText('본문'), { target: { value: '수정한 본문' } });
+  fireEvent.click(screen.getByRole('button', { name: '수정완료' }));
+
+  await waitFor(() => {
+    expect(mockedUpdatePost).toHaveBeenCalledWith('306963773430693888', {
+      blocks: [
+        { blockType: 'TEXT', content: '수정한 본문' },
+        {
+          blockType: 'IMAGE',
+          content: 'media/post-inline-image/user/101/existing.png',
+          imageUrl: 'https://cdn.example/originals/existing.png',
+        },
+      ],
+      category: '궁금해요',
+      title: '수정한 제목',
+      topic: '일반',
+    });
+  });
+  expect(await screen.findByText('post detail')).toBeInTheDocument();
 });

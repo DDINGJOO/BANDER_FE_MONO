@@ -66,6 +66,14 @@
   letter-spacing: -0.02em;
 }
 
+.community-write__status {
+  margin: -12px 0 24px;
+  color: #6d7a87;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 20px;
+}
+
 .community-write__field {
   margin-bottom: 20px;
 }

@@ -1,7 +1,11 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import {
   createCommunityPost,
+  fetchCommunityPostDetail,
+  updateCommunityPost,
+  type CommunityPostBlockDto,
+  type CommunityPostBlockType,
   uploadPostInlineImage,
 } from '../api/community';
 import { ApiError } from '../api/client';
@@ -9,6 +13,7 @@ import { HomeFooter } from '../components/home/HomeFooter';
 import { HomeHeader } from '../components/home/HomeHeader';
 import { useGuestGate } from '../components/home/GuestGateProvider';
 import { ChevronIcon } from '../components/shared/Icons';
+import { resolveProfileImageUrl } from '../config/media';
 import { HEADER_SEARCH_KEYWORD_SUGGESTIONS } from '../config/searchSuggestions';
 import { loadAuthSession } from '../data/authSession';
 import {
@@ -40,9 +45,22 @@ function CameraGlyph40() {
 }
 
 type PhotoItem = {
-  file: File;
   id: string;
+  kind: 'local';
+  file: File;
   url: string;
+} | {
+  id: string;
+  kind: 'existing';
+  content: string;
+  imageUrl?: string | null;
+  url: string;
+};
+
+type PreservedPostBlock = {
+  blockType: CommunityPostBlockType;
+  content: string;
+  imageUrl?: string;
 };
 
 function getErrorMessage(error: unknown, fallback: string) {
@@ -57,12 +75,55 @@ function getErrorMessage(error: unknown, fallback: string) {
   return fallback;
 }
 
+function isLocalPhoto(photo: PhotoItem): photo is Extract<PhotoItem, { kind: 'local' }> {
+  return photo.kind === 'local';
+}
+
+function isExistingPhoto(photo: PhotoItem): photo is Extract<PhotoItem, { kind: 'existing' }> {
+  return photo.kind === 'existing';
+}
+
+function normalizeCategory(category: string | null | undefined) {
+  return category && (COMMUNITY_WRITE_CATEGORIES as readonly string[]).includes(category)
+    ? category
+    : COMMUNITY_WRITE_CATEGORIES[0];
+}
+
+function normalizeTopic(topic: string | null | undefined) {
+  return topic && (COMMUNITY_WRITE_TOPICS as readonly string[]).includes(topic)
+    ? topic
+    : COMMUNITY_WRITE_TOPICS[0];
+}
+
+function sortBlocks(blocks: CommunityPostBlockDto[]) {
+  return blocks
+    .slice()
+    .sort((left, right) => (left.sortOrder ?? 0) - (right.sortOrder ?? 0));
+}
+
+function mapExistingPhoto(block: CommunityPostBlockDto, index: number): PhotoItem | null {
+  if (block.blockType !== 'IMAGE' || !block.content) {
+    return null;
+  }
+
+  return {
+    content: block.content,
+    id: `existing-${block.blockId ?? index}`,
+    imageUrl: block.imageUrl,
+    kind: 'existing',
+    url: resolveProfileImageUrl(block.content, block.imageUrl) ?? block.content,
+  };
+}
+
 export function CommunityWritePage() {
   const navigate = useNavigate();
+  const { slug: editPostId } = useParams<{ slug?: string }>();
   const { openGuestGate } = useGuestGate();
   const authSession = loadAuthSession();
   const isAuthenticated = Boolean(authSession);
+  const currentUserId = authSession ? String(authSession.userId) : null;
   const ownerKey = authSession ? String(authSession.userId) : '';
+  const isEditMode = Boolean(editPostId);
 
   const [headerSearchOpen, setHeaderSearchOpen] = useState(false);
   const [headerSearchQuery, setHeaderSearchQuery] = useState('');
@@ -74,6 +135,8 @@ export function CommunityWritePage() {
   const [postTitle, setPostTitle] = useState('');
   const [body, setBody] = useState('');
   const [photos, setPhotos] = useState<PhotoItem[]>([]);
+  const [preservedBlocks, setPreservedBlocks] = useState<PreservedPostBlock[]>([]);
+  const [initialLoading, setInitialLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
   const photoInputId = useId();
@@ -118,6 +181,7 @@ export function CommunityWritePage() {
   }, []);
 
   const canSubmit =
+    !initialLoading &&
     Boolean(category) &&
     Boolean(topic) &&
     postTitle.trim().length > 0 &&
@@ -138,6 +202,7 @@ export function CommunityWritePage() {
         next.push({
           file,
           id: `${file.name}-${file.size}-${next.length}-${Date.now()}`,
+          kind: 'local',
           url: URL.createObjectURL(file),
         });
       }
@@ -160,13 +225,81 @@ export function CommunityWritePage() {
   };
 
   const uploadPhoto = useCallback(
-    (photo: PhotoItem) =>
+    (photo: Extract<PhotoItem, { kind: 'local' }>) =>
       uploadPostInlineImage({
         file: photo.file,
         ownerKey,
       }),
     [ownerKey]
   );
+
+  useEffect(() => {
+    if (!editPostId) {
+      setPreservedBlocks([]);
+      return undefined;
+    }
+
+    const returnTo = `/community/post/${encodeURIComponent(editPostId)}/edit`;
+    if (!isAuthenticated) {
+      openGuestGate(returnTo);
+      return undefined;
+    }
+
+    let active = true;
+    setInitialLoading(true);
+    setSubmitError('');
+
+    fetchCommunityPostDetail(editPostId)
+      .then((post) => {
+        if (!active) {
+          return;
+        }
+
+        if (currentUserId && String(post.authorUserId) !== currentUserId) {
+          setSubmitError('내 게시글만 수정할 수 있습니다.');
+          return;
+        }
+
+        const blocks = sortBlocks(post.blocks);
+        const nextPhotos = blocks
+          .map(mapExistingPhoto)
+          .filter((photo): photo is PhotoItem => photo != null);
+        const textBody = blocks
+          .filter((block) => block.blockType === 'TEXT')
+          .map((block) => block.content)
+          .filter(Boolean)
+          .join('\n\n');
+        const nextPreservedBlocks = blocks
+          .filter((block) => block.blockType === 'CODE' && block.content)
+          .map((block) => ({
+            blockType: 'CODE' as const,
+            content: block.content,
+            ...(block.imageUrl ? { imageUrl: block.imageUrl } : {}),
+          }));
+
+        setPostTitle(post.title);
+        setCategory(normalizeCategory(post.category));
+        setTopic(normalizeTopic(post.topic));
+        setBody(textBody);
+        setPhotos(nextPhotos);
+        setPreservedBlocks(nextPreservedBlocks);
+      })
+      .catch((error) => {
+        if (!active) {
+          return;
+        }
+        setSubmitError(getErrorMessage(error, '게시글을 불러오지 못했습니다.'));
+      })
+      .finally(() => {
+        if (active) {
+          setInitialLoading(false);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [currentUserId, editPostId, isAuthenticated, openGuestGate]);
 
   const onSubmit = async () => {
     if (!canSubmit || submitting) {
@@ -188,9 +321,10 @@ export function CommunityWritePage() {
         ownershipTicket: string;
         imageUrl: string;
       }> = [];
-      if (photos.length > 0) {
+      const localPhotos = photos.filter(isLocalPhoto);
+      if (localPhotos.length > 0) {
         try {
-          uploads = await Promise.all(photos.map((photo) => uploadPhoto(photo)));
+          uploads = await Promise.all(localPhotos.map((photo) => uploadPhoto(photo)));
         } catch {
           setSubmitError('일부 이미지 업로드에 실패했습니다. 다시 시도해 주세요.');
           setSubmitting(false);
@@ -206,6 +340,11 @@ export function CommunityWritePage() {
         imageUrl?: string;
       }> = [
         { blockType: 'TEXT', content: body.trim() },
+        ...photos.filter(isExistingPhoto).map((photo) => ({
+          blockType: 'IMAGE' as const,
+          content: photo.content,
+          ...(photo.imageUrl ? { imageUrl: photo.imageUrl } : {}),
+        })),
         ...uploads.map(({ mediaRef, mediaId, ownershipTicket, imageUrl }) => ({
           blockType: 'IMAGE' as const,
           content: mediaRef,
@@ -216,18 +355,28 @@ export function CommunityWritePage() {
           // so the request stays clean for legacy stub backends.
           ...(imageUrl ? { imageUrl } : {}),
         })),
+        ...preservedBlocks,
       ];
 
-      await createCommunityPost({
+      const request = {
         title: postTitle.trim(),
         category,
         topic,
         blocks,
-      });
+      };
 
-      navigate('/community');
+      const savedPost = isEditMode && editPostId
+        ? await updateCommunityPost(editPostId, request)
+        : await createCommunityPost(request);
+
+      navigate(isEditMode ? `/community/post/${savedPost.postId ?? editPostId}` : '/community');
     } catch (error) {
-      setSubmitError(getErrorMessage(error, '게시글 작성에 실패했습니다.'));
+      setSubmitError(
+        getErrorMessage(
+          error,
+          isEditMode ? '게시글 수정에 실패했습니다.' : '게시글 작성에 실패했습니다.'
+        )
+      );
       setSubmitting(false);
     }
   };
@@ -263,15 +412,21 @@ export function CommunityWritePage() {
             <button
               aria-label="뒤로"
               className="community-write__back"
-              onClick={() => navigate('/community')}
+              onClick={() => navigate(isEditMode && editPostId ? `/community/post/${editPostId}` : '/community')}
               type="button"
             >
               <span aria-hidden className="community-write__back-chevron">
                 <ChevronIcon />
               </span>
             </button>
-            <h1 className="community-write__title">글쓰기</h1>
+            <h1 className="community-write__title">{isEditMode ? '글 수정' : '글쓰기'}</h1>
           </div>
+
+          {initialLoading ? (
+            <p className="community-write__status" role="status">
+              게시글을 불러오는 중입니다.
+            </p>
+          ) : null}
 
           <div className="community-write__field">
             <label className="community-write__label" htmlFor="community-write-category">
@@ -404,7 +559,9 @@ export function CommunityWritePage() {
               onClick={() => void onSubmit()}
               type="button"
             >
-              {submitting ? '작성 중...' : '작성완료'}
+              {submitting
+                ? isEditMode ? '수정 중...' : '작성 중...'
+                : isEditMode ? '수정완료' : '작성완료'}
             </button>
           </div>
         </div>

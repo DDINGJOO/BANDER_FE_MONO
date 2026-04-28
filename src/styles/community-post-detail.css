@@ -94,6 +94,36 @@
   justify-content: center;
 }
 
+.community-post-detail__post-actions {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.community-post-detail__edit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 54px;
+  height: 34px;
+  padding: 0 14px;
+  border-radius: 999px;
+  background: #111217;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 18px;
+  text-decoration: none;
+  transition: transform 0.16s ease, background 0.16s ease;
+}
+
+.community-post-detail__edit:hover,
+.community-post-detail__edit:focus-visible {
+  background: #2a313d;
+  transform: translateY(-1px);
+}
+
 .community-post-detail__body {
   margin: 0;
   font-size: 16px;

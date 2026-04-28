@@ -49,6 +49,7 @@ function App() {
         <Route element={<MainPage />} path="/" />
         <Route element={<MainPage previewAuthenticated />} path="/home-auth" />
         <Route element={<CommunityWritePage />} path="/community/write" />
+        <Route element={<CommunityWritePage />} path="/community/post/:slug/edit" />
         <Route element={<CommunityPostDetailPage />} path="/community/post/:slug" />
         <Route element={<CommunityPage />} path="/community" />
         <Route element={<SearchResultsPage />} path="/search" />

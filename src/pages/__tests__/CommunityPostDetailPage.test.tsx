@@ -34,6 +34,7 @@ function renderPage() {
     <MemoryRouter initialEntries={['/community/post/123']}>
       <Routes>
         <Route element={<CommunityPostDetailPage />} path="/community/post/:slug" />
+        <Route element={<div>edit post page</div>} path="/community/post/:slug/edit" />
         <Route element={<div>community list</div>} path="/community" />
         <Route element={<div>login page</div>} path="/login" />
         <Route element={<div>user feed</div>} path="/users/:userId/minifeed" />
@@ -254,6 +255,35 @@ test('opens the post author menu and navigates to the author mini feed', async (
   fireEvent.click(screen.getByRole('menuitem', { name: '피드보기' }));
 
   expect(await screen.findByText('user feed')).toBeInTheDocument();
+});
+
+test('shows an edit action only on a post owned by the current user', async () => {
+  mockedFetchDetail.mockResolvedValue({
+    authorNickname: '내 닉네임',
+    authorProfileImageRef: null,
+    authorUserId: "101",
+    blocks: [{ blockType: 'TEXT', content: '내 글 본문', sortOrder: 0 }],
+    commentCount: 0,
+    createdAt: '2026-04-10T09:00:00.000Z',
+    likeCount: 1,
+    likedByViewer: false,
+    postId: "123",
+    status: 'PUBLISHED',
+    title: '내가 쓴 게시글',
+    updatedAt: '2026-04-10T09:00:00.000Z',
+    viewCount: 10,
+  });
+  mockedFetchComments.mockResolvedValue([]);
+
+  renderPage();
+
+  const editLink = await screen.findByRole('link', { name: '게시글 수정' });
+  expect(editLink).toHaveAttribute('href', '/community/post/123/edit');
+  expect(screen.queryByRole('button', { name: '게시글 신고' })).not.toBeInTheDocument();
+
+  fireEvent.click(editLink);
+
+  expect(await screen.findByText('edit post page')).toBeInTheDocument();
 });
 
 test('navigates to a commenter mini feed from the comment nickname', async () => {

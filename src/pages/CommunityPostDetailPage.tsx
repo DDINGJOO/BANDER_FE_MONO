@@ -693,6 +693,9 @@ export function CommunityPostDetailPage() {
   const visibleCommentCount = countComments(commentTrees);
   const previousPost = post?.adjacent?.prev ?? null;
   const nextPost = post?.adjacent?.next ?? null;
+  const isOwnPost = Boolean(
+    currentUserId && post && String(post.authorUserId) === currentUserId
+  );
 
   const toggleLike = useCallback(async () => {
     if (!postId || likeInFlight.current) {
@@ -1048,14 +1051,26 @@ export function CommunityPostDetailPage() {
                     ) : null}
                     <h1 className="community-post-detail__title">{post.title}</h1>
                   </div>
-                  <button
-                    aria-label="게시글 신고"
-                    className="community-post-detail__subscribe"
-                    onClick={() => setPostReportConfirmOpen(true)}
-                    type="button"
-                  >
-                    <SirenGlyph30 />
-                  </button>
+                  <div className="community-post-detail__post-actions">
+                    {isOwnPost ? (
+                      <Link
+                        aria-label="게시글 수정"
+                        className="community-post-detail__edit"
+                        to={`/community/post/${encodeURIComponent(String(post.postId ?? postId))}/edit`}
+                      >
+                        수정
+                      </Link>
+                    ) : (
+                      <button
+                        aria-label="게시글 신고"
+                        className="community-post-detail__subscribe"
+                        onClick={() => setPostReportConfirmOpen(true)}
+                        type="button"
+                      >
+                        <SirenGlyph30 />
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 <div className="community-post-detail__author-row">

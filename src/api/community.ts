@@ -1,4 +1,4 @@
-import { deleteJson, getJson, postJson } from './client';
+import { deleteJson, getJson, patchJson, postJson } from './client';
 
 export type CommunityPostBlockType = 'TEXT' | 'IMAGE' | 'CODE';
 
@@ -133,12 +133,29 @@ export type CreatePostRequest = {
 
 export type CreateCommunityPostRequest = CreatePostRequest;
 
+export type UpdatePostRequest = {
+  title: string;
+  category?: string;
+  topic?: string;
+  blocks: CreatePostRequest['blocks'];
+};
+
+export type UpdateCommunityPostRequest = UpdatePostRequest;
+
 export function createPost(request: CreatePostRequest) {
   return postJson<PostDetailDto>('/api/v1/posts', request);
 }
 
 export function createCommunityPost(request: CreateCommunityPostRequest) {
   return createPost(request);
+}
+
+export function updatePost(postId: string, request: UpdatePostRequest) {
+  return patchJson<PostDetailDto>(`/api/v1/posts/${encodeURIComponent(postId)}`, request);
+}
+
+export function updateCommunityPost(postId: string, request: UpdateCommunityPostRequest) {
+  return updatePost(postId, request);
 }
 
 export type CreateCommentRequest = {
