@@ -7,6 +7,13 @@ export type PostBlockDto = {
   blockType: CommunityPostBlockType | string;
   content: string;
   sortOrder?: number;
+  /**
+   * R1-G: denormalized CDN URL for IMAGE blocks. Server populates this
+   * alongside `content` (mediaRef) at create/update time so the FE skips
+   * the per-render media-service round-trip. NULL on TEXT/CODE blocks
+   * and on legacy IMAGE rows that pre-date the V7 migration.
+   */
+  imageUrl?: string | null;
 };
 
 export type CommunityPostBlockDto = PostBlockDto;
@@ -101,6 +108,13 @@ export type CreatePostRequest = {
     mediaId?: string;
     /** Required for IMAGE blocks under PR-G partial: JWS ownership ticket from media-svc. */
     ownershipTicket?: string;
+    /**
+     * R1-G: denormalized CDN URL for IMAGE blocks. Optional; the server
+     * persists this alongside the mediaRef so subsequent reads skip the
+     * media-service round-trip for URL resolution. Server ignores the
+     * field on TEXT/CODE blocks.
+     */
+    imageUrl?: string;
   }>;
 };
 
@@ -207,7 +221,18 @@ export function requestPostInlineImageUpload(input: {
 export async function uploadPostInlineImage(input: {
   file: File;
   ownerKey: string;
-}): Promise<{ mediaRef: string; mediaId: string; ownershipTicket: string }> {
+}): Promise<{
+  mediaRef: string;
+  mediaId: string;
+  ownershipTicket: string;
+  /**
+   * R1-G: denormalized CDN URL returned by the upload grant. Threaded into
+   * the IMAGE block's `imageUrl` field on create/update so the server can
+   * persist it next to the mediaRef and the FE can skip per-read URL
+   * resolution. May be empty when the grant is from a legacy/stub backend.
+   */
+  imageUrl: string;
+}> {
   const grant = await requestPostInlineImageUpload({
     contentLength: input.file.size,
     contentType: input.file.type,
@@ -227,6 +252,7 @@ export async function uploadPostInlineImage(input: {
     mediaRef: grant.publicUrl || grant.mediaRef,
     mediaId: grant.mediaRef,
     ownershipTicket: grant.ownershipTicket ?? '',
+    imageUrl: grant.publicUrl ?? '',
   };
 }
 
@@ -305,6 +331,27 @@ export function fetchMyMiniFeed(params: {
   });
 
   return getJson<MiniFeedResponseDto>(`/api/v1/users/me/feed/posts?${search.toString()}`);
+}
+
+export function fetchUserMiniFeed(
+  userId: string,
+  params: {
+    page?: number;
+    size?: number;
+    sort: MiniFeedSort;
+    tab: MiniFeedTab;
+  }
+) {
+  const search = new URLSearchParams({
+    tab: params.tab,
+    sort: params.sort,
+    page: String(params.page ?? 0),
+    size: String(params.size ?? 20),
+  });
+
+  return getJson<MiniFeedResponseDto>(
+    `/api/v1/users/${encodeURIComponent(userId)}/feed/posts?${search.toString()}`
+  );
 }
 
 export function normalizeMiniFeedPage<T>(

@@ -180,7 +180,12 @@ export function CommunityWritePage() {
     setSubmitError('');
 
     try {
-      let uploads: Array<{ mediaRef: string; mediaId: string; ownershipTicket: string }> = [];
+      let uploads: Array<{
+        mediaRef: string;
+        mediaId: string;
+        ownershipTicket: string;
+        imageUrl: string;
+      }> = [];
       if (photos.length > 0) {
         try {
           uploads = await Promise.all(photos.map((photo) => uploadPhoto(photo)));
@@ -196,13 +201,18 @@ export function CommunityWritePage() {
         content: string;
         mediaId?: string;
         ownershipTicket?: string;
+        imageUrl?: string;
       }> = [
         { blockType: 'TEXT', content: body.trim() },
-        ...uploads.map(({ mediaRef, mediaId, ownershipTicket }) => ({
+        ...uploads.map(({ mediaRef, mediaId, ownershipTicket, imageUrl }) => ({
           blockType: 'IMAGE' as const,
           content: mediaRef,
           mediaId,
           ownershipTicket,
+          // R1-G: thread the CDN URL alongside the ref so the server can
+          // persist it (post_block.image_url, V7) — drop empty/missing URLs
+          // so the request stays clean for legacy stub backends.
+          ...(imageUrl ? { imageUrl } : {}),
         })),
       ];
 
