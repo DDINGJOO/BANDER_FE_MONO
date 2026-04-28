@@ -286,7 +286,8 @@ export function MyMiniFeedPage() {
 
   const sortLabel = SORT_OPTIONS.find((option) => option.value === sortBy)?.label ?? '최신순';
   const profileImageUrl = resolveMediaUrl(
-    profile?.profileImageUrl ?? profile?.profileImageRef
+    profile?.profileImageRef,
+    profile?.profileImageUrl
   );
   const profileTags = useMemo(() => normalizeTags(profile?.tags), [profile?.tags]);
   const profileLabel = profile?.nickname ?? (isPublicUserFeed ? '사용자' : '내 프로필');
