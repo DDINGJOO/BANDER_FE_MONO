@@ -143,7 +143,7 @@ export function HomeHeader(props: HomeHeaderProps) {
     ? {
         displayName: summary.displayName,
         email: summary.email,
-        profileImageUrl: resolveProfileImageUrl(summary.profileImageRef),
+        profileImageUrl: resolveProfileImageUrl(summary.profileImageRef, summary.profileImageUrl),
         pointsLabel: summary.pointsLabel,
         couponCountLabel: summary.couponCountLabel,
         reservationBadgeCount: summary.reservationBadgeCount,

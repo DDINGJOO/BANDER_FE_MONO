@@ -33,4 +33,33 @@ describe('resolveProfileImageUrl', () => {
       'https://cdn.example.com/profiles/user-1.png'
     );
   });
+
+  it('prefers the denormalized profileImageUrl over ref-based reconstruction', () => {
+    process.env.REACT_APP_CDN_BASE_URL = 'https://cdn.example.com';
+
+    expect(
+      resolveProfileImageUrl(
+        '11111111-1111-1111-1111-111111111111',
+        'https://cdn.example.com/originals/abc/avatar.png'
+      )
+    ).toBe('https://cdn.example.com/originals/abc/avatar.png');
+  });
+
+  it('falls back to ref-based reconstruction when profileImageUrl is null', () => {
+    process.env.REACT_APP_CDN_BASE_URL = 'https://cdn.example.com';
+
+    // Legacy row (URL not yet backfilled) — same behaviour as before.
+    expect(resolveProfileImageUrl('profiles/legacy.png', null)).toBe(
+      'https://cdn.example.com/profiles/legacy.png'
+    );
+    expect(resolveProfileImageUrl('profiles/legacy.png', undefined)).toBe(
+      'https://cdn.example.com/profiles/legacy.png'
+    );
+  });
+
+  it('treats blob/data URLs in profileImageUrl as already-resolved', () => {
+    expect(
+      resolveProfileImageUrl(null, 'blob:http://localhost/profile-preview')
+    ).toBe('blob:http://localhost/profile-preview');
+  });
 });

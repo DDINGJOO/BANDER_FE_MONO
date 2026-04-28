@@ -190,7 +190,10 @@ export function ProfileEditPage() {
         setSavedNickname(profile.nickname ?? '');
         setCheckedNickname(profile.nickname ?? '');
         setBio(profile.bio ?? '');
-        setPhotoUrl(resolveProfileImageUrl(profile.profileImageRef) ?? PROFILE_EDIT_DEFAULT_PHOTO);
+        setPhotoUrl(
+          resolveProfileImageUrl(profile.profileImageRef, profile.profileImageUrl)
+            ?? PROFILE_EDIT_DEFAULT_PHOTO
+        );
         if (profile.gender) {
           setServerGender(profile.gender);
           const genderMap: Record<string, ProfileEditGender> = { MALE: 'male', FEMALE: 'female' };
@@ -493,6 +496,7 @@ export function ProfileEditPage() {
                 setSubmitError('');
                 try {
                   let imageRef: string | undefined;
+                  let imageUrl: string | undefined;
                   let ownershipTicket: string | undefined;
 
                   // Upload new image if selected — grant → S3 PUT → commit (eager)
@@ -511,6 +515,7 @@ export function ProfileEditPage() {
                       file: selectedFile,
                     });
                     imageRef = grant.profileImageRef;
+                    imageUrl = grant.publicUrl;
                     ownershipTicket = grant.ownershipTicket;
                   }
 
@@ -523,6 +528,7 @@ export function ProfileEditPage() {
                     genres: genres.join(',') || undefined,
                     instruments: instruments.join(',') || undefined,
                     profileImageRef: imageRef,
+                    profileImageUrl: imageRef ? imageUrl : undefined,
                     ownershipTicket: imageRef ? ownershipTicket : undefined,
                   });
                   // Force header to refetch latest profile on next render.
