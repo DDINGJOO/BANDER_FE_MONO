@@ -191,6 +191,16 @@ test('fetches the profile feed and refetches on tab and sort changes', async () 
 
 test('loads another user mini feed without requiring login', async () => {
   window.sessionStorage.clear();
+  mockedGetPublicUserProfile.mockResolvedValue({
+    bio: '공개 프로필입니다.',
+    createdAt: '2026-04-10T09:00:00.000Z',
+    genres: '인디',
+    instruments: '드럼',
+    nickname: '공개타인',
+    profileImageRef: null,
+    profileImageUrl: null,
+    userId: '306963773430693888',
+  });
   mockedFetchUserMiniFeed.mockResolvedValue({
     page: {
       hasNext: false,
@@ -213,10 +223,10 @@ test('loads another user mini feed without requiring login', async () => {
     profile: {
       bio: '공개 미니피드입니다.',
       joinLabel: '26.04 가입',
-      nickname: '타인',
+      nickname: '사용자',
       profileImageUrl: null,
       userId: '306963773430693888',
-      tags: ['#드럼'],
+      tags: [],
     },
     sort: 'latest',
     tab: 'written',
@@ -224,19 +234,44 @@ test('loads another user mini feed without requiring login', async () => {
 
   renderPage('/users/306963773430693888/minifeed');
 
-  expect(await screen.findByRole('heading', { name: '타인 미니피드' })).toBeInTheDocument();
+  expect(await screen.findByRole('heading', { name: '공개타인 미니피드' })).toBeInTheDocument();
   expect(mockedFetchUserMiniFeed).toHaveBeenCalledWith('306963773430693888', {
     page: 0,
     size: 20,
     sort: 'latest',
     tab: 'written',
   });
+  expect(mockedGetPublicUserProfile).toHaveBeenCalledWith('306963773430693888');
   expect(mockedFetchMyMiniFeed).not.toHaveBeenCalled();
   expect(screen.getByText('타인 피드 게시글')).toBeInTheDocument();
   expect(screen.getByText('장르 · 악기')).toBeInTheDocument();
   expect(screen.getByRole('button', { name: '채팅하기' })).toBeInTheDocument();
   expect(screen.queryByText('수정하기')).not.toBeInTheDocument();
   expect(screen.queryByText('login page')).not.toBeInTheDocument();
+});
+
+test('keeps another user profile visible when the public mini feed route is not deployed yet', async () => {
+  window.sessionStorage.clear();
+  mockedFetchUserMiniFeed.mockRejectedValue(
+    new ApiError('요청한 경로를 찾을 수 없습니다: /api/v1/users/307057320825716736/feed/posts', 404)
+  );
+  mockedGetPublicUserProfile.mockResolvedValue({
+    bio: '프로필은 공개로 볼 수 있어요.',
+    createdAt: '2026-04-10T09:00:00.000Z',
+    genres: '락,인디',
+    instruments: '기타',
+    nickname: '공개유저',
+    profileImageRef: null,
+    profileImageUrl: 'https://cdn.example.com/public-profile.png',
+    userId: '307057320825716736',
+  });
+
+  renderPage('/users/307057320825716736/minifeed');
+
+  expect(await screen.findByRole('heading', { name: '공개유저 미니피드' })).toBeInTheDocument();
+  expect(screen.getByText('프로필은 공개로 볼 수 있어요.')).toBeInTheDocument();
+  expect(screen.getByText('공개 미니피드 게시글 경로가 아직 서버에 반영되지 않았습니다. 잠시 후 다시 시도해주세요.')).toBeInTheDocument();
+  expect(screen.queryByText(/요청한 경로를 찾을 수 없습니다/)).not.toBeInTheDocument();
 });
 
 test('keeps another user profile visible when the public mini feed is temporarily unauthorized', async () => {

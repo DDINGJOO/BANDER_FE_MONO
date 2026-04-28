@@ -173,6 +173,19 @@ function normalizeJoinLabel(profile: MiniFeedProfileDto | null) {
   return createdAt ? `${createdAt} 가입` : '';
 }
 
+function publicFeedErrorMessage(error: unknown) {
+  if (error instanceof ApiError) {
+    if (error.status === 401) {
+      return '공개 미니피드 조회가 아직 서버에 반영되지 않았습니다. 잠시 후 다시 시도해주세요.';
+    }
+    if (error.status === 404) {
+      return '공개 미니피드 게시글 경로가 아직 서버에 반영되지 않았습니다. 잠시 후 다시 시도해주세요.';
+    }
+  }
+
+  return getErrorMessage(error, '미니피드를 불러오지 못했습니다.');
+}
+
 function toExcerptLines(post: MiniFeedPostDto) {
   if (Array.isArray(post.excerptLines) && post.excerptLines.length > 0) {
     return post.excerptLines;
@@ -363,7 +376,7 @@ export function MyMiniFeedPage() {
     } catch (error) {
       setErrorMessage(getErrorMessage(error, '채팅방을 만들지 못했습니다.'));
     }
-  }, [chatTargetUserId, isAuthenticated, navigate]);
+  }, [chatTargetUserId, isAuthenticated, navigate, openGuestGate]);
 
   useEffect(() => {
     const handlePointerDown = (event: MouseEvent) => {
@@ -397,18 +410,24 @@ export function MyMiniFeedPage() {
       sort: sortBy,
       tab: feedTab,
     };
+    const publicProfilePromise = isPublicUserFeed
+      ? Promise.resolve(getPublicUserProfile(targetUserId))
+          .then(toMiniFeedProfile)
+          .catch(() => null)
+      : Promise.resolve<MiniFeedProfileDto | null>(null);
     const request = isPublicUserFeed
       ? fetchUserMiniFeed(targetUserId, params)
       : fetchMyMiniFeed(params);
 
     request
-      .then((response) => {
+      .then(async (response) => {
+        const publicProfile = await publicProfilePromise;
         if (!active) {
           return;
         }
 
         const page = normalizeMiniFeedPage(response.page);
-        setProfile(response.profile);
+        setProfile(publicProfile ?? response.profile);
         setPosts(page.items.map(mapMiniFeedPost));
         setTotalCount(page.totalCount);
       })
@@ -422,27 +441,21 @@ export function MyMiniFeedPage() {
           return;
         }
 
-        if (isPublicUserFeed) {
-          try {
-            const publicProfile = await getPublicUserProfile(targetUserId);
-            if (!active) {
-              return;
-            }
-            setProfile(toMiniFeedProfile(publicProfile));
-          } catch {
-            // If the post list fails, keep the original feed error. The public
-            // profile fallback is best-effort and should never force login.
-          }
+        const publicProfile = await publicProfilePromise;
+        if (!active) {
+          return;
+        }
+
+        if (publicProfile) {
+          setProfile(publicProfile);
         }
 
         setErrorMessage(
-          isPublicUserFeed && error instanceof ApiError && error.status === 401
-            ? '공개 미니피드 조회가 아직 서버에 반영되지 않았습니다. 잠시 후 다시 시도해주세요.'
+          isPublicUserFeed
+            ? publicFeedErrorMessage(error)
             : getErrorMessage(
                 error,
-                isPublicUserFeed
-                  ? '미니피드를 불러오지 못했습니다.'
-                  : '내 미니피드를 불러오지 못했습니다.'
+                '내 미니피드를 불러오지 못했습니다.'
               )
         );
         setPosts([]);
