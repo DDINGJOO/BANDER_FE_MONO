@@ -103,8 +103,13 @@ function getErrorMessage(error: unknown, fallback: string) {
   return fallback;
 }
 
-function resolveMediaUrl(ref: string | null | undefined) {
-  return resolveProfileImageUrl(ref);
+function resolveMediaUrl(
+  ref: string | null | undefined,
+  url?: string | null,
+) {
+  // R2-B: prefer denormalized profile image URL (UserProfileUpdated fanout) when
+  // present; fall back to ref-based reconstruction for legacy rows.
+  return resolveProfileImageUrl(ref, url);
 }
 
 function normalizeTags(tags: MiniFeedProfileDto['tags']) {
@@ -156,8 +161,13 @@ function mapMiniFeedPost(post: MiniFeedPostDto): MiniFeedCardModel {
   const detailIdentifier = post.postId ?? post.id ?? post.detailSlug ?? post.slug ?? null;
 
   return {
+    // R2-B: server-supplied authorProfileImageUrl (UserProfileUpdated fanout) takes
+    // precedence over the legacy ref/avatar fields. Tries the denormalized URL
+    // first, then falls back to ref-based resolution for rows that pre-date the
+    // fanout migration.
     authorAvatar: resolveMediaUrl(
-      post.authorAvatarUrl ?? post.authorAvatar ?? post.authorProfileImageRef
+      post.authorAvatarUrl ?? post.authorAvatar ?? post.authorProfileImageRef,
+      post.authorProfileImageUrl,
     ),
     authorName: post.authorName ?? post.authorNickname ?? '밴더유저',
     category: post.category ?? undefined,
