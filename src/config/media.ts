@@ -63,3 +63,52 @@ export function resolveProfileImageUrl(
   // No CDN configured — show a stable default instead of a broken image.
   return DEFAULT_PROFILE_IMAGE_URL;
 }
+
+/**
+ * R1-J: resolve a chat IMAGE message attachment to a displayable URL.
+ *
+ * Prefers the server-supplied `imageUrl` (denormalized CDN URL, available
+ * from chat-service V6 onwards) when present. Legacy IMAGE rows persisted
+ * before V6 carry NULL there, so we fall back to the historical CDN-prefix
+ * reconstruction from `content` (mediaRef) — best-effort, acceptable for
+ * legacy rows because the read path is otherwise broken on those.
+ *
+ * Returns `null` for messages with no image (TEXT/SYSTEM) so callers can
+ * branch on the result.
+ */
+export function resolveChatImageUrl(
+  ref: string | null | undefined,
+  url?: string | null,
+): string | null {
+  const normalizedUrl = url?.trim();
+  if (normalizedUrl) {
+    if (
+      normalizedUrl.startsWith('http') ||
+      normalizedUrl.startsWith('blob:') ||
+      normalizedUrl.startsWith('data:')
+    ) {
+      return normalizedUrl;
+    }
+    const cdn = getCdnBaseUrl();
+    if (cdn) {
+      return `${cdn}/${normalizedUrl.replace(/^\//, '')}`;
+    }
+  }
+
+  const normalizedRef = ref?.trim();
+  if (!normalizedRef) {
+    return null;
+  }
+  if (
+    normalizedRef.startsWith('http') ||
+    normalizedRef.startsWith('blob:') ||
+    normalizedRef.startsWith('data:')
+  ) {
+    return normalizedRef;
+  }
+  const cdn = getCdnBaseUrl();
+  if (cdn) {
+    return `${cdn}/${normalizedRef}`;
+  }
+  return null;
+}

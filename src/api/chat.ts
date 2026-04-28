@@ -29,6 +29,12 @@ export type ChatMessageResponse = {
   messageType: 'TEXT' | 'IMAGE' | 'SYSTEM';
   readAt: string | null;
   createdAt: string;
+  /**
+   * Denormalized CDN URL for IMAGE messages (R1-J / chat-service V6).
+   * Renderer prefers this over rebuilding from the legacy `content` (mediaRef).
+   * NULL for TEXT/SYSTEM messages and for legacy IMAGE rows persisted before V6.
+   */
+  imageUrl: string | null;
 };
 
 export type CursorPageResponse<T> = {
@@ -59,6 +65,19 @@ export type CreateChatRoomRequest = {
 export type SendMessageRequest = {
   content: string;
   messageType?: 'TEXT' | 'IMAGE' | 'SYSTEM';
+  /**
+   * Idempotency key — `(senderUserId, clientMsgId)` uniquely identifies a
+   * client-originated send. Server returns the existing row on duplicate.
+   */
+  clientMsgId?: string;
+  /**
+   * Denormalized CDN URL captured from the chat-image upload grant response
+   * (R1-J / chat-service V6). SHOULD be sent whenever `messageType === 'IMAGE'`
+   * so reads avoid a per-render round-trip to media-service.
+   * Server stores it in chat_message.media_url in the same INSERT tx.
+   * Ignored when messageType !== 'IMAGE'.
+   */
+  imageUrl?: string;
 };
 
 // --- Functions ---

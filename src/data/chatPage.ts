@@ -3,7 +3,7 @@
  */
 
 import type { ChatMessageResponse, ChatRoomResponse } from '../api/chat';
-import { resolveProfileImageUrl } from '../config/media';
+import { resolveChatImageUrl, resolveProfileImageUrl } from '../config/media';
 
 export type ChatThread = {
   id: string;
@@ -22,6 +22,8 @@ export type ChatMessage =
       senderName: string;
       text: string;
       time: string;
+      /** R1-J: when set, render an image attachment instead of plain text. */
+      imageUrl?: string;
     }
   | {
       id: string;
@@ -29,6 +31,8 @@ export type ChatMessage =
       /** 한 줄 또는 여러 줄(6406:77747) */
       lines: string[];
       time: string;
+      /** R1-J: when set, render an image attachment instead of plain text. */
+      imageUrl?: string;
     };
 
 export type ChatVendorPanel = {
@@ -217,8 +221,21 @@ export function chatMessageToUiMessage(
   partnerNickname?: string,
 ): ChatMessage {
   const time = formatChatTime(msg.createdAt);
+  // R1-J: prefer the denormalized `imageUrl` from the message payload; fall
+  // back to legacy `<CDN>/<content>` reconstruction for IMAGE rows persisted
+  // before chat-service V6 (DB column NULL).
+  const resolvedImageUrl =
+    msg.messageType === 'IMAGE'
+      ? resolveChatImageUrl(msg.content, msg.imageUrl) ?? undefined
+      : undefined;
   if (String(msg.senderUserId) === String(currentUserId)) {
-    return { id: msg.messageId, kind: 'out', lines: [msg.content], time };
+    return {
+      id: msg.messageId,
+      kind: 'out',
+      lines: [msg.content],
+      time,
+      imageUrl: resolvedImageUrl,
+    };
   }
   return {
     id: msg.messageId,
@@ -226,5 +243,6 @@ export function chatMessageToUiMessage(
     senderName: partnerNickname ?? '상대방',
     text: msg.content,
     time,
+    imageUrl: resolvedImageUrl,
   };
 }

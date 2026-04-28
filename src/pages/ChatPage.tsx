@@ -435,9 +435,17 @@ export function ChatPage() {
                         <div className="chat-page__out-cluster">
                           <span className="chat-page__msg-time">{msg.time}</span>
                           <div className="chat-page__bubble chat-page__bubble--out">
-                            {msg.lines.map((line, li) => (
-                              <p key={`${msg.id}-l${li}`}>{line}</p>
-                            ))}
+                            {msg.imageUrl ? (
+                              <img
+                                className="chat-page__bubble-image"
+                                src={msg.imageUrl}
+                                alt=""
+                              />
+                            ) : (
+                              msg.lines.map((line, li) => (
+                                <p key={`${msg.id}-l${li}`}>{line}</p>
+                              ))
+                            )}
                           </div>
                         </div>
                       </div>
@@ -452,7 +460,15 @@ export function ChatPage() {
                           <p className="chat-page__in-name">{msg.senderName}</p>
                           <div className="chat-page__in-line">
                             <div className="chat-page__bubble chat-page__bubble--in">
-                              <p>{msg.text}</p>
+                              {msg.imageUrl ? (
+                                <img
+                                  className="chat-page__bubble-image"
+                                  src={msg.imageUrl}
+                                  alt=""
+                                />
+                              ) : (
+                                <p>{msg.text}</p>
+                              )}
                             </div>
                             <span className="chat-page__msg-time chat-page__msg-time--in">
                               {msg.time}
