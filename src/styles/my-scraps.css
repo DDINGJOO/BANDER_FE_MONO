@@ -153,10 +153,10 @@
 
 .my-scraps-card__scrap {
   position: absolute;
-  top: 12px;
-  right: 12px;
-  width: 28px;
-  height: 28px;
+  top: 8px;
+  right: 8px;
+  width: 40px;
+  height: 40px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -168,6 +168,8 @@
 
 .my-scraps-card__scrap svg {
   display: block;
+  width: 28px;
+  height: 28px;
 }
 
 .my-scraps-card__body {
@@ -188,6 +190,7 @@
 .my-scraps-card__chips {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 5px;
   min-width: 0;
 }
@@ -283,9 +286,43 @@
 }
 
 .my-scraps-card__chip {
+  min-width: 0;
   font-size: 13px;
   font-weight: 500;
   line-height: 18px;
   color: #a3a9b5;
   white-space: nowrap;
+}
+
+@media (max-width: 480px) {
+  .my-scraps__tabs {
+    margin-bottom: 28px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .my-scraps__tabs::-webkit-scrollbar {
+    display: none;
+  }
+
+  .my-scraps__tab {
+    flex: 0 0 auto;
+    min-height: 44px;
+    padding: 10px 14px 14px;
+  }
+
+  .my-scraps__grid {
+    grid-template-columns: 1fr;
+    row-gap: 24px;
+  }
+
+  .my-scraps-card__thumb-wrap {
+    aspect-ratio: 16 / 10;
+  }
+
+  .my-scraps-card__title-link {
+    display: flex;
+    align-items: center;
+    min-height: 44px;
+  }
 }

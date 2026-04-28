@@ -2756,6 +2756,8 @@ img.home-header__avatar::after {
 
   .home-header__main > .brand-mark {
     grid-column: 1;
+    align-items: center;
+    min-height: 44px;
     min-width: 0;
   }
 
@@ -2768,7 +2770,7 @@ img.home-header__avatar::after {
   }
 
   .home-header__search-field {
-    min-height: 42px;
+    min-height: 46px;
     padding: 0 10px 0 14px;
   }
 
@@ -2778,8 +2780,8 @@ img.home-header__avatar::after {
 
   .home-header__search-submit {
     display: inline-flex;
-    width: 34px;
-    height: 34px;
+    width: 40px;
+    height: 40px;
     border-radius: 999px;
     background: var(--color-main-yellow);
   }
@@ -2792,10 +2794,18 @@ img.home-header__avatar::after {
     grid-column: 2;
     justify-self: end;
     margin-left: 0;
+    width: 44px;
+    height: 44px;
+  }
+
+  .home-header__search-clear {
+    min-width: 40px;
+    min-height: 40px;
   }
 
   .home-header__search-input {
     font-size: 14px;
+    min-height: 40px;
   }
 
   .home-header__search-input::placeholder {
@@ -2833,6 +2843,10 @@ img.home-header__avatar::after {
   .home-search__field,
   .home-search__submit {
     min-height: 44px;
+  }
+
+  .home-search__input {
+    min-height: 40px;
   }
 
   .home-search__field-wrap:has(.home-explorer-panel)::before,
@@ -2932,7 +2946,7 @@ img.home-header__avatar::after {
   }
 
   .home-header__search-field {
-    min-height: 38px;
+    min-height: 44px;
   }
 
   .home-header__search-submit {
@@ -2941,10 +2955,16 @@ img.home-header__avatar::after {
 
   .home-search__filter,
   .home-explorer__filter {
-    min-height: 34px;
-    padding: 8px 10px;
+    min-height: 40px;
+    padding: 9px 11px;
     font-size: 12px;
     white-space: nowrap;
+  }
+
+  .home-host-cta__link {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
   }
 
   .home-explorer-region__province,

@@ -671,8 +671,8 @@
 
   .chat-page__mobile-back {
     flex: 0 0 auto;
-    min-height: 34px;
-    padding: 0 12px;
+    min-height: 40px;
+    padding: 0 14px;
     border: 1px solid #e3e7ee;
     border-radius: 999px;
     background: #ffffff;
@@ -723,8 +723,15 @@
   }
 
   .chat-page__composer {
+    gap: 8px;
     min-height: 64px;
     padding: 10px 12px 12px;
+  }
+
+  .chat-page__composer-camera,
+  .chat-page__composer-send {
+    width: 40px;
+    height: 40px;
   }
 
   .chat-page__vendor-col {

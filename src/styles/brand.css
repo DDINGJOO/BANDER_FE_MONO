@@ -6,6 +6,10 @@
   text-decoration: none;
 }
 
+.brand-mark--link {
+  min-height: 44px;
+}
+
 .brand-mark--link:hover,
 .brand-mark--link:focus-visible {
   opacity: 0.9;
@@ -38,4 +42,3 @@
   height: 7px;
   margin-bottom: 7px;
 }
-

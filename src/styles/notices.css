@@ -554,6 +554,49 @@
     font-size: 22px;
   }
 
+  .notices__tabs {
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .notices__tabs::-webkit-scrollbar {
+    display: none;
+  }
+
+  .notices__tab {
+    flex: 0 0 auto;
+    min-height: 44px;
+    padding: 10px 14px 14px;
+    white-space: nowrap;
+  }
+
+  .notices__filter {
+    min-height: 40px;
+    padding: 10px 14px;
+  }
+
+  .notices-row__link {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 8px;
+    padding: 18px 4px;
+  }
+
+  .notices-row__main {
+    width: 100%;
+    gap: 10px;
+  }
+
+  .notices-row__date {
+    padding-left: 0;
+  }
+
+  .notices__page {
+    min-width: 40px;
+    height: 40px;
+    border-radius: 10px;
+  }
+
   .notice-detail__thumb {
     height: 240px;
   }

@@ -27,6 +27,7 @@
 }
 
 .community-page__chip {
+  min-height: 40px;
   padding: 8px 16px;
   border-radius: 999px;
   border: 1px solid #d8dde4;
