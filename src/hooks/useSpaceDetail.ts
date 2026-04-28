@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { getJson } from '../api/client';
-import { fetchSpaceDetail, type SpaceDetailDto } from '../api/spaces';
+import { fetchSpaceDetail, type SpaceDetailDto, type SpaceGalleryImageDto } from '../api/spaces';
+import { resolveProfileImageUrl } from '../config/media';
 import { isMockMode } from '../config/publicEnv';
 import { HOME_SPACE_CARDS } from '../data/home';
 import {
@@ -50,9 +51,21 @@ function mapApiToViewModel(dto: SpaceDetailDto) {
     imageUrl: p.imageUrl ?? null,
   }));
 
+  // R1-I: prefer per-image (imageUrl, mediaId) lockstep payload over the
+  // legacy galleryUrls parallel-array. resolveProfileImageUrl handles both
+  // the new V17 column (imageUrl present) and legacy rows (mediaId-only,
+  // CDN-prefix fallback).
+  const galleryFromImages = (dto.images ?? []) as SpaceGalleryImageDto[];
+  const gallery = galleryFromImages.length > 0
+    ? galleryFromImages
+        .slice()
+        .sort((a, b) => a.sortOrder - b.sortOrder)
+        .map((img) => resolveProfileImageUrl(img.mediaId ?? null, img.imageUrl ?? null))
+    : dto.galleryUrls;
+
   return {
     ...dto,
-    gallery: dto.galleryUrls,
+    gallery,
     studioName: dto.studioName,
     category: dto.category ?? '합주실',
     summaryHashTags: dto.hashTags,

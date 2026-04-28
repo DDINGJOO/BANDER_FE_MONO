@@ -13,6 +13,17 @@ export type SpaceOperatingDayDto = {
 
 export type SpaceFacilityChipDto = { key: string; label: string };
 
+/**
+ * R1-I: per-image payload mirroring RoomDetailResponse.GalleryImage from
+ * space-service. {@code imageUrl} is the denormalized CDN URL persisted on
+ * room_image (V17). FE prefers it over reconstructing from {@code mediaId}.
+ */
+export type SpaceGalleryImageDto = {
+  imageUrl: string | null;
+  mediaId: string | null;
+  sortOrder: number;
+};
+
 export type SpaceNoticeDto = { title: string; body: string };
 
 export type SpacePolicyDto = { title: string; body: string };
@@ -53,6 +64,11 @@ export type SpaceDetailResponseDto = {
   operatingSummary: string;
   operatingWeek: SpaceOperatingDayDto[];
   galleryUrls: string[];
+  /**
+   * R1-I: per-image objects from RoomDetailResponse.GalleryImage.
+   * Prefer {@code images[].imageUrl} over the parallel {@code galleryUrls} array.
+   */
+  images?: SpaceGalleryImageDto[];
   facilityChips: SpaceFacilityChipDto[];
   detailBenefitChips: { label: string }[];
   notices: SpaceNoticeDto[];
