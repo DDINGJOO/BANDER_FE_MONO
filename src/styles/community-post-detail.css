@@ -356,8 +356,24 @@
 /* —— 댓글 사이드바 —— */
 .community-post-detail__sidebar {
   width: 100%;
-  max-width: 376px;
-  margin: 0 auto;
+  max-width: none;
+  margin: 0;
+}
+
+@media (min-width: 768px) and (max-width: 1079px) {
+  .community-post-detail__sidebar {
+    display: none;
+  }
+}
+
+@media (min-width: 1080px) {
+  .community-post-detail__sidebar {
+    display: block;
+    max-width: 376px;
+    margin: 0 auto;
+    position: sticky;
+    top: 100px;
+  }
 }
 
 .community-post-detail__comments-card {
@@ -372,6 +388,13 @@
   background: #fff;
   box-sizing: border-box;
   gap: 20px;
+}
+
+.community-post-detail__comments-content {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
 }
 
 .community-post-detail__comments-head {
@@ -587,4 +610,170 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
+}
+
+@media (max-width: 767px) {
+  .community-post-detail__comments-card {
+    min-height: 0;
+    padding: 18px 16px;
+    border-radius: 14px;
+    box-shadow: none;
+  }
+
+  .community-post-detail__comments-scroll {
+    max-height: none;
+  }
+}
+
+.community-post-detail__mobile-comment-fab {
+  width: fit-content;
+  min-width: 64px;
+  height: 54px;
+  margin: 10px 0 0 auto;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 999px;
+  background: #111827;
+  color: #fff;
+  box-shadow: 0 14px 36px rgba(15, 23, 42, 0.24);
+  cursor: pointer;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 20px;
+}
+
+@media (min-width: 768px) and (max-width: 1079px) {
+  .community-post-detail__mobile-comment-fab {
+    display: flex;
+  }
+}
+
+.community-post-detail__mobile-comment-fab svg {
+  width: 24px;
+  height: 24px;
+}
+
+.community-post-detail__mobile-comment-fab:focus-visible,
+.community-post-detail__comments-sheet-close:focus-visible {
+  outline: 3px solid rgba(255, 162, 12, 0.45);
+  outline-offset: 3px;
+}
+
+.community-post-detail__comments-sheet {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  display: block;
+}
+
+.community-post-detail__comments-sheet-backdrop {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  background: rgba(15, 23, 42, 0.18);
+  cursor: pointer;
+}
+
+.community-post-detail__comments-sheet-panel {
+  position: fixed;
+  z-index: 1;
+  width: min(420px, calc(100vw - 32px));
+  min-height: 420px;
+  height: min(620px, calc(100dvh - 96px));
+  border: 1px solid #e5eaf0;
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: 0 24px 72px rgba(15, 23, 42, 0.26);
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.community-post-detail__comments-sheet-handle {
+  flex-shrink: 0;
+  width: 34px;
+  height: 4px;
+  border-radius: 999px;
+  background: #cbd3df;
+}
+
+.community-post-detail__comments-sheet-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 12px 12px 16px;
+  border-bottom: 1px solid #f0f2f5;
+  background: #fff;
+}
+
+.community-post-detail__comments-sheet-drag {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+.community-post-detail__comments-sheet-drag:active {
+  cursor: grabbing;
+}
+
+.community-post-detail__comments-sheet-title {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 24px;
+  color: #111827;
+}
+
+.community-post-detail__comments-sheet-close {
+  flex-shrink: 0;
+  width: 34px;
+  height: 34px;
+  border: 0;
+  border-radius: 50%;
+  background: #f3f5f7;
+  color: #4b5563;
+  cursor: pointer;
+  font-size: 22px;
+  line-height: 34px;
+  padding: 0;
+}
+
+.community-post-detail__comments-sheet-panel .community-post-detail__comments-card {
+  flex: 1;
+  min-height: 0;
+  padding: 16px 18px 18px;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  overflow: hidden;
+}
+
+.community-post-detail__comments-sheet-panel .community-post-detail__comments-scroll {
+  flex: 1;
+  max-height: none;
+  min-height: 0;
+  padding-right: 2px;
+}
+
+.community-post-detail__comments-sheet-panel .community-post-detail__comment-input-wrap {
+  flex-shrink: 0;
+}
+
+@media (max-width: 767px), (min-width: 1080px) {
+  .community-post-detail__mobile-comment-fab,
+  .community-post-detail__comments-sheet {
+    display: none;
+  }
 }

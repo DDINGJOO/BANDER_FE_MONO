@@ -1,4 +1,12 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type PointerEvent as ReactPointerEvent,
+  type ReactNode,
+} from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import {
   createCommunityComment,
@@ -249,6 +257,19 @@ function resolveUserMiniFeedPath(userId: string | number | null | undefined) {
   return normalized ? `/users/${encodeURIComponent(normalized)}/minifeed` : null;
 }
 
+function resolveCommentsWindowPosition() {
+  if (typeof window === 'undefined') {
+    return { x: 24, y: 96 };
+  }
+
+  const width = Math.min(420, window.innerWidth - 32);
+  const height = Math.min(620, window.innerHeight * 0.72);
+  return {
+    x: Math.max(16, Math.round((window.innerWidth - width) / 2)),
+    y: Math.max(72, Math.round((window.innerHeight - height) / 2)),
+  };
+}
+
 function CommentMeta({
   actions,
   onActionClick,
@@ -448,8 +469,20 @@ export function CommunityPostDetailPage() {
     commentId: string;
   } | null>(null);
   const [submittingComment, setSubmittingComment] = useState(false);
+  const [mobileCommentsOpen, setMobileCommentsOpen] = useState(false);
+  const [commentsWindowPosition, setCommentsWindowPosition] = useState(() =>
+    resolveCommentsWindowPosition()
+  );
   const likeInFlight = useRef(false);
   const commentInputRef = useRef<HTMLInputElement | null>(null);
+  const commentsWindowRef = useRef<HTMLElement | null>(null);
+  const commentsWindowDragRef = useRef<{
+    pointerId: number;
+    originX: number;
+    originY: number;
+    startX: number;
+    startY: number;
+  } | null>(null);
   const [postReportConfirmOpen, setPostReportConfirmOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
   const [authorMenuOpen, setAuthorMenuOpen] = useState(false);
@@ -518,8 +551,87 @@ export function CommunityPostDetailPage() {
     setReplyTo(null);
     setDraft('');
     setActionError('');
+    setMobileCommentsOpen(false);
     void loadPost();
   }, [loadPost]);
+
+  useEffect(() => {
+    if (!mobileCommentsOpen) {
+      return undefined;
+    }
+
+    const previousOverflow = document.body.style.overflow;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setMobileCommentsOpen(false);
+      }
+    };
+
+    document.body.style.overflow = 'hidden';
+    document.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [mobileCommentsOpen]);
+
+  useEffect(() => {
+    if (typeof window.matchMedia !== 'function') {
+      return undefined;
+    }
+
+    const popupRange = window.matchMedia('(min-width: 768px) and (max-width: 1079px)');
+    const closeOutsidePopupRange = () => {
+      if (!popupRange.matches) {
+        setMobileCommentsOpen(false);
+      }
+    };
+
+    closeOutsidePopupRange();
+
+    if (typeof popupRange.addEventListener === 'function') {
+      popupRange.addEventListener('change', closeOutsidePopupRange);
+      return () => popupRange.removeEventListener('change', closeOutsidePopupRange);
+    }
+
+    popupRange.addListener(closeOutsidePopupRange);
+    return () => popupRange.removeListener(closeOutsidePopupRange);
+  }, []);
+
+  const clampCommentsWindowPosition = useCallback((x: number, y: number) => {
+    if (typeof window === 'undefined') {
+      return { x, y };
+    }
+
+    const rect = commentsWindowRef.current?.getBoundingClientRect();
+    const width = rect?.width ?? Math.min(420, window.innerWidth - 32);
+    const height = rect?.height ?? Math.min(620, window.innerHeight * 0.72);
+    const margin = 12;
+    const headerAllowance = 56;
+    const maxX = Math.max(margin, window.innerWidth - width - margin);
+    const maxY = Math.max(headerAllowance, window.innerHeight - height - margin);
+
+    return {
+      x: Math.min(Math.max(margin, x), maxX),
+      y: Math.min(Math.max(headerAllowance, y), maxY),
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!mobileCommentsOpen) {
+      return undefined;
+    }
+
+    const handleResize = () => {
+      setCommentsWindowPosition((position) =>
+        clampCommentsWindowPosition(position.x, position.y)
+      );
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [clampCommentsWindowPosition, mobileCommentsOpen]);
 
   useEffect(() => {
     const handlePointerDown = (event: MouseEvent) => {
@@ -709,6 +821,166 @@ export function CommunityPostDetailPage() {
   const cancelReplyDelete = useCallback(() => {
     setReplyDeleteId(null);
   }, []);
+
+  const openCommentsWindow = useCallback(() => {
+    const nextPosition = resolveCommentsWindowPosition();
+    setCommentsWindowPosition(nextPosition);
+    setMobileCommentsOpen(true);
+  }, []);
+
+  const handleCommentsWindowDragStart = useCallback(
+    (event: ReactPointerEvent<HTMLDivElement>) => {
+      if (event.pointerType === 'mouse' && event.button !== 0) {
+        return;
+      }
+
+      commentsWindowDragRef.current = {
+        pointerId: event.pointerId,
+        originX: commentsWindowPosition.x,
+        originY: commentsWindowPosition.y,
+        startX: event.clientX,
+        startY: event.clientY,
+      };
+      event.currentTarget.setPointerCapture(event.pointerId);
+      event.preventDefault();
+    },
+    [commentsWindowPosition]
+  );
+
+  const handleCommentsWindowDragMove = useCallback(
+    (event: ReactPointerEvent<HTMLDivElement>) => {
+      const drag = commentsWindowDragRef.current;
+      if (!drag || drag.pointerId !== event.pointerId) {
+        return;
+      }
+
+      const nextX = drag.originX + event.clientX - drag.startX;
+      const nextY = drag.originY + event.clientY - drag.startY;
+      setCommentsWindowPosition(clampCommentsWindowPosition(nextX, nextY));
+    },
+    [clampCommentsWindowPosition]
+  );
+
+  const handleCommentsWindowDragEnd = useCallback(
+    (event: ReactPointerEvent<HTMLDivElement>) => {
+      const drag = commentsWindowDragRef.current;
+      if (!drag || drag.pointerId !== event.pointerId) {
+        return;
+      }
+
+      commentsWindowDragRef.current = null;
+      if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+        event.currentTarget.releasePointerCapture(event.pointerId);
+      }
+    },
+    []
+  );
+
+  const renderCommentsPanel = ({ showHeading = true } = {}) => (
+    <div className="community-post-detail__comments-card">
+      <div className="community-post-detail__comments-content">
+        {showHeading ? (
+          <h2 className="community-post-detail__comments-head">
+            댓글 {visibleCommentCount}
+          </h2>
+        ) : null}
+        <div className="community-post-detail__comments-scroll">
+          {commentThreads.length > 0 ? (
+            commentThreads.map((thread) => (
+              <CommentThreadView
+                key={thread.root.id}
+                onAuthorClick={navigateToUserMiniFeed}
+                onCommentAction={handleCommentAction}
+                thread={thread}
+              />
+            ))
+          ) : (
+            <p
+              className="community-post-detail__body"
+              style={{ color: '#6d7a87', fontSize: 14 }}
+            >
+              등록된 댓글이 없습니다.
+            </p>
+          )}
+        </div>
+      </div>
+      <div className="community-post-detail__comment-input-wrap">
+        {replyTo ? (
+          <div className="community-post-detail__reply-preview">
+            <div className="community-post-detail__reply-preview-bubble">
+              <span className="community-post-detail__reply-preview-author">
+                {replyTo.author}
+              </span>
+              <span className="community-post-detail__reply-preview-body">
+                {replyTo.body.length > 60
+                  ? `${replyTo.body.slice(0, 60)}...`
+                  : replyTo.body}
+              </span>
+            </div>
+            <button
+              aria-label="답글 취소"
+              className="community-post-detail__reply-preview-close"
+              onClick={() => setReplyTo(null)}
+              type="button"
+            >
+              &times;
+            </button>
+          </div>
+        ) : null}
+        {isAuthenticated ? (
+          <>
+            <input
+              className="community-post-detail__comment-input"
+              disabled={submittingComment}
+              onChange={(event) => setDraft(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' && !event.nativeEvent.isComposing) {
+                  void handleSubmitComment();
+                }
+              }}
+              placeholder={
+                replyTo ? `${replyTo.author}에게 답글...` : '댓글을 입력해주세요.'
+              }
+              ref={commentInputRef}
+              type="text"
+              value={draft}
+            />
+            <button
+              aria-label="댓글 보내기"
+              className="community-post-detail__comment-send"
+              disabled={submittingComment}
+              onClick={() => void handleSubmitComment()}
+              type="button"
+            >
+              <SendGlyph24 />
+            </button>
+          </>
+        ) : (
+          <button
+            className="community-post-detail__comment-input community-post-detail__comment-login-prompt"
+            onClick={() =>
+              navigate(
+                `/login?returnTo=${encodeURIComponent(`/community/post/${postId}`)}`
+              )
+            }
+            style={{
+              background: '#fafafa',
+              border: '1px solid #e0e0e0',
+              borderRadius: 8,
+              color: '#999',
+              cursor: 'pointer',
+              padding: '10px 14px',
+              textAlign: 'left',
+              width: '100%',
+            }}
+            type="button"
+          >
+            댓글을 작성하려면 로그인해주세요.
+          </button>
+        )}
+      </div>
+    </div>
+  );
 
   return (
     <main className="community-post-detail">
@@ -943,118 +1215,81 @@ export function CommunityPostDetailPage() {
             </article>
 
             <aside className="community-post-detail__sidebar">
-              <div className="community-post-detail__comments-card">
-                <div>
-                  <h2 className="community-post-detail__comments-head">
-                    댓글 {visibleCommentCount}
-                  </h2>
-                  <div className="community-post-detail__comments-scroll">
-                    {commentThreads.length > 0 ? (
-                      commentThreads.map((thread) => (
-                        <CommentThreadView
-                          key={thread.root.id}
-                          onAuthorClick={navigateToUserMiniFeed}
-                          onCommentAction={handleCommentAction}
-                          thread={thread}
-                        />
-                      ))
-                    ) : (
-                      <p
-                        className="community-post-detail__body"
-                        style={{ color: '#6d7a87', fontSize: 14 }}
-                      >
-                        등록된 댓글이 없습니다.
-                      </p>
-                    )}
-                  </div>
-                </div>
-                <div className="community-post-detail__comment-input-wrap">
-                  {replyTo ? (
-                    <div className="community-post-detail__reply-preview">
-                      <div className="community-post-detail__reply-preview-bubble">
-                        <span className="community-post-detail__reply-preview-author">
-                          {replyTo.author}
-                        </span>
-                        <span className="community-post-detail__reply-preview-body">
-                          {replyTo.body.length > 60
-                            ? `${replyTo.body.slice(0, 60)}...`
-                            : replyTo.body}
-                        </span>
-                      </div>
-                      <button
-                        aria-label="답글 취소"
-                        className="community-post-detail__reply-preview-close"
-                        onClick={() => setReplyTo(null)}
-                        type="button"
-                      >
-                        &times;
-                      </button>
-                    </div>
-                  ) : null}
-                  {isAuthenticated ? (
-                    <>
-                      <input
-                        className="community-post-detail__comment-input"
-                        disabled={submittingComment}
-                        onChange={(event) => setDraft(event.target.value)}
-                        onKeyDown={(event) => {
-                          if (
-                            event.key === 'Enter' &&
-                            !event.nativeEvent.isComposing
-                          ) {
-                            void handleSubmitComment();
-                          }
-                        }}
-                        placeholder={
-                          replyTo
-                            ? `${replyTo.author}에게 답글...`
-                            : '댓글을 입력해주세요.'
-                        }
-                        ref={commentInputRef}
-                        type="text"
-                        value={draft}
-                      />
-                      <button
-                        aria-label="댓글 보내기"
-                        className="community-post-detail__comment-send"
-                        disabled={submittingComment}
-                        onClick={() => void handleSubmitComment()}
-                        type="button"
-                      >
-                        <SendGlyph24 />
-                      </button>
-                    </>
-                  ) : (
-                    <button
-                      className="community-post-detail__comment-input community-post-detail__comment-login-prompt"
-                      onClick={() =>
-                        navigate(
-                          `/login?returnTo=${encodeURIComponent(
-                            `/community/post/${postId}`
-                          )}`
-                        )
-                      }
-                      style={{
-                        background: '#fafafa',
-                        border: '1px solid #e0e0e0',
-                        borderRadius: 8,
-                        color: '#999',
-                        cursor: 'pointer',
-                        padding: '10px 14px',
-                        textAlign: 'left',
-                        width: '100%',
-                      }}
-                      type="button"
-                    >
-                      댓글을 작성하려면 로그인해주세요.
-                    </button>
-                  )}
-                </div>
-              </div>
+              {renderCommentsPanel()}
             </aside>
           </div>
         )}
+
+        {!loading && !errorMessage && post ? (
+          <button
+            aria-controls="community-post-detail-comments-sheet"
+            aria-expanded={mobileCommentsOpen}
+            aria-label={`댓글 ${visibleCommentCount}개 보기`}
+            className="community-post-detail__mobile-comment-fab"
+            onClick={openCommentsWindow}
+            type="button"
+          >
+            <CommentGlyph24 />
+            <span>{visibleCommentCount}</span>
+          </button>
+        ) : null}
       </div>
+
+      {!loading && !errorMessage && post && mobileCommentsOpen ? (
+        <div
+          className="community-post-detail__comments-sheet"
+          role="presentation"
+        >
+          <button
+            aria-label="댓글 닫기"
+            className="community-post-detail__comments-sheet-backdrop"
+            onClick={() => setMobileCommentsOpen(false)}
+            type="button"
+          />
+          <section
+            aria-labelledby="community-post-detail-comments-sheet-title"
+            aria-modal="true"
+            className="community-post-detail__comments-sheet-panel"
+            id="community-post-detail-comments-sheet"
+            ref={commentsWindowRef}
+            role="dialog"
+            style={{
+              left: commentsWindowPosition.x,
+              top: commentsWindowPosition.y,
+            }}
+          >
+            <div className="community-post-detail__comments-sheet-head">
+              <div
+                className="community-post-detail__comments-sheet-drag"
+                onPointerCancel={handleCommentsWindowDragEnd}
+                onPointerDown={handleCommentsWindowDragStart}
+                onPointerMove={handleCommentsWindowDragMove}
+                onPointerUp={handleCommentsWindowDragEnd}
+              >
+                <span
+                  aria-hidden="true"
+                  className="community-post-detail__comments-sheet-handle"
+                />
+                <h2
+                  className="community-post-detail__comments-sheet-title"
+                  id="community-post-detail-comments-sheet-title"
+                >
+                  댓글 {visibleCommentCount}
+                </h2>
+              </div>
+              <button
+                aria-label="댓글 닫기"
+                className="community-post-detail__comments-sheet-close"
+                onClick={() => setMobileCommentsOpen(false)}
+                type="button"
+              >
+                &times;
+              </button>
+            </div>
+            {renderCommentsPanel({ showHeading: false })}
+          </section>
+        </div>
+      ) : null}
 
       <HomeFooter />
 

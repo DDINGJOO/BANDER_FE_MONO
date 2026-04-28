@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { CommunityPostDetailPage } from '../CommunityPostDetailPage';
 import * as communityApi from '../../api/community';
@@ -294,4 +294,53 @@ test('navigates to a commenter mini feed from the comment nickname', async () =>
   fireEvent.click(await screen.findByRole('button', { name: '다른 유저' }));
 
   expect(await screen.findByText('user feed')).toBeInTheDocument();
+});
+
+test('opens and closes the responsive floating comments window from the marker', async () => {
+  mockedFetchDetail.mockResolvedValue({
+    authorNickname: '작성자',
+    authorProfileImageRef: null,
+    authorUserId: "999",
+    blocks: [{ blockType: 'TEXT', content: '본문 내용', sortOrder: 0 }],
+    commentCount: 1,
+    createdAt: '2026-04-10T09:00:00.000Z',
+    likeCount: 4,
+    likedByViewer: false,
+    postId: "123",
+    status: 'PUBLISHED',
+    title: '실 API 게시글 상세',
+    updatedAt: '2026-04-10T09:00:00.000Z',
+    viewCount: 10,
+  });
+  mockedFetchComments.mockResolvedValue([
+    {
+      comment: {
+        authorNickname: '다른 유저',
+        authorProfileImageRef: null,
+        authorUserId: "200",
+        commentId: "1",
+        content: '첫 댓글',
+        createdAt: '2026-04-10T09:10:00.000Z',
+        depth: 0,
+        parentId: null,
+        postId: "123",
+      },
+      replies: [],
+    },
+  ]);
+
+  renderPage();
+
+  expect(await screen.findByRole('heading', { level: 1, name: '실 API 게시글 상세' })).toBeInTheDocument();
+
+  fireEvent.click(screen.getByRole('button', { name: '댓글 1개 보기' }));
+
+  const dialog = screen.getByRole('dialog', { name: '댓글 1' });
+  expect(within(dialog).getByText('첫 댓글')).toBeInTheDocument();
+
+  fireEvent.click(within(dialog).getByRole('button', { name: '댓글 닫기' }));
+
+  await waitFor(() => {
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
 });
