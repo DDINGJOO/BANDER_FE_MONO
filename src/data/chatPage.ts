@@ -218,7 +218,7 @@ export function chatRoomToThread(room: ChatRoomResponse): ChatThread {
     timeLabel: formatChatTime(room.lastMessageAt),
     unread: room.unreadCount > 0 ? room.unreadCount : undefined,
     unreadOverflow: room.unreadCount > 99,
-    avatarUrl: resolveProfileImageUrl(room.partnerProfileImage),
+    avatarUrl: resolveProfileImageUrl(room.partnerProfileImage, room.partnerProfileImageUrl),
   };
 }
 

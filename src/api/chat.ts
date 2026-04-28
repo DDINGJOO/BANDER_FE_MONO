@@ -16,6 +16,7 @@ export type ChatRoomResponse = {
   createdAt: string;
   partnerNickname: string | null;
   partnerProfileImage: string | null;
+  partnerProfileImageUrl?: string | null;
   lastMessagePreview: string | null;
   unreadCount: number;
 };

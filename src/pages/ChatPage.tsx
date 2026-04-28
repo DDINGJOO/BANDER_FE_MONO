@@ -282,8 +282,8 @@ export function ChatPage() {
   // 업체 채팅방: 업체 첫 번째 룸 이미지, 개인 채팅방: 상대방 프로필 이미지
   const vendorImageUrl = vendorDetail?.rooms?.[0]?.imageUrl ?? null;
   const partnerAvatarUrl = isVendorRoom
-    ? (vendorImageUrl || resolveProfileImageUrl(activeRoom?.partnerProfileImage))
-    : resolveProfileImageUrl(activeRoom?.partnerProfileImage);
+    ? (vendorImageUrl || resolveProfileImageUrl(activeRoom?.partnerProfileImage, activeRoom?.partnerProfileImageUrl))
+    : resolveProfileImageUrl(activeRoom?.partnerProfileImage, activeRoom?.partnerProfileImageUrl);
 
   const uiMessages = messages.map((msg) =>
     chatMessageToUiMessage(msg, currentUserId, partnerNickname),
