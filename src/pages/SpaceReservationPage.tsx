@@ -2,6 +2,7 @@ import React, { useMemo, useRef, useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { HomeHeader } from '../components/home/HomeHeader';
+import { useGuestGate } from '../components/home/GuestGateProvider';
 import { CouponDownloadModal } from '../components/space/CouponDownloadModal';
 import { ChevronIcon } from '../components/shared/Icons';
 import { loadAuthSession } from '../data/authSession';
@@ -91,6 +92,7 @@ function slotLabelToIso(date: string, label: string): string {
 
 export function SpaceReservationPage() {
   const navigate = useNavigate();
+  const { openGuestGate } = useGuestGate();
   const { slug } = useParams();
   const [searchParams] = useSearchParams();
   const authSession = loadAuthSession();
@@ -505,7 +507,7 @@ export function SpaceReservationPage() {
 
   const handleDownloadCoupon = async (couponId: string) => {
     if (!isAuthenticated) {
-      navigate(`/login?returnTo=${encodeURIComponent(`/spaces/${slug}/reserve?date=${dateParam}${roomId ? `&roomId=${roomId}` : ''}`)}`);
+      openGuestGate(`/spaces/${slug}/reserve?date=${dateParam}${roomId ? `&roomId=${roomId}` : ''}`);
       return;
     }
     try {

@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useSearchSuggestions } from '../hooks/useSearchSuggestions';
-import { GuestGateModal } from '../components/home/GuestGateModal';
 import { HomeFooter } from '../components/home/HomeFooter';
 import { HomeHeader } from '../components/home/HomeHeader';
 import { HomePostCard } from '../components/home/HomePostCard';
@@ -52,7 +51,6 @@ export function MainPage({ previewAuthenticated = false }: { previewAuthenticate
   const navigate = useNavigate();
   const { hotPosts, recommendedSpaces, reviewCards, vendorCards, loading, error } = useHomeFeed();
   const isAuthenticated = previewAuthenticated || Boolean(loadAuthSession());
-  const [guestModalOpen, setGuestModalOpen] = useState(false);
   const [headerSearchOpen, setHeaderSearchOpen] = useState(false);
   const [headerSearchQuery, setHeaderSearchQuery] = useState('');
   const headerSearchRef = useRef<HTMLDivElement | null>(null);
@@ -148,7 +146,6 @@ export function MainPage({ previewAuthenticated = false }: { previewAuthenticate
       <HomeHeader
         authenticated={isAuthenticated}
         filteredSuggestions={filteredSuggestions}
-        onGuestCta={() => setGuestModalOpen(true)}
         onSearchChange={(value) => {
           setHeaderSearchQuery(value);
           setHeaderSearchOpen(Boolean(value.trim()));
@@ -324,12 +321,6 @@ export function MainPage({ previewAuthenticated = false }: { previewAuthenticate
       </section>
 
       <HomeFooter />
-
-      <GuestGateModal
-        onClose={() => setGuestModalOpen(false)}
-        onProceed={() => navigate('/login')}
-        open={guestModalOpen}
-      />
     </main>
   );
 }

@@ -17,10 +17,11 @@ import {
 } from '../shared/Icons';
 import { HomeProfileMenu } from './HomeProfileMenu';
 import { LogoutConfirmModal } from './LogoutConfirmModal';
+import { useGuestGate } from './GuestGateProvider';
 
 type HomeHeaderSharedProps = {
   authenticated: boolean;
-  onGuestCta: () => void;
+  onGuestCta?: () => void;
   /** Figma 프로필 드롭다운 — API 필드 매핑용 */
   profileMenu?: Partial<HomeProfileMenuModel>;
 };
@@ -89,10 +90,11 @@ export function invalidateUserSummaryCache() {
 }
 
 export function HomeHeader(props: HomeHeaderProps) {
-  const { authenticated, onGuestCta, profileMenu: profileMenuPartial } = props;
+  const { authenticated, profileMenu: profileMenuPartial } = props;
   const bar = isSearchBar(props);
   const navigate = useNavigate();
   const location = useLocation();
+  const { openGuestGate } = useGuestGate();
   const chatPageActive = location.pathname.startsWith('/chat');
   const communityPageActive = location.pathname.startsWith('/community');
   const profileRootRef = useRef<HTMLDivElement | null>(null);
@@ -170,6 +172,10 @@ export function HomeHeader(props: HomeHeaderProps) {
     document.addEventListener('mousedown', onDocMouseDown);
     return () => document.removeEventListener('mousedown', onDocMouseDown);
   }, [profileOpen]);
+
+  const handleGuestCta = () => {
+    openGuestGate(`${location.pathname}${location.search}${location.hash}`);
+  };
 
   useEffect(() => {
     if (!mobileMenuOpen) {
@@ -394,7 +400,7 @@ export function HomeHeader(props: HomeHeaderProps) {
           </div>
         ) : (
           <div className="home-header__actions">
-            <button className="home-header__button" onClick={onGuestCta} type="button">
+            <button className="home-header__button" onClick={handleGuestCta} type="button">
               로그인/회원가입
             </button>
           </div>
@@ -486,7 +492,7 @@ export function HomeHeader(props: HomeHeaderProps) {
                 className="home-header__mobile-login"
                 onClick={() => {
                   setMobileMenuOpen(false);
-                  onGuestCta();
+                  handleGuestCta();
                 }}
                 type="button"
               >

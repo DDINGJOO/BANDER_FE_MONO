@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { createChatRoom } from '../api/chat';
 import { HomeFooter } from '../components/home/HomeFooter';
 import { HomeHeader } from '../components/home/HomeHeader';
+import { useGuestGate } from '../components/home/GuestGateProvider';
 import { KakaoMapView } from '../components/map/KakaoMapView';
 import { BanderUsagePolicyModal } from '../components/space/BanderUsagePolicyModal';
 import { ChevronIcon, HeaderChatIcon, StarIcon } from '../components/shared/Icons';
@@ -44,6 +45,7 @@ function VendorStarRow({ rating }: { rating: number }) {
 
 export function VendorDetailPage() {
   const navigate = useNavigate();
+  const { openGuestGate } = useGuestGate();
   const { slug } = useParams();
   const { vendor, loading } = useVendorDetail(slug);
   const isAuthenticated = Boolean(loadAuthSession());
@@ -109,7 +111,7 @@ export function VendorDetailPage() {
             onClick={async () => {
               if (!isAuthenticated) {
                 const dest = buildChatHref({ vendor: slug });
-                navigate(`/login?returnTo=${encodeURIComponent(dest)}`);
+                openGuestGate(dest);
                 return;
               }
               if (vendor.ownerUserId) {

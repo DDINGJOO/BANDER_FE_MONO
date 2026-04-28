@@ -7,6 +7,7 @@ import {
 import { ApiError } from '../api/client';
 import { HomeFooter } from '../components/home/HomeFooter';
 import { HomeHeader } from '../components/home/HomeHeader';
+import { useGuestGate } from '../components/home/GuestGateProvider';
 import { ChevronIcon } from '../components/shared/Icons';
 import { HEADER_SEARCH_KEYWORD_SUGGESTIONS } from '../config/searchSuggestions';
 import { loadAuthSession } from '../data/authSession';
@@ -58,6 +59,7 @@ function getErrorMessage(error: unknown, fallback: string) {
 
 export function CommunityWritePage() {
   const navigate = useNavigate();
+  const { openGuestGate } = useGuestGate();
   const authSession = loadAuthSession();
   const isAuthenticated = Boolean(authSession);
   const ownerKey = authSession ? String(authSession.userId) : '';
@@ -172,7 +174,7 @@ export function CommunityWritePage() {
     }
 
     if (!isAuthenticated) {
-      navigate('/login?returnTo=%2Fcommunity%2Fwrite');
+      openGuestGate('/community/write');
       return;
     }
 

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { HomeFooter } from '../components/home/HomeFooter';
 import { HomeHeader } from '../components/home/HomeHeader';
+import { useGuestGate } from '../components/home/GuestGateProvider';
 import { ReservationCancelModal } from '../components/reservations/ReservationCancelModal';
 import { ChevronIcon } from '../components/shared/Icons';
 import { HEADER_SEARCH_KEYWORD_SUGGESTIONS } from '../config/searchSuggestions';
@@ -85,6 +86,7 @@ function badgeForStatus(status: string) {
 
 export function ReservationDetailPage() {
   const navigate = useNavigate();
+  const { openGuestGate } = useGuestGate();
   const [searchParams] = useSearchParams();
   const bookingId = searchParams.get('bookingId');
   const isAuthenticated = Boolean(loadAuthSession());
@@ -226,7 +228,7 @@ export function ReservationDetailPage() {
               onClick={() => {
                 const dest = reservationDetailChatHref();
                 if (!isAuthenticated) {
-                  navigate(`/login?returnTo=${encodeURIComponent(dest)}`);
+                  openGuestGate(dest);
                   return;
                 }
                 navigate(dest);

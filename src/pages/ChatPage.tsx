@@ -11,6 +11,7 @@ import {
 import { fetchVendorDetail, type VendorDetailDto } from '../api/spaces';
 import { HomeFooter } from '../components/home/HomeFooter';
 import { HomeHeader } from '../components/home/HomeHeader';
+import { useGuestGate } from '../components/home/GuestGateProvider';
 import { SearchIcon } from '../components/shared/Icons';
 import { HEADER_SEARCH_KEYWORD_SUGGESTIONS } from '../config/searchSuggestions';
 import { resolveProfileImageUrl } from '../config/media';
@@ -71,6 +72,7 @@ const FALLBACK_PANEL: ChatVendorPanel = {
 
 export function ChatPage() {
   const navigate = useNavigate();
+  const { openGuestGate } = useGuestGate();
   const [searchParams, setSearchParams] = useSearchParams();
   const authSession = loadAuthSession();
   const isAuthenticated = Boolean(authSession);
@@ -109,11 +111,9 @@ export function ChatPage() {
   // Auth guard
   useEffect(() => {
     if (!isAuthenticated) {
-      navigate(`/login?returnTo=${encodeURIComponent(`/chat?${searchParams.toString()}`)}`, {
-        replace: true,
-      });
+      openGuestGate(`/chat?${searchParams.toString()}`);
     }
-  }, [isAuthenticated, navigate, searchParams]);
+  }, [isAuthenticated, openGuestGate, searchParams]);
 
   // Close header search on outside click
   useEffect(() => {

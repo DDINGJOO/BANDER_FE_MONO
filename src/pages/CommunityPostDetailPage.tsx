@@ -26,6 +26,7 @@ import { CommunityReportModal } from '../components/community/CommunityReportMod
 import { CommunityReplyDeleteModal } from '../components/community/CommunityReplyDeleteModal';
 import { HomeFooter } from '../components/home/HomeFooter';
 import { HomeHeader } from '../components/home/HomeHeader';
+import { useGuestGate } from '../components/home/GuestGateProvider';
 import { HEADER_SEARCH_KEYWORD_SUGGESTIONS } from '../config/searchSuggestions';
 import { resolveProfileImageUrl } from '../config/media';
 import { loadAuthSession } from '../data/authSession';
@@ -458,6 +459,7 @@ function renderPostBlocks(blocks: CommunityPostBlockDto[]) {
 
 export function CommunityPostDetailPage() {
   const navigate = useNavigate();
+  const { openGuestGate } = useGuestGate();
   const location = useLocation();
   const { slug: postId } = useParams<{ slug: string }>();
   const authSession = loadAuthSession();
@@ -545,7 +547,7 @@ export function CommunityPostDetailPage() {
         return;
       }
       if (error instanceof ApiError && error.status === 401) {
-        navigate(`/login?returnTo=${encodeURIComponent(location.pathname)}`);
+        openGuestGate(location.pathname);
         return;
       }
       setErrorMessage(getErrorMessage(error, '게시글을 불러오지 못했습니다.'));
@@ -556,7 +558,7 @@ export function CommunityPostDetailPage() {
         setLoading(false);
       }
     }
-  }, [location.pathname, navigate, postId]);
+  }, [location.pathname, navigate, openGuestGate, postId]);
 
   useEffect(() => {
     // postId 변경 시 이전 post 의 입력 컨텍스트를 초기화한다.
@@ -972,11 +974,7 @@ export function CommunityPostDetailPage() {
         ) : (
           <button
             className="community-post-detail__comment-input community-post-detail__comment-login-prompt"
-            onClick={() =>
-              navigate(
-                `/login?returnTo=${encodeURIComponent(`/community/post/${postId}`)}`
-              )
-            }
+            onClick={() => openGuestGate(`/community/post/${postId}`)}
             style={{
               background: '#fafafa',
               border: '1px solid #e0e0e0',
@@ -1145,9 +1143,7 @@ export function CommunityPostDetailPage() {
                   disabled={likeInFlight.current}
                   onClick={() => {
                     if (!isAuthenticated) {
-                      navigate(
-                        `/login?returnTo=${encodeURIComponent(`/community/post/${postId}`)}`
-                      );
+                      openGuestGate(`/community/post/${postId}`);
                       return;
                     }
                     void toggleLike();

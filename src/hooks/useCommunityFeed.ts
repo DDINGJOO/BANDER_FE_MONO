@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ApiError, getJson } from '../api/client';
 import { COMMUNITY_WRITE_CATEGORIES } from '../data/communityWrite';
 import type { CommunityFeedItemDto } from '../data/schemas/community';
+import { requestGuestGate } from '../lib/guestGate';
 
 export const COMMUNITY_CATEGORY_ALL_LABEL = '전체' as const;
 
@@ -266,7 +267,7 @@ export function useCommunityFeed() {
         }
 
         if (error instanceof ApiError && error.status === 401) {
-          window.location.href = `/login?returnTo=${encodeURIComponent('/community')}`;
+          requestGuestGate('/community');
           return;
         }
 

@@ -5,6 +5,7 @@ import { getAvailableCoupons } from '../api/coupons';
 import { fetchVendorDetail } from '../api/spaces';
 import { HomeFooter } from '../components/home/HomeFooter';
 import { HomeHeader } from '../components/home/HomeHeader';
+import { useGuestGate } from '../components/home/GuestGateProvider';
 import { KakaoMapView } from '../components/map/KakaoMapView';
 import { BookmarkIcon, ChevronIcon, HeaderChatIcon, StarIcon } from '../components/shared/Icons';
 import { loadAuthSession } from '../data/authSession';
@@ -94,6 +95,7 @@ function DetailPolicyBlock({ body, title, imageUrl }: { body: string; title: str
 
 export function SpaceDetailPage() {
   const navigate = useNavigate();
+  const { openGuestGate } = useGuestGate();
   const { slug: slugParam } = useParams();
   const { detail, slug, vendorSlug, loading, error } = useSpaceDetail(slugParam);
   const authSession = loadAuthSession();
@@ -140,7 +142,7 @@ export function SpaceDetailPage() {
 
   const handleDownloadCoupon = async (couponId: string) => {
     if (!isAuthenticated) {
-      navigate(`/login?returnTo=${encodeURIComponent(`/spaces/${slug}`)}`);
+      openGuestGate(`/spaces/${slug}`);
       return;
     }
     try {
@@ -522,7 +524,7 @@ export function SpaceDetailPage() {
                             space: slug || undefined,
                             vendor: vendorSlug ?? undefined,
                           });
-                          navigate(`/login?returnTo=${encodeURIComponent(dest)}`);
+                          openGuestGate(dest);
                           return;
                         }
                         if (vendorSlug) {
@@ -694,7 +696,7 @@ export function SpaceDetailPage() {
                   className="space-detail__verify-button"
                   onClick={() => {
                     if (!isAuthenticated) {
-                      navigate(`/login?returnTo=${encodeURIComponent(`/spaces/${slug}`)}`);
+                      openGuestGate(`/spaces/${slug}`);
                       return;
                     }
 

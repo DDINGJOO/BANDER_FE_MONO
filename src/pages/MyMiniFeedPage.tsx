@@ -14,6 +14,7 @@ import { ApiError } from '../api/client';
 import { getPublicUserProfile, type PublicUserProfile } from '../api/users';
 import { HomeFooter } from '../components/home/HomeFooter';
 import { HomeHeader } from '../components/home/HomeHeader';
+import { useGuestGate } from '../components/home/GuestGateProvider';
 import { ChevronIcon, HeaderChatIcon } from '../components/shared/Icons';
 import { resolveProfileImageUrl } from '../config/media';
 import { HEADER_SEARCH_KEYWORD_SUGGESTIONS } from '../config/searchSuggestions';
@@ -290,6 +291,7 @@ function MiniFeedPostCard({ post }: { post: MiniFeedCardModel }) {
 
 export function MyMiniFeedPage() {
   const navigate = useNavigate();
+  const { openGuestGate } = useGuestGate();
   const { userId } = useParams<{ userId?: string }>();
   const [searchParams, setSearchParams] = useSearchParams();
   const feedTab: MiniFeedTab =
@@ -351,7 +353,7 @@ export function MyMiniFeedPage() {
 
     const returnTo = `/users/${encodeURIComponent(chatTargetUserId)}/minifeed`;
     if (!isAuthenticated) {
-      navigate(`/login?returnTo=${encodeURIComponent(returnTo)}`);
+      openGuestGate(returnTo);
       return;
     }
 
@@ -380,7 +382,7 @@ export function MyMiniFeedPage() {
 
   useEffect(() => {
     if (!isPublicUserFeed && !isAuthenticated) {
-      navigate('/login?returnTo=/my-minifeed');
+      openGuestGate('/my-minifeed');
       return;
     }
 
@@ -416,7 +418,7 @@ export function MyMiniFeedPage() {
         }
 
         if (!isPublicUserFeed && error instanceof ApiError && error.status === 401) {
-          navigate('/login?returnTo=/my-minifeed');
+          openGuestGate('/my-minifeed');
           return;
         }
 
@@ -455,7 +457,7 @@ export function MyMiniFeedPage() {
     return () => {
       active = false;
     };
-  }, [feedTab, isAuthenticated, isPublicUserFeed, navigate, sortBy, targetUserId]);
+  }, [feedTab, isAuthenticated, isPublicUserFeed, navigate, openGuestGate, sortBy, targetUserId]);
 
   return (
     <main className="my-mini-feed-page">
