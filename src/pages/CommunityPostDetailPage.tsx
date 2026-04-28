@@ -696,6 +696,9 @@ export function CommunityPostDetailPage() {
   const isOwnPost = Boolean(
     currentUserId && post && String(post.authorUserId) === currentUserId
   );
+  const editPostPath = post
+    ? `/community/post/${encodeURIComponent(String(post.postId ?? postId))}/edit`
+    : null;
 
   const toggleLike = useCallback(async () => {
     if (!postId || likeInFlight.current) {
@@ -811,6 +814,14 @@ export function CommunityPostDetailPage() {
     setAuthorMenuOpen(false);
     setPostReportConfirmOpen(true);
   }, []);
+
+  const handleAuthorEditClick = useCallback(() => {
+    if (!editPostPath) {
+      return;
+    }
+    setAuthorMenuOpen(false);
+    navigate(editPostPath);
+  }, [editPostPath, navigate]);
 
   const confirmReplyDelete = useCallback(async () => {
     if (!postId || !replyDeleteId) {
@@ -1051,16 +1062,8 @@ export function CommunityPostDetailPage() {
                     ) : null}
                     <h1 className="community-post-detail__title">{post.title}</h1>
                   </div>
-                  <div className="community-post-detail__post-actions">
-                    {isOwnPost ? (
-                      <Link
-                        aria-label="게시글 수정"
-                        className="community-post-detail__edit"
-                        to={`/community/post/${encodeURIComponent(String(post.postId ?? postId))}/edit`}
-                      >
-                        수정
-                      </Link>
-                    ) : (
+                  {!isOwnPost ? (
+                    <div className="community-post-detail__post-actions">
                       <button
                         aria-label="게시글 신고"
                         className="community-post-detail__subscribe"
@@ -1069,8 +1072,8 @@ export function CommunityPostDetailPage() {
                       >
                         <SirenGlyph30 />
                       </button>
-                    )}
-                  </div>
+                    </div>
+                  ) : null}
                 </div>
 
                 <div className="community-post-detail__author-row">
@@ -1115,27 +1118,39 @@ export function CommunityPostDetailPage() {
                       </button>
                       {authorMenuOpen ? (
                         <div className="community-post-detail__author-menu" role="menu">
-                          <button
-                            onClick={handleAuthorChatClick}
-                            role="menuitem"
-                            type="button"
-                          >
-                            채팅하기
-                          </button>
-                          <button
-                            onClick={handleAuthorFeedClick}
-                            role="menuitem"
-                            type="button"
-                          >
-                            피드보기
-                          </button>
-                          <button
-                            onClick={handleAuthorReportClick}
-                            role="menuitem"
-                            type="button"
-                          >
-                            신고하기
-                          </button>
+                          {isOwnPost ? (
+                            <button
+                              onClick={handleAuthorEditClick}
+                              role="menuitem"
+                              type="button"
+                            >
+                              수정하기
+                            </button>
+                          ) : (
+                            <>
+                              <button
+                                onClick={handleAuthorChatClick}
+                                role="menuitem"
+                                type="button"
+                              >
+                                채팅하기
+                              </button>
+                              <button
+                                onClick={handleAuthorFeedClick}
+                                role="menuitem"
+                                type="button"
+                              >
+                                피드보기
+                              </button>
+                              <button
+                                onClick={handleAuthorReportClick}
+                                role="menuitem"
+                                type="button"
+                              >
+                                신고하기
+                              </button>
+                            </>
+                          )}
                         </div>
                       ) : null}
                     </div>

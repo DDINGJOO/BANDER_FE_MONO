@@ -252,12 +252,15 @@ test('opens the post author menu and navigates to the author mini feed', async (
   renderPage();
 
   fireEvent.click(await screen.findByRole('button', { name: '작성자' }));
+  expect(screen.queryByRole('menuitem', { name: '수정하기' })).not.toBeInTheDocument();
+  expect(screen.getByRole('menuitem', { name: '채팅하기' })).toBeInTheDocument();
+  expect(screen.getByRole('menuitem', { name: '신고하기' })).toBeInTheDocument();
   fireEvent.click(screen.getByRole('menuitem', { name: '피드보기' }));
 
   expect(await screen.findByText('user feed')).toBeInTheDocument();
 });
 
-test('shows an edit action only on a post owned by the current user', async () => {
+test('shows edit in the author menu only on a post owned by the current user', async () => {
   mockedFetchDetail.mockResolvedValue({
     authorNickname: '내 닉네임',
     authorProfileImageRef: null,
@@ -277,11 +280,15 @@ test('shows an edit action only on a post owned by the current user', async () =
 
   renderPage();
 
-  const editLink = await screen.findByRole('link', { name: '게시글 수정' });
-  expect(editLink).toHaveAttribute('href', '/community/post/123/edit');
   expect(screen.queryByRole('button', { name: '게시글 신고' })).not.toBeInTheDocument();
+  fireEvent.click(await screen.findByRole('button', { name: '내 닉네임' }));
 
-  fireEvent.click(editLink);
+  expect(screen.getByRole('menuitem', { name: '수정하기' })).toBeInTheDocument();
+  expect(screen.queryByRole('menuitem', { name: '채팅하기' })).not.toBeInTheDocument();
+  expect(screen.queryByRole('menuitem', { name: '피드보기' })).not.toBeInTheDocument();
+  expect(screen.queryByRole('menuitem', { name: '신고하기' })).not.toBeInTheDocument();
+
+  fireEvent.click(screen.getByRole('menuitem', { name: '수정하기' }));
 
   expect(await screen.findByText('edit post page')).toBeInTheDocument();
 });
