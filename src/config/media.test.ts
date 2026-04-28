@@ -66,6 +66,31 @@ describe('resolveProfileImageUrl', () => {
       resolveProfileImageUrl(null, 'blob:http://localhost/profile-preview')
     ).toBe('blob:http://localhost/profile-preview');
   });
+
+  it('returns the default avatar when url is null and ref is a UUID-shaped mediaId', () => {
+    process.env.REACT_APP_CDN_BASE_URL = 'https://cdn.example.com';
+
+    // New-style mediaId ref with no denormalized URL — `<CDN>/<ref>` would
+    // 403 from S3 because the filename is unrecoverable from the ref alone.
+    expect(
+      resolveProfileImageUrl('11111111-1111-1111-1111-111111111111', null)
+    ).toBe(DEFAULT_PROFILE_IMAGE_URL);
+    expect(
+      resolveProfileImageUrl('11111111-1111-1111-1111-111111111111', undefined)
+    ).toBe(DEFAULT_PROFILE_IMAGE_URL);
+    expect(
+      resolveProfileImageUrl('AABBCCDD-EEFF-1122-3344-556677889900')
+    ).toBe(DEFAULT_PROFILE_IMAGE_URL);
+  });
+
+  it('still resolves legacy path-style refs through the CDN when url is null', () => {
+    process.env.REACT_APP_CDN_BASE_URL = 'https://cdn.example.com';
+
+    // Legacy refs include the filename so `<CDN>/<ref>` resolves correctly.
+    expect(
+      resolveProfileImageUrl('media/profile-image/user/abc/avatar.png', null)
+    ).toBe('https://cdn.example.com/media/profile-image/user/abc/avatar.png');
+  });
 });
 
 describe('resolveChatImageUrl', () => {
@@ -132,5 +157,16 @@ describe('resolveChatImageUrl', () => {
   it('returns null for ref-only when CDN is not configured', () => {
     delete process.env.REACT_APP_CDN_BASE_URL;
     expect(resolveChatImageUrl('chat/abc.jpg', null)).toBeNull();
+  });
+
+  it('returns null when url is null and ref is a UUID-shaped mediaId', () => {
+    process.env.REACT_APP_CDN_BASE_URL = 'https://cdn.example.com';
+
+    expect(
+      resolveChatImageUrl('11111111-1111-1111-1111-111111111111', null),
+    ).toBeNull();
+    expect(
+      resolveChatImageUrl('11111111-1111-1111-1111-111111111111', undefined),
+    ).toBeNull();
   });
 });
