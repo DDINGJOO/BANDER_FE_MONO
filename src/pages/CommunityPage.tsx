@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { type CSSProperties, useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { HomeFooter } from '../components/home/HomeFooter';
 import { HomeHeader } from '../components/home/HomeHeader';
@@ -6,6 +6,19 @@ import { ChevronIcon } from '../components/shared/Icons';
 import { HEADER_SEARCH_KEYWORD_SUGGESTIONS } from '../config/searchSuggestions';
 import { loadAuthSession } from '../data/authSession';
 import { useCommunityFeed } from '../hooks/useCommunityFeed';
+
+function buildThumbnailStyle(thumbnail?: string): CSSProperties | undefined {
+  const value = thumbnail?.trim();
+  if (!value) {
+    return undefined;
+  }
+
+  if (/gradient\(|^#|^rgb|^hsl|^var\(/i.test(value)) {
+    return { background: value };
+  }
+
+  return { backgroundImage: `url("${value.replace(/"/g, '\\"')}")` };
+}
 
 export function CommunityPage() {
   const navigate = useNavigate();
@@ -163,19 +176,9 @@ export function CommunityPage() {
         ) : (
           <div className="community-page__grid">
             {items.map((item) => {
+              const thumbnailStyle = buildThumbnailStyle(item.thumbnail);
               const cardInner = (
                 <>
-                  {item.thumbnail ? (
-                    <div
-                      aria-hidden
-                      className="community-page__thumb"
-                      style={
-                        /^https?:\/\//.test(item.thumbnail)
-                          ? { background: `#eee url(${item.thumbnail}) center / cover` }
-                          : { background: item.thumbnail }
-                      }
-                    />
-                  ) : null}
                   <div className="community-page__card-body">
                     <span className="community-page__category">{item.category}</span>
                     <h2 className="community-page__card-title">{item.title}</h2>
@@ -187,6 +190,13 @@ export function CommunityPage() {
                       <span>• {item.commentCount}</span>
                     </div>
                   </div>
+                  <div
+                    aria-hidden
+                    className={`community-page__thumb${
+                      item.thumbnail ? ' community-page__thumb--image' : ' community-page__thumb--empty'
+                    }`}
+                    style={thumbnailStyle}
+                  />
                 </>
               );
               const cardClass = `community-page__card${item.detailSlug ? ' community-page__card--link' : ''}`;
