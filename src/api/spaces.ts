@@ -23,6 +23,13 @@ export type VendorRoomCardDto = {
   title: string;
   categoryLabel: string;
   imageUrl: string | null;
+  /**
+   * R1-I: denormalized mediaId of the first gallery image. Allows the FE to
+   * call {@code resolveProfileImageUrl(ref, url)} so the URL column is
+   * preferred but a legacy CDN-prefix fallback is possible. Null for legacy
+   * rows or rooms with no images.
+   */
+  mediaId?: string | null;
   location: string | null;
   priceLabel: string;
   priceSuffix: string;
@@ -79,6 +86,17 @@ export type SpaceNoticeDto = { title: string; body: string; imageUrl: string | n
 export type SpacePolicyDto = { title: string; body: string; imageUrl: string | null };
 export type SpaceVendorInfoDto = { name: string; spaces: string | null };
 
+/**
+ * R1-I: per-image payload from RoomDetailResponse.GalleryImage. The FE
+ * prefers {@code imageUrl} (denormalized) and falls back to legacy
+ * CDN-prefix construction via {@code resolveProfileImageUrl} only when null.
+ */
+export type SpaceGalleryImageDto = {
+  imageUrl: string | null;
+  mediaId: string | null;
+  sortOrder: number;
+};
+
 export type SpaceDetailDto = {
   id: string;
   studioId: string | null;
@@ -99,6 +117,13 @@ export type SpaceDetailDto = {
   operatingSummary: string | null;
   operatingWeek: SpaceOperatingDayDto[];
   galleryUrls: string[];
+  /**
+   * R1-I: per-image objects carrying (imageUrl, mediaId, sortOrder). Prefer
+   * {@code images[].imageUrl} when rendering — it is the denormalized CDN URL
+   * persisted on room_image (V17). {@code mediaId} is null for legacy rows.
+   * {@code galleryUrls} is retained for back-compat reads.
+   */
+  images?: SpaceGalleryImageDto[];
   facilityChips: SpaceFacilityChipDto[];
   detailBenefitChips: SpaceBenefitChipDto[];
   notices: SpaceNoticeDto[];
