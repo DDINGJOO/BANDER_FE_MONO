@@ -451,8 +451,11 @@ export function ChatPage() {
                       </div>
                     ) : (
                       <div className="chat-page__row chat-page__row--in" key={msg.id}>
-                        {partnerAvatarUrl ? (
-                          <img className="chat-page__in-avatar chat-page__in-avatar--img" src={partnerAvatarUrl} alt="" />
+                        {/* R2-Cs: per-message senderAvatarUrl wins over the thread-level
+                            partnerAvatarUrl — group chats / multi-party (future) need
+                            distinct sender visuals. */}
+                        {(msg.senderAvatarUrl ?? partnerAvatarUrl) ? (
+                          <img className="chat-page__in-avatar chat-page__in-avatar--img" src={msg.senderAvatarUrl ?? partnerAvatarUrl} alt="" />
                         ) : (
                           <span className="chat-page__in-avatar" aria-hidden />
                         )}
