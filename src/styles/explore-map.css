@@ -27,7 +27,7 @@
   flex-shrink: 0;
   margin-bottom: 8px;
   position: relative;
-  z-index: 4;
+  z-index: 20;
 }
 
 .explore-map-page__list {
@@ -429,10 +429,48 @@
     border-right: 0;
     border-bottom: 1px solid #f0f2f5;
     max-height: 55vh;
+    padding: 16px;
     width: 100%;
+  }
+
+  .explore-map-page__list {
+    max-height: 36vh;
   }
 
   .explore-map-page__map-wrap {
     min-height: 360px;
+  }
+}
+
+@media (max-width: 560px) {
+  .explore-map-page__sidebar {
+    max-height: none;
+    padding: 14px;
+  }
+
+  .explore-map-page__list {
+    max-height: 42vh;
+  }
+
+  .explore-map-card {
+    padding: 16px 0;
+  }
+
+  .explore-map-card__link {
+    gap: 12px;
+  }
+
+  .explore-map-card__thumb {
+    height: 58px;
+    width: 58px;
+  }
+
+  .explore-map-page__map-wrap {
+    min-height: 320px;
+  }
+
+  .explore-map-page__popular {
+    margin: 14px -14px -14px;
+    padding: 16px 14px;
   }
 }

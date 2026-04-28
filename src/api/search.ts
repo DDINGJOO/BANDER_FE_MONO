@@ -52,7 +52,13 @@ export type PostSearchItem = {
   id: string;
   title: string;
   authorUserId: string;
+  authorNickname?: string | null;
+  category?: string | null;
+  commentCount?: number | null;
   createdAt: string;
+  excerpt?: string | null;
+  likeCount?: number | null;
+  viewCount?: number | null;
 };
 
 type RoomSearchParams = {
