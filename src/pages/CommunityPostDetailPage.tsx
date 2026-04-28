@@ -151,8 +151,13 @@ function getErrorMessage(error: unknown, fallback: string) {
   return fallback;
 }
 
-function resolveMediaUrl(ref: string | null | undefined) {
-  return resolveProfileImageUrl(ref);
+function resolveMediaUrl(
+  ref: string | null | undefined,
+  url?: string | null,
+) {
+  // R2-B: prefer denormalized profile image URL (UserProfileUpdated fanout) when
+  // present; fall back to ref-based reconstruction for legacy rows.
+  return resolveProfileImageUrl(ref, url);
 }
 
 function countComments(threads: CommunityCommentTreeDto[]) {
@@ -203,7 +208,8 @@ function mapCommentToViewModel(
   return {
     actions: mapCommentActions(comment, currentUserId),
     author: authorLabel,
-    avatar: resolveMediaUrl(comment.authorProfileImageRef) ?? '',
+    avatar:
+      resolveMediaUrl(comment.authorProfileImageRef, comment.authorProfileImageUrl) ?? '',
     body: comment.content ?? '',
     id: String(comment.commentId),
     time: formatDateLabel(comment.createdAt),
@@ -713,12 +719,15 @@ export function CommunityPostDetailPage() {
                 </div>
 
                 <div className="community-post-detail__author-row">
-                  {resolveMediaUrl(post.authorProfileImageRef) ? (
+                  {resolveMediaUrl(post.authorProfileImageRef, post.authorProfileImageUrl) ? (
                     <img
                       alt=""
                       className="community-post-detail__author-avatar"
                       height="40"
-                      src={resolveMediaUrl(post.authorProfileImageRef)}
+                      src={resolveMediaUrl(
+                        post.authorProfileImageRef,
+                        post.authorProfileImageUrl,
+                      )}
                       width="40"
                     />
                   ) : (

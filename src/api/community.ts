@@ -31,6 +31,12 @@ export type PostDetailDto = {
   authorUserId: string;
   authorNickname: string | null;
   authorProfileImageRef: string | null;
+  /**
+   * R2-B: denormalized author profile CDN URL fanned out from
+   * USER_PROFILE_UPDATED. FE prefers this over authorProfileImageRef
+   * when present (resolveProfileImageUrl(ref, url)).
+   */
+  authorProfileImageUrl?: string | null;
   title: string;
   category?: string | null;
   topic?: string | null;
@@ -66,6 +72,13 @@ export type CommentDto = {
   authorUserId: string;
   authorNickname: string | null;
   authorProfileImageRef: string | null;
+  /**
+   * R2-B: denormalized author profile CDN URL fanned out from
+   * USER_PROFILE_UPDATED. FE prefers this over authorProfileImageRef
+   * when present (resolveProfileImageUrl(ref, url)). Null on tombstone
+   * comments and on legacy rows that pre-date the V8 community migration.
+   */
+  authorProfileImageUrl?: string | null;
   /**
    * 삭제된 댓글(tombstone) 인 경우 null. 자식 답글이 살아있을 때만 부모가 tombstone 으로 응답에 노출된다.
    */
@@ -282,6 +295,12 @@ export type MiniFeedPostDto = {
   authorAvatar?: string | null;
   authorAvatarUrl?: string | null;
   authorProfileImageRef?: string | null;
+  /**
+   * R2-B: denormalized author profile CDN URL fanned out from
+   * USER_PROFILE_UPDATED. FE prefers this over authorProfileImageRef
+   * when present.
+   */
+  authorProfileImageUrl?: string | null;
   authorName?: string | null;
   authorNickname?: string | null;
   timeLabel?: string | null;

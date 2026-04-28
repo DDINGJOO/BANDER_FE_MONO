@@ -35,6 +35,21 @@ export type ChatMessageResponse = {
    * NULL for TEXT/SYSTEM messages and for legacy IMAGE rows persisted before V6.
    */
   imageUrl: string | null;
+  /**
+   * R2-Cs: denormalized author snapshot — sender's nickname captured at
+   * send time (chat-service V7). Backend supplements via gRPC fallback for
+   * legacy NULL rows; client should still tolerate undefined / null.
+   */
+  senderNickname?: string | null;
+  /** R2-Cs: sender's media ref (UUID). NULL for default avatar / legacy. */
+  senderProfileImageRef?: string | null;
+  /**
+   * R2-Cs: denormalized CDN URL of the sender's profile image at send time.
+   * Renderer prefers this over rebuilding from `senderProfileImageRef` via
+   * `resolveProfileImageUrl(ref, url)`. Stays in sync as profile updates
+   * fan out via the user-profile-events Kafka topic.
+   */
+  senderProfileImageUrl?: string | null;
 };
 
 export type CursorPageResponse<T> = {

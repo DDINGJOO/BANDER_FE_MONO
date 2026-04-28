@@ -22,6 +22,9 @@
 }
 
 .vendor-detail__empty-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
   color: #2c80ff;
   font-size: 15px;
   font-weight: 500;

@@ -299,6 +299,19 @@
     font-size: 24px;
   }
 
+  .coupon-register__row {
+    padding: 10px 12px;
+  }
+
+  .coupon-register__input {
+    min-height: 40px;
+  }
+
+  .coupon-register__button,
+  .coupon-filters__chip {
+    min-height: 40px;
+  }
+
   .coupon-card {
     flex-direction: column;
     align-items: stretch;

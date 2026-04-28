@@ -24,6 +24,13 @@ export type ChatMessage =
       time: string;
       /** R1-J: when set, render an image attachment instead of plain text. */
       imageUrl?: string;
+      /**
+       * R2-Cs: per-message resolved avatar URL — prefers the row's
+       * denormalized `senderProfileImageUrl` over rebuilding from
+       * `senderProfileImageRef`. Renderer falls back to thread/room avatar
+       * when this is undefined.
+       */
+      senderAvatarUrl?: string;
     }
   | {
       id: string;
@@ -237,12 +244,25 @@ export function chatMessageToUiMessage(
       imageUrl: resolvedImageUrl,
     };
   }
+  // R2-Cs: per-message avatar — prefer the row's denormalized profile URL
+  // over rebuilding from ref. resolveProfileImageUrl handles all of:
+  //   (denorm url present) → use it; (only ref) → CDN compose; (neither) → default.
+  const senderAvatarUrl =
+    msg.senderProfileImageUrl || msg.senderProfileImageRef
+      ? resolveProfileImageUrl(
+          msg.senderProfileImageRef ?? null,
+          msg.senderProfileImageUrl ?? null,
+        )
+      : undefined;
   return {
     id: msg.messageId,
     kind: 'in',
-    senderName: partnerNickname ?? '상대방',
+    // R2-Cs: prefer the row's senderNickname over the thread-level partnerNickname
+    // — group chats / multi-party rooms (future) need per-message author identity.
+    senderName: msg.senderNickname?.trim() || partnerNickname || '상대방',
     text: msg.content,
     time,
     imageUrl: resolvedImageUrl,
+    senderAvatarUrl,
   };
 }

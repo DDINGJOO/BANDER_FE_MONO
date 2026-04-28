@@ -58,6 +58,28 @@ function sortLabel(tab: SearchTab, value: string): string {
   return value;
 }
 
+function formatPostDateLabel(value: string): string {
+  const timestamp = Date.parse(value);
+  if (!Number.isFinite(timestamp)) {
+    return value;
+  }
+
+  const diffMs = Date.now() - timestamp;
+  const minute = 60 * 1000;
+  const hour = 60 * minute;
+  const day = 24 * hour;
+
+  if (diffMs < minute) return '방금 전';
+  if (diffMs < hour) return `${Math.max(1, Math.floor(diffMs / minute))}분 전`;
+  if (diffMs < day) return `${Math.floor(diffMs / hour)}시간 전`;
+  if (diffMs < day * 7) return `${Math.floor(diffMs / day)}일 전`;
+
+  return new Intl.DateTimeFormat('ko-KR', {
+    day: 'numeric',
+    month: 'short',
+  }).format(new Date(timestamp));
+}
+
 export function SearchResultsPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -363,10 +385,18 @@ export function SearchResultsPage() {
               {posts.map((post) => (
                 <Link className="search-results__community-card search-results__community-card--link" key={post.id} to={`/community/post/${post.id}`}>
                   <div className="search-results__community-copy">
+                    {post.category ? (
+                      <span className="search-results__community-category">{post.category}</span>
+                    ) : null}
                     <h2 className="search-results__community-title">{post.title}</h2>
+                    {post.excerpt ? (
+                      <p className="search-results__community-excerpt">{post.excerpt}</p>
+                    ) : null}
                     <div className="search-results__community-meta">
-                      <span>{post.authorUserId}</span>
-                      <span>{post.createdAt}</span>
+                      <span>{post.authorNickname ?? '밴더유저'}</span>
+                      <span>{formatPostDateLabel(post.createdAt)}</span>
+                      {typeof post.likeCount === 'number' ? <span>♥ {post.likeCount}</span> : null}
+                      {typeof post.commentCount === 'number' ? <span>댓글 {post.commentCount}</span> : null}
                     </div>
                   </div>
                 </Link>

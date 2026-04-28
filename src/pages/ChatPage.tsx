@@ -3,9 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   type ChatMessageResponse,
   type ChatRoomResponse,
-  type ChatRoomType,
   getChatMessages,
-  getChatRoomDetail,
   getMyChatRooms,
   markAsRead,
   sendMessage,
@@ -21,7 +19,6 @@ import {
   type ChatVendorPanel,
   chatMessageToUiMessage,
   chatRoomToThread,
-  resolveChatPageModel,
 } from '../data/chatPage';
 import { useChatWebSocket } from '../hooks/useChatWebSocket';
 
@@ -83,6 +80,7 @@ export function ChatPage() {
   const [headerSearchQuery, setHeaderSearchQuery] = useState('');
   const headerSearchRef = useRef<HTMLDivElement | null>(null);
   const [chatFilter, setChatFilter] = useState<'vendor' | 'personal'>('personal');
+  const [mobileListVisible, setMobileListVisible] = useState(() => !searchParams.get('t'));
 
   // API state
   const [rooms, setRooms] = useState<ChatRoomResponse[]>([]);
@@ -234,6 +232,7 @@ export function ChatPage() {
     next.set('t', roomId);
     next.delete('empty');
     setSearchParams(next);
+    setMobileListVisible(false);
   };
 
   const handleSend = async () => {
@@ -317,6 +316,8 @@ export function ChatPage() {
 
   const displayThreads = threads;
   const displayActiveThreadId = activeRoomId ?? (displayThreads[0]?.id ?? '');
+  const activeThreadTitle =
+    threads.find((thread) => thread.id === displayActiveThreadId)?.title ?? panel.name ?? '채팅';
 
   // 오늘 날짜를 KST로 표시
   const todayLabel = new Date().toLocaleDateString('ko-KR', {
@@ -353,7 +354,11 @@ export function ChatPage() {
       />
 
       <h1 className="visually-hidden">채팅</h1>
-      <div className="chat-page__shell">
+      <div
+        className={`chat-page__shell${
+          activeRoomId && !mobileListVisible ? ' chat-page__shell--conversation-open' : ''
+        }`}
+      >
         <aside className="chat-page__sidebar" aria-label="채팅 목록">
           <div className="chat-page__segment" role="tablist" aria-label="채팅 구분">
             <button
@@ -361,7 +366,10 @@ export function ChatPage() {
               role="tab"
               aria-selected={chatFilter === 'vendor'}
               className={`chat-page__segment-btn${chatFilter === 'vendor' ? ' chat-page__segment-btn--active' : ''}`}
-              onClick={() => setChatFilter('vendor')}
+              onClick={() => {
+                setChatFilter('vendor');
+                setMobileListVisible(true);
+              }}
             >
               업체
             </button>
@@ -370,7 +378,10 @@ export function ChatPage() {
               role="tab"
               aria-selected={chatFilter === 'personal'}
               className={`chat-page__segment-btn${chatFilter === 'personal' ? ' chat-page__segment-btn--active' : ''}`}
-              onClick={() => setChatFilter('personal')}
+              onClick={() => {
+                setChatFilter('personal');
+                setMobileListVisible(true);
+              }}
             >
               개인
             </button>
@@ -419,6 +430,16 @@ export function ChatPage() {
 
         <div className="chat-page__center-card">
           <section className="chat-page__main-col" aria-label="대화">
+            <div className="chat-page__mobile-chatbar">
+              <button
+                className="chat-page__mobile-back"
+                onClick={() => setMobileListVisible(true)}
+                type="button"
+              >
+                목록
+              </button>
+              <span className="chat-page__mobile-title">{activeThreadTitle}</span>
+            </div>
             <p className="chat-page__date-pill">{todayLabel}</p>
 
             <div className="chat-page__messages" ref={messagesContainerRef}>
@@ -451,8 +472,11 @@ export function ChatPage() {
                       </div>
                     ) : (
                       <div className="chat-page__row chat-page__row--in" key={msg.id}>
-                        {partnerAvatarUrl ? (
-                          <img className="chat-page__in-avatar chat-page__in-avatar--img" src={partnerAvatarUrl} alt="" />
+                        {/* R2-Cs: per-message senderAvatarUrl wins over the thread-level
+                            partnerAvatarUrl — group chats / multi-party (future) need
+                            distinct sender visuals. */}
+                        {(msg.senderAvatarUrl ?? partnerAvatarUrl) ? (
+                          <img className="chat-page__in-avatar chat-page__in-avatar--img" src={msg.senderAvatarUrl ?? partnerAvatarUrl} alt="" />
                         ) : (
                           <span className="chat-page__in-avatar" aria-hidden />
                         )}
