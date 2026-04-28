@@ -5,6 +5,7 @@ import {
   type ChatRoomResponse,
   getChatMessages,
   getMyChatRooms,
+  getSyncHint,
   markAsRead,
   sendMessage,
 } from '../api/chat';
@@ -320,10 +321,61 @@ export function ChatPage() {
     setMessages((prev) => [...prev, msg]);
   });
 
+  // PR-D: 멀티 디바이스 gap fill — visibility 'visible' 시 sync-hint 호출,
+  // 활성 방의 (lastSeenMessageId, latestMessageIdServer) 사이 메시지를
+  // afterId 로 한 번 더 fetch 해서 dedup + 정렬 머지. 다른 디바이스에서
+  // 발생한 read / 새 메시지가 백그라운드 동안 누락된 경우 복구.
+  useEffect(() => {
+    if (!activeRoomId) return;
+    let cancelled = false;
+
+    async function runGapFill(roomIdSnapshot: string) {
+      try {
+        const hints = await getSyncHint();
+        if (cancelled) return;
+        const hint = hints.find((h) => String(h.chatRoomId) === roomIdSnapshot);
+        if (!hint) return;
+        // BigInt 비교 — Long 직렬화된 messageId 안전.
+        if (BigInt(hint.latestMessageIdServer) <= BigInt(hint.lastSeenMessageId)) {
+          return;
+        }
+        const page = await getChatMessages(roomIdSnapshot, {
+          afterId: hint.lastSeenMessageId,
+          size: 50,
+        });
+        if (cancelled) return;
+        setMessages((prev) => {
+          const existing = new Set(prev.map((m) => m.messageId));
+          const newer = page.items.filter((m) => !existing.has(m.messageId));
+          if (newer.length === 0) return prev;
+          const merged = [...prev, ...newer];
+          merged.sort((a, b) => {
+            if (a.messageId === b.messageId) return 0;
+            return BigInt(a.messageId) < BigInt(b.messageId) ? -1 : 1;
+          });
+          return merged;
+        });
+      } catch (err) {
+        console.error('[ChatPage] runGapFill failed:', err);
+      }
+    }
+
+    const onVisible = () => {
+      if (document.visibilityState === 'visible' && !cancelled) {
+        void runGapFill(activeRoomId);
+      }
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      cancelled = true;
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, [activeRoomId]);
+
   // 메시지 변경 시 scroll 위치 결정.
   // - prepend (오래된 메시지 페이지네이션) 시: 새로 추가된 만큼 scrollTop 보정 →
   //   사용자가 보던 메시지가 화면 같은 위치에 머물게.
-  // - append (WS 신규 / sendMessage / 첫 로드) 시: 기존처럼 맨 아래로.
+  // - append (WS 신규 / sendMessage / 첫 로드 / sync-hint gap fill) 시: 맨 아래로.
   // useLayoutEffect 사용 — DOM paint 전에 보정해야 한 프레임 점프 방지.
   useLayoutEffect(() => {
     const el = messagesContainerRef.current;
