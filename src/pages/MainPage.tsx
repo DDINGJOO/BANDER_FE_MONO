@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useSearchSuggestions } from '../hooks/useSearchSuggestions';
 import { GuestGateModal } from '../components/home/GuestGateModal';
 import { HomeFooter } from '../components/home/HomeFooter';
@@ -280,9 +280,9 @@ export function MainPage({ previewAuthenticated = false }: { previewAuthenticate
         <div className="home-host-cta__inner">
           <span aria-hidden="true" className="home-host-cta__pick" />
           <p className="home-host-cta__copy">당신의 공간, 밴더와 함께하고 수익 창출을 누려보세요.</p>
-          <a className="home-host-cta__link" href="#spaces">
+          <Link className="home-host-cta__link" to="/business/apply">
             신청하러 가기 &gt;
-          </a>
+          </Link>
         </div>
       </section>
 

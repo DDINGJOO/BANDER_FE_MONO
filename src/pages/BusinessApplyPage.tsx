@@ -90,10 +90,10 @@ export function BusinessApplyPage() {
         searchRef={headerSearchRef}
       />
 
-      <section className="business-apply">
+      <section aria-labelledby="business-apply-title" className="business-apply">
         <div className="business-apply__inner">
           <span className="business-apply__kicker">Business</span>
-          <h1 className="business-apply__title">
+          <h1 className="business-apply__title" id="business-apply-title">
             비즈니스 신청은 아래의 절차와
             <br />
             준비 서류를 통해 진행됩니다.
@@ -114,10 +114,13 @@ export function BusinessApplyPage() {
             ))}
           </ol>
 
+          <div aria-hidden="true" className="business-apply__brand-mark">
+            bander<span>.</span>
+          </div>
+
           <button
             className="business-apply__cta"
             onClick={() => {
-              // TODO: 실제 비즈니스 신청 플로우로 이동. 현재는 외부 절차로 이메일 접수.
               window.location.href = 'mailto:business@bander.co.kr?subject=%EB%B0%B4%EB%8D%94%20%EB%B9%84%EC%A6%88%EB%8B%88%EC%8A%A4%20%EC%8B%A0%EC%B2%AD';
             }}
             type="button"
