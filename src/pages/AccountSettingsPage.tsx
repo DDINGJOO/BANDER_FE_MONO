@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { deactivateAccount, getMyAccount } from '../api/users';
 import { sendPhoneCode, updatePhone, verifyPhoneCode } from '../api/phone';
 import { getLinkedProviders, socialUnlink } from '../api/social';
+import { getMarketingConsent, updateMarketingConsent } from '../api/marketing-consent';
 import { startOAuth } from '../config/oauth';
 import { ApiError } from '../api/client';
 import { ChangePasswordModal } from '../components/account/ChangePasswordModal';
@@ -82,7 +83,10 @@ export function AccountSettingsPage() {
   const headerSearchRef = useRef<HTMLDivElement | null>(null);
 
   const [email, setEmail] = useState(() => resolveAccountSettingsEmail());
-  const [marketingOptIn, setMarketingOptIn] = useState(true);
+  const [marketingOptIn, setMarketingOptIn] = useState<boolean | null>(null);
+  const [marketingError, setMarketingError] = useState<string | null>(null);
+  const [marketingPending, setMarketingPending] = useState(false);
+  const marketingDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [linked, setLinked] = useState<Record<AccountLinkProvider, boolean>>({
     kakao: false,
     google: false,
@@ -138,6 +142,44 @@ export function AccountSettingsPage() {
       });
     return () => { cancelled = true; };
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    getMarketingConsent()
+      .then((view) => {
+        if (cancelled) return;
+        setMarketingOptIn(view.granted);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setMarketingError('마케팅 동의 상태를 불러오지 못했습니다.');
+        setMarketingOptIn(false);
+      });
+    return () => { cancelled = true; };
+  }, []);
+
+  const handleMarketingToggle = () => {
+    if (marketingOptIn === null || marketingPending) return;
+    const prev = marketingOptIn;
+    const next = !prev;
+    setMarketingOptIn(next);
+    if (marketingDebounceRef.current !== null) {
+      clearTimeout(marketingDebounceRef.current);
+    }
+    marketingDebounceRef.current = setTimeout(async () => {
+      setMarketingPending(true);
+      try {
+        const view = await updateMarketingConsent({ granted: next });
+        setMarketingOptIn(view.granted);
+        setMarketingError(null);
+      } catch {
+        setMarketingOptIn(prev);
+        setMarketingError('변경 실패. 잠시 후 다시 시도해주세요.');
+      } finally {
+        setMarketingPending(false);
+      }
+    }, 300);
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -332,8 +374,9 @@ export function AccountSettingsPage() {
                   <button
                     type="button"
                     className="account-settings__consent-toggle"
-                    aria-pressed={marketingOptIn}
-                    onClick={() => setMarketingOptIn((v) => !v)}
+                    aria-pressed={marketingOptIn ?? false}
+                    disabled={marketingOptIn === null || marketingPending}
+                    onClick={handleMarketingToggle}
                     aria-label="마케팅 정보 수신 동의"
                   >
                     {marketingOptIn ? (
@@ -386,6 +429,11 @@ export function AccountSettingsPage() {
                   <ChevronIcon />
                 </a>
               </div>
+              {marketingError ? (
+                <p style={{ marginTop: '6px', color: '#e74c3c', fontSize: '13px' }}>
+                  {marketingError}
+                </p>
+              ) : null}
             </section>
 
             <section className="account-settings__section">
