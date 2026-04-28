@@ -63,13 +63,33 @@ export function subscribeToRoom(roomId: string, callback: ChatMessageCallback): 
   };
 }
 
-export function sendWsMessage(roomId: string, content: string, messageType = 'TEXT'): void {
+/**
+ * Publish a chat message over the STOMP WebSocket.
+ *
+ * R1-J: `imageUrl` is the denormalized CDN URL captured from the chat-image
+ * upload grant. When present (and `messageType === 'IMAGE'`), the server
+ * stores it alongside the mediaRef in `chat_message.media_url` in the same
+ * INSERT tx so subsequent reads do not round-trip to media-service.
+ */
+export function sendWsMessage(
+  roomId: string,
+  content: string,
+  options: {
+    messageType?: 'TEXT' | 'IMAGE' | 'SYSTEM';
+    clientMsgId?: string;
+    imageUrl?: string;
+  } = {},
+): void {
   if (!stompClient?.connected) {
     throw new Error('WebSocket not connected');
   }
+  const messageType = options.messageType ?? 'TEXT';
+  const body: Record<string, string> = { content, messageType };
+  if (options.clientMsgId) body.clientMsgId = options.clientMsgId;
+  if (options.imageUrl && messageType === 'IMAGE') body.imageUrl = options.imageUrl;
   stompClient.publish({
     destination: `/app/chat/rooms/${roomId}`,
-    body: JSON.stringify({ content, messageType }),
+    body: JSON.stringify(body),
   });
 }
 
