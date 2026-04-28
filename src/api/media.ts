@@ -3,6 +3,67 @@ import { getApiBaseUrl } from '../config/publicEnv';
 import { clearAuthSession } from '../data/authSession';
 
 /**
+ * Client-side image diet: 폰 카메라 원본(수십 MB / 4000+px) 을 PUT 직전에
+ * 긴 변 1600px cap 으로 리사이즈한다. 더 작거나, GIF/SVG/HEIC/non-image,
+ * 디코딩 실패, 리사이즈 결과가 더 큰 경우엔 원본 File 그대로 반환.
+ *
+ * 캔버스 화질은 libvips 대비 평이하지만, "업로드 직전 다이어트" 목적엔
+ * 충분하다. 향후 media-worker 가 libvips 로 webp/avif 를 만들고
+ * `MediaOptimized` 이벤트로 swap 하면 결과물은 더 깨끗해진다.
+ */
+async function resizeImageIfLarge(file: File): Promise<File> {
+  const MAX_LONG_EDGE = 1600;
+  const QUALITY = 0.85;
+
+  if (
+    !file.type.startsWith('image/') ||
+    file.type === 'image/gif' ||
+    file.type === 'image/svg+xml' ||
+    file.type === 'image/heic' ||
+    file.type === 'image/heif'
+  ) {
+    return file;
+  }
+
+  try {
+    const bitmap = await createImageBitmap(file);
+    try {
+      if (bitmap.width <= MAX_LONG_EDGE && bitmap.height <= MAX_LONG_EDGE) {
+        return file;
+      }
+      const ratio = MAX_LONG_EDGE / Math.max(bitmap.width, bitmap.height);
+      const targetW = Math.round(bitmap.width * ratio);
+      const targetH = Math.round(bitmap.height * ratio);
+
+      const canvas = document.createElement('canvas');
+      canvas.width = targetW;
+      canvas.height = targetH;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return file;
+      ctx.imageSmoothingQuality = 'high';
+      ctx.drawImage(bitmap, 0, 0, targetW, targetH);
+
+      const outputType = file.type === 'image/png' ? 'image/png' : 'image/jpeg';
+      const blob: Blob | null = await new Promise((resolve) =>
+        canvas.toBlob(resolve, outputType, outputType === 'image/jpeg' ? QUALITY : undefined),
+      );
+      if (!blob) return file;
+      if (blob.size >= file.size) return file;
+
+      const ext = outputType === 'image/jpeg' ? '.jpg' : '.png';
+      const newName = file.name.replace(/\.[^.]+$/, ext);
+      return new File([blob], newName, { type: outputType, lastModified: Date.now() });
+    } finally {
+      bitmap.close?.();
+    }
+  } catch {
+    return file;
+  }
+}
+
+export const __TEST_ONLY__resizeImageIfLarge = resizeImageIfLarge;
+
+/**
  * SHA-256 base64 digest of a File (browser-side, via Web Crypto).
  *
  * Kept as an exported helper for callers that explicitly want to send a
@@ -151,23 +212,25 @@ export async function putAndCommit(input: {
   ownershipTicket?: string;
   file: File;
 }): Promise<{ mediaId: string; ownershipTicket: string }> {
+  const fileToUpload = await resizeImageIfLarge(input.file);
+
   const headers = new Headers(input.uploadHeaders ?? {});
-  if (!headers.has('Content-Type') && input.file.type) {
-    headers.set('Content-Type', input.file.type);
+  if (!headers.has('Content-Type') && fileToUpload.type) {
+    headers.set('Content-Type', fileToUpload.type);
   }
 
   const uploadResp = await fetch(input.uploadUrl, {
     method: 'PUT',
     headers,
-    body: input.file,
+    body: fileToUpload,
   });
   if (!uploadResp.ok) {
     throw new Error('이미지 업로드에 실패했습니다.');
   }
 
   await commitMedia(input.mediaId, {
-    contentLength: input.file.size,
-    originalFilename: input.file.name,
+    contentLength: fileToUpload.size,
+    originalFilename: fileToUpload.name,
   });
 
   // ownershipTicket may be empty for legacy/anonymous grants — caller decides if that's
