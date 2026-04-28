@@ -1,4 +1,5 @@
-import { getJson, postJson } from './client';
+import { getOrCreateDeviceId } from '../lib/deviceId';
+import { getJson, postJson, requestJson } from './client';
 
 // --- Types ---
 
@@ -148,6 +149,22 @@ export function markAsRead(roomId: string) {
   return postJson<number>(`/api/v1/chat/rooms/${roomId}/messages/read`, {});
 }
 
+export type DeviceCursorResponse = {
+  chatRoomId: string;
+  deviceId: string;
+  lastSeenMessageId: string;
+};
+
+export function updateChatCursor(roomId: string, lastSeenMessageId: string) {
+  return requestJson<DeviceCursorResponse>(`/api/v1/chat/rooms/${roomId}/cursor`, {
+    body: JSON.stringify({ lastSeenMessageId }),
+    headers: {
+      'X-Device-Id': getOrCreateDeviceId(),
+    },
+    method: 'PUT',
+  });
+}
+
 /**
  * PR-D: 멀티 디바이스 gap fill 용 sync-hint.
  *
@@ -157,8 +174,8 @@ export function markAsRead(roomId: string) {
  * 발생한 read/메시지가 반영되도록 reconnect 또는 visibility 'visible'
  * 시점에 호출.
  *
- * <p>백엔드는 X-Device-Id 헤더 또는 bander_device_id cookie 로 디바이스를
- * 식별 (PR-A + PR-B). 새 cookie 가 발급된 직후 첫 호출은
+ * <p>백엔드는 X-Device-Id 헤더로 디바이스를 식별한다. 새 device id 가
+ * 발급된 직후 첫 호출은
  * lastSeenMessageId=0 으로 응답할 수 있고, 이는 시작점에서의 정상 동작.
  */
 export type SyncHintRow = {
@@ -168,6 +185,18 @@ export type SyncHintRow = {
   latestMessageIdServer: string;
 };
 
-export function getSyncHint() {
-  return getJson<SyncHintRow[]>('/api/v1/chat/sync-hint');
+type SyncHintEnvelope = {
+  type: 'sync.hint';
+  deviceId: string;
+  rooms: SyncHintRow[];
+};
+
+export async function getSyncHint() {
+  const payload = await requestJson<SyncHintEnvelope>('/api/v1/chat/sync-hint', {
+    headers: {
+      'X-Device-Id': getOrCreateDeviceId(),
+    },
+    method: 'GET',
+  });
+  return payload.rooms ?? [];
 }
