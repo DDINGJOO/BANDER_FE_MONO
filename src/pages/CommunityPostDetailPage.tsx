@@ -1254,15 +1254,8 @@ export function CommunityPostDetailPage() {
           className="community-post-detail__comments-sheet"
           role="presentation"
         >
-          <button
-            aria-label="댓글 닫기"
-            className="community-post-detail__comments-sheet-backdrop"
-            onClick={() => setMobileCommentsOpen(false)}
-            type="button"
-          />
           <section
             aria-labelledby="community-post-detail-comments-sheet-title"
-            aria-modal="true"
             className="community-post-detail__comments-sheet-panel"
             id="community-post-detail-comments-sheet"
             ref={commentsWindowRef}

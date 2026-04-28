@@ -337,6 +337,8 @@ test('opens and closes the responsive floating comments window from the marker',
 
   const dialog = screen.getByRole('dialog', { name: '댓글 1' });
   expect(within(dialog).getByText('첫 댓글')).toBeInTheDocument();
+  expect(dialog).not.toHaveAttribute('aria-modal');
+  expect(document.querySelector('.community-post-detail__comments-sheet-backdrop')).not.toBeInTheDocument();
 
   fireEvent.click(within(dialog).getByRole('button', { name: '댓글 닫기' }));
 
