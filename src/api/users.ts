@@ -7,6 +7,8 @@ export type UserProfile = {
   nickname: string;
   bio: string | null;
   profileImageRef: string | null;
+  /** Denormalized CDN URL — preferred over rebuilding from profileImageRef. */
+  profileImageUrl: string | null;
   gender: string | null;
   regionCode: string | null;
   genres: string | null;
@@ -18,6 +20,12 @@ export type UpdateProfileRequest = {
   nickname: string;
   bio?: string;
   profileImageRef?: string;
+  /**
+   * Denormalized CDN URL captured from the profile-image grant response.
+   * SHOULD be sent whenever profileImageRef is sent so reads avoid a
+   * per-render round-trip to media-service.
+   */
+  profileImageUrl?: string;
   /** Required when profileImageRef changes (PR-H partial): JWS from grant API. */
   ownershipTicket?: string;
   gender?: string;
@@ -31,6 +39,7 @@ export type UpdateProfileResponse = {
   nickname: string;
   bio: string | null;
   profileImageRef: string | null;
+  profileImageUrl: string | null;
   gender: string | null;
   regionCode: string | null;
   genres: string | null;
@@ -45,6 +54,8 @@ export type UserMeSummary = {
   displayName: string;
   email: string;
   profileImageRef: string | null;
+  /** Denormalized CDN URL — preferred over rebuilding from profileImageRef. */
+  profileImageUrl: string | null;
   pointsLabel: string;
   couponCountLabel: string;
   reservationBadgeCount: number;
