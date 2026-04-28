@@ -123,10 +123,13 @@ export function getUnreadCount() {
 
 export function getChatMessages(
   roomId: string,
-  params: { cursor?: string; size?: number } = {},
+  params: { cursor?: string; afterId?: string; size?: number } = {},
 ) {
   const query = new URLSearchParams();
   if (params.cursor) query.set('cursor', params.cursor);
+  // PR-D: afterId 는 ASC (oldest-on-top) gap fill 용. 백엔드는
+  // messageId > afterId ORDER BY messageId ASC 로 응답.
+  if (params.afterId) query.set('afterId', params.afterId);
   if (params.size != null) query.set('size', String(params.size));
   const qs = query.toString();
   return getJson<CursorPageResponse<ChatMessageResponse>>(
@@ -143,4 +146,28 @@ export function sendMessage(roomId: string, req: SendMessageRequest) {
 
 export function markAsRead(roomId: string) {
   return postJson<number>(`/api/v1/chat/rooms/${roomId}/messages/read`, {});
+}
+
+/**
+ * PR-D: 멀티 디바이스 gap fill 용 sync-hint.
+ *
+ * <p>각 방에 대한 (lastSeenMessageId, latestMessageIdServer) 페어를 받아서
+ * 클라이언트가 누락된 구간만 afterId 로 fetch 할 수 있게 한다.
+ * 클라이언트가 잠깐 오프라인이거나 백그라운드였던 동안 다른 디바이스에서
+ * 발생한 read/메시지가 반영되도록 reconnect 또는 visibility 'visible'
+ * 시점에 호출.
+ *
+ * <p>백엔드는 X-Device-Id 헤더 또는 bander_device_id cookie 로 디바이스를
+ * 식별 (PR-A + PR-B). 새 cookie 가 발급된 직후 첫 호출은
+ * lastSeenMessageId=0 으로 응답할 수 있고, 이는 시작점에서의 정상 동작.
+ */
+export type SyncHintRow = {
+  /** 백엔드는 Long 을 string 으로 직렬화 (@JsonFormat STRING) */
+  chatRoomId: string;
+  lastSeenMessageId: string;
+  latestMessageIdServer: string;
+};
+
+export function getSyncHint() {
+  return getJson<SyncHintRow[]>('/api/v1/chat/sync-hint');
 }
