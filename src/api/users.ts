@@ -16,6 +16,18 @@ export type UserProfile = {
   createdAt: string;
 };
 
+export type PublicUserProfile = Pick<
+  UserProfile,
+  | 'bio'
+  | 'createdAt'
+  | 'genres'
+  | 'instruments'
+  | 'nickname'
+  | 'profileImageRef'
+  | 'profileImageUrl'
+  | 'userId'
+>;
+
 export type UpdateProfileRequest = {
   nickname: string;
   bio?: string;
@@ -48,6 +60,13 @@ export type UpdateProfileResponse = {
 
 export function getMyProfile() {
   return getJson<UserProfile>('/api/v1/users/me/profile');
+}
+
+export function getPublicUserProfile(userId: string) {
+  return getJson<PublicUserProfile>(
+    `/api/v1/users/${encodeURIComponent(userId)}/profile`,
+    { preserveAuthOnUnauthorized: true },
+  );
 }
 
 export type UserMeSummary = {

@@ -369,7 +369,8 @@ export function fetchUserMiniFeed(
   });
 
   return getJson<MiniFeedResponseDto>(
-    `/api/v1/users/${encodeURIComponent(userId)}/feed/posts?${search.toString()}`
+    `/api/v1/users/${encodeURIComponent(userId)}/feed/posts?${search.toString()}`,
+    { preserveAuthOnUnauthorized: true },
   );
 }
 

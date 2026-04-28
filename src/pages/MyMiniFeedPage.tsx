@@ -11,6 +11,7 @@ import {
 } from '../api/community';
 import { createChatRoom } from '../api/chat';
 import { ApiError } from '../api/client';
+import { getPublicUserProfile, type PublicUserProfile } from '../api/users';
 import { HomeFooter } from '../components/home/HomeFooter';
 import { HomeHeader } from '../components/home/HomeHeader';
 import { ChevronIcon, HeaderChatIcon } from '../components/shared/Icons';
@@ -130,6 +131,25 @@ function normalizeTags(tags: MiniFeedProfileDto['tags']) {
     .split(',')
     .map((tag) => tag.trim())
     .filter(Boolean);
+}
+
+function mergePublicProfileTags(profile: PublicUserProfile) {
+  return [profile.genres, profile.instruments]
+    .flatMap((value) => (value ?? '').split(','))
+    .map((tag) => tag.trim())
+    .filter(Boolean);
+}
+
+function toMiniFeedProfile(profile: PublicUserProfile): MiniFeedProfileDto {
+  return {
+    bio: profile.bio,
+    createdAt: profile.createdAt,
+    nickname: profile.nickname,
+    profileImageRef: profile.profileImageRef,
+    profileImageUrl: profile.profileImageUrl,
+    tags: mergePublicProfileTags(profile),
+    userId: normalizeUserId(profile.userId),
+  };
 }
 
 function normalizeUserId(userId: string | number | null | undefined) {
@@ -390,7 +410,7 @@ export function MyMiniFeedPage() {
         setPosts(page.items.map(mapMiniFeedPost));
         setTotalCount(page.totalCount);
       })
-      .catch((error) => {
+      .catch(async (error) => {
         if (!active) {
           return;
         }
@@ -400,13 +420,28 @@ export function MyMiniFeedPage() {
           return;
         }
 
+        if (isPublicUserFeed) {
+          try {
+            const publicProfile = await getPublicUserProfile(targetUserId);
+            if (!active) {
+              return;
+            }
+            setProfile(toMiniFeedProfile(publicProfile));
+          } catch {
+            // If the post list fails, keep the original feed error. The public
+            // profile fallback is best-effort and should never force login.
+          }
+        }
+
         setErrorMessage(
-          getErrorMessage(
-            error,
-            isPublicUserFeed
-              ? '미니피드를 불러오지 못했습니다.'
-              : '내 미니피드를 불러오지 못했습니다.'
-          )
+          isPublicUserFeed && error instanceof ApiError && error.status === 401
+            ? '공개 미니피드 조회가 아직 서버에 반영되지 않았습니다. 잠시 후 다시 시도해주세요.'
+            : getErrorMessage(
+                error,
+                isPublicUserFeed
+                  ? '미니피드를 불러오지 못했습니다.'
+                  : '내 미니피드를 불러오지 못했습니다.'
+              )
         );
         setPosts([]);
         setTotalCount(0);

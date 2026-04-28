@@ -3,6 +3,8 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { MyMiniFeedPage } from '../MyMiniFeedPage';
 import * as communityApi from '../../api/community';
 import * as chatApi from '../../api/chat';
+import * as usersApi from '../../api/users';
+import { ApiError } from '../../api/client';
 
 jest.mock('../../components/home/HomeHeader', () => ({
   HomeHeader: () => <div data-testid="home-header" />,
@@ -25,9 +27,14 @@ jest.mock('../../api/chat', () => ({
   createChatRoom: jest.fn(),
 }));
 
+jest.mock('../../api/users', () => ({
+  getPublicUserProfile: jest.fn(),
+}));
+
 const mockedFetchMyMiniFeed = jest.mocked(communityApi.fetchMyMiniFeed);
 const mockedFetchUserMiniFeed = jest.mocked(communityApi.fetchUserMiniFeed);
 const mockedCreateChatRoom = jest.mocked(chatApi.createChatRoom);
+const mockedGetPublicUserProfile = jest.mocked(usersApi.getPublicUserProfile);
 
 function renderPage(initialEntry = '/my-minifeed') {
   return render(
@@ -230,6 +237,34 @@ test('loads another user mini feed without requiring login', async () => {
   expect(screen.getByRole('button', { name: '채팅하기' })).toBeInTheDocument();
   expect(screen.queryByText('수정하기')).not.toBeInTheDocument();
   expect(screen.queryByText('login page')).not.toBeInTheDocument();
+});
+
+test('keeps another user profile visible when the public mini feed is temporarily unauthorized', async () => {
+  window.sessionStorage.clear();
+  mockedFetchUserMiniFeed.mockRejectedValue(
+    new ApiError('요청 처리에 실패했습니다.', 401)
+  );
+  mockedGetPublicUserProfile.mockResolvedValue({
+    bio: '프로필은 공개로 볼 수 있어요.',
+    createdAt: '2026-04-10T09:00:00.000Z',
+    genres: '락,인디',
+    instruments: '기타',
+    nickname: '공개유저',
+    profileImageRef: null,
+    profileImageUrl: 'https://cdn.example.com/public-profile.png',
+    userId: '307057320825716736',
+  });
+
+  renderPage('/users/307057320825716736/minifeed');
+
+  expect(await screen.findByRole('heading', { name: '공개유저 미니피드' })).toBeInTheDocument();
+  expect(mockedGetPublicUserProfile).toHaveBeenCalledWith('307057320825716736');
+  expect(screen.getByText('프로필은 공개로 볼 수 있어요.')).toBeInTheDocument();
+  expect(screen.getByText('락')).toBeInTheDocument();
+  expect(screen.getByText('기타')).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: '채팅하기' })).toBeInTheDocument();
+  expect(screen.queryByText('login page')).not.toBeInTheDocument();
+  expect(screen.queryByText('미니피드를 불러오지 못했습니다. (401)')).not.toBeInTheDocument();
 });
 
 test('creates a personal chat from another user mini feed using the string user id', async () => {

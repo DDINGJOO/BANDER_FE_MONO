@@ -13,6 +13,19 @@ type ApiResponse<T> = {
   timestamp?: string;
 };
 
+type JsonRequestInit = RequestInit & {
+  /**
+   * Public optional-auth reads can still receive 401 from stale edge builds or
+   * backend drift. Those responses must not wipe the user's local session.
+   */
+  preserveAuthOnUnauthorized?: boolean;
+};
+
+type JsonGetOptions = {
+  preserveAuthOnUnauthorized?: boolean;
+  signal?: AbortSignal;
+};
+
 export class ApiError extends Error {
   code?: string;
   status: number;
@@ -33,14 +46,15 @@ function buildHeaders(init?: RequestInit) {
   return headers;
 }
 
-export async function requestJson<T>(path: string, init?: RequestInit): Promise<T> {
+export async function requestJson<T>(path: string, init?: JsonRequestInit): Promise<T> {
   let response: Response;
+  const { preserveAuthOnUnauthorized = false, ...fetchInit } = init ?? {};
 
   try {
     response = await fetch(`${getApiBaseUrl()}${path}`, {
-      ...init,
+      ...fetchInit,
       credentials: 'include',
-      headers: buildHeaders(init),
+      headers: buildHeaders(fetchInit),
     });
   } catch (error) {
     throw new ApiError('네트워크 오류가 발생했습니다. 잠시 후 다시 시도해주세요.', 0);
@@ -53,7 +67,7 @@ export async function requestJson<T>(path: string, init?: RequestInit): Promise<
     payload = null;
   }
 
-  if (response.status === 401) {
+  if (response.status === 401 && !preserveAuthOnUnauthorized) {
     clearAuthSession();
   }
 
@@ -107,9 +121,10 @@ export function postJson<T>(path: string, body: unknown) {
   });
 }
 
-export function getJson<T>(path: string, options?: { signal?: AbortSignal }) {
+export function getJson<T>(path: string, options?: JsonGetOptions) {
   return requestJson<T>(path, {
     method: 'GET',
+    preserveAuthOnUnauthorized: options?.preserveAuthOnUnauthorized,
     signal: options?.signal,
   });
 }
