@@ -138,6 +138,10 @@
   cursor: pointer;
 }
 
+.home-header:not(.home-header--authenticated) .home-header__search-submit {
+  display: none;
+}
+
 .home-header__search-menu {
   position: absolute;
   left: 0;
@@ -310,15 +314,18 @@
 .home-header__mobile-layer {
   position: fixed;
   inset: 0;
-  z-index: 1000;
+  z-index: 10000;
   display: none;
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
 }
 
 .home-header__mobile-backdrop {
   position: absolute;
   inset: 0;
   border: 0;
-  background: rgba(15, 20, 30, 0.36);
+  background: rgba(15, 20, 30, 0.44);
   cursor: pointer;
 }
 
@@ -331,6 +338,9 @@
   flex-direction: column;
   gap: 18px;
   width: min(340px, calc(100vw - 36px));
+  height: 100vh;
+  height: 100dvh;
+  max-height: 100dvh;
   padding: 24px 20px;
   overflow-y: auto;
   background: var(--color-white);
@@ -2715,15 +2725,61 @@ img.home-header__avatar::after {
   .home-header__inner,
   .home-header__inner--authenticated {
     width: min(100% - 24px, 1288px);
+    min-height: auto;
+    align-items: stretch;
+    flex-direction: column;
+    justify-content: center;
+    gap: 10px;
+    padding: 10px 0 12px;
   }
 
-  .home-header__search {
-    flex: 1 1 0;
+  .home-header__main,
+  .home-header__main--authenticated {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 42px;
+    align-items: center;
+    width: 100%;
+    gap: 10px;
+  }
+
+  .home-header__main > .brand-mark {
+    grid-column: 1;
     min-width: 0;
   }
 
+  .home-header__search {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    flex: 0 0 auto;
+    min-width: 0;
+    width: 100%;
+  }
+
   .home-header__search-field {
-    padding: 0 12px;
+    min-height: 42px;
+    padding: 0 10px 0 14px;
+  }
+
+  .home-header__search-field > svg {
+    display: none;
+  }
+
+  .home-header__search-submit {
+    display: inline-flex;
+    width: 34px;
+    height: 34px;
+    border-radius: 999px;
+    background: var(--color-main-yellow);
+  }
+
+  .home-header:not(.home-header--authenticated) .home-header__search-submit {
+    display: inline-flex;
+  }
+
+  .home-header__mobile-toggle {
+    grid-column: 2;
+    justify-self: end;
+    margin-left: 0;
   }
 
   .home-header__search-input {
@@ -2731,7 +2787,7 @@ img.home-header__avatar::after {
   }
 
   .home-header__search-input::placeholder {
-    color: transparent;
+    color: var(--color-muted);
   }
 
   .home-header__mobile-drawer {
@@ -2836,7 +2892,7 @@ img.home-header__avatar::after {
   }
 
   .home-header__search-submit {
-    display: none;
+    display: inline-flex;
   }
 
   .home-search__filter,
