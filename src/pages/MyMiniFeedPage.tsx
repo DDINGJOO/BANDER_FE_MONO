@@ -203,8 +203,13 @@ function toExcerptLines(post: MiniFeedPostDto) {
     .slice(0, 2);
 }
 
-function mapMiniFeedPost(post: MiniFeedPostDto): MiniFeedCardModel {
+function mapMiniFeedPost(
+  post: MiniFeedPostDto,
+  fallbackProfile?: MiniFeedProfileDto | null,
+): MiniFeedCardModel {
   const detailIdentifier = post.postId ?? post.id ?? post.detailSlug ?? post.slug ?? null;
+  const fallbackProfileImageRef = fallbackProfile?.profileImageRef ?? null;
+  const fallbackProfileImageUrl = fallbackProfile?.profileImageUrl ?? null;
 
   return {
     // R2-B: server-supplied authorProfileImageUrl (UserProfileUpdated fanout) takes
@@ -212,10 +217,10 @@ function mapMiniFeedPost(post: MiniFeedPostDto): MiniFeedCardModel {
     // first, then falls back to ref-based resolution for rows that pre-date the
     // fanout migration.
     authorAvatar: resolveMediaUrl(
-      post.authorAvatarUrl ?? post.authorAvatar ?? post.authorProfileImageRef,
-      post.authorProfileImageUrl,
+      post.authorAvatarUrl ?? post.authorAvatar ?? post.authorProfileImageRef ?? fallbackProfileImageRef,
+      post.authorProfileImageUrl ?? fallbackProfileImageUrl,
     ),
-    authorName: post.authorName ?? post.authorNickname ?? '밴더유저',
+    authorName: post.authorName ?? post.authorNickname ?? fallbackProfile?.nickname ?? '밴더유저',
     category: post.category ?? undefined,
     comments: post.comments ?? post.commentCount ?? 0,
     detailSlug: detailIdentifier !== null ? String(detailIdentifier) : undefined,
@@ -427,8 +432,13 @@ export function MyMiniFeedPage() {
         }
 
         const page = normalizeMiniFeedPage(response.page);
-        setProfile(publicProfile ?? response.profile);
-        setPosts(page.items.map(mapMiniFeedPost));
+        const nextProfile = publicProfile ?? response.profile;
+        setProfile(nextProfile);
+        setPosts(
+          page.items.map((post) => (
+            mapMiniFeedPost(post, feedTab === 'written' ? nextProfile : null)
+          )),
+        );
         setTotalCount(page.totalCount);
       })
       .catch(async (error) => {

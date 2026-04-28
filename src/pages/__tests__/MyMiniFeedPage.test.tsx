@@ -155,6 +155,8 @@ test('fetches the profile feed and refetches on tab and sort changes', async () 
   renderPage();
 
   expect(await screen.findByText('작성한 글 제목')).toBeInTheDocument();
+  const writtenCardAvatar = document.querySelector<HTMLImageElement>('.my-mini-feed-card__meta-avatar');
+  expect(writtenCardAvatar).toHaveAttribute('src', 'https://cdn.example.com/profile.png');
   expect(mockedFetchMyMiniFeed).toHaveBeenNthCalledWith(1, {
     page: 0,
     size: 20,
