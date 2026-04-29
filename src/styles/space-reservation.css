@@ -1,7 +1,7 @@
 .space-reservation-page {
   min-height: 100vh;
   padding-bottom: 160px;
-  background: #f6f8fa;
+  background: var(--color-surface);
 }
 
 .space-reservation__shell {
@@ -107,9 +107,9 @@
 .space-reservation__summary-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px 24px;
-  padding: 18px 20px 20px;
-  background: #f6f8fa;
+  gap: 10px 20px;
+  padding: 15px 20px 20px;
+  background: var(--color-surface);
 }
 
 .space-reservation__summary-grid-col {
@@ -167,7 +167,7 @@
 
 /* Figma 6225:45288 — 시간 선택 카드 */
 .space-reservation__section--time {
-  border-color: #f6d155;
+  border-color: var(--color-main-yellow);
 }
 
 .space-reservation__time-section-head {
@@ -206,7 +206,7 @@
 
 .space-reservation__timeline-lead {
   margin: 10px 0 0;
-  color: #6d7a87;
+  color: var(--color-muted-strong);
   font-size: 13px;
   font-weight: 500;
   line-height: 18px;
@@ -215,9 +215,10 @@
 .space-reservation__section-caption,
 .space-reservation__point-note {
   margin: 6px 0 0;
-  color: var(--color-muted);
-  font-size: 13px;
-  line-height: 18px;
+  color: var(--color-muted-strong);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 20px;
 }
 
 .space-reservation__timeline {
@@ -338,7 +339,7 @@
 .space-reservation__timeline-slot {
   min-height: 50px;
   border: 1px solid #d7dee8;
-  background: #f0f2f5;
+  background: var(--color-line);
   color: var(--color-muted-strong);
   box-shadow: none;
   cursor: pointer;
@@ -352,16 +353,16 @@
 
 .space-reservation__timeline-slot--selected {
   background: #fffbee;
-  color: #ffa20c;
-  border-color: #ffa20c;
-  box-shadow: inset 0 0 0 1px #ffa20c;
+  color: var(--color-accent-text);
+  border-color: var(--color-accent-text);
+  box-shadow: inset 0 0 0 1px var(--color-accent-text);
 }
 
 .space-reservation__timeline-slot--disabled {
   background:
     linear-gradient(45deg, transparent 47%, #aeb8c7 47%, #aeb8c7 53%, transparent 53%),
     linear-gradient(-45deg, transparent 47%, #aeb8c7 47%, #aeb8c7 53%, transparent 53%),
-    #c4c9d4;
+    var(--color-gray-4);
   color: var(--color-white);
   border-color: #b6bfcd;
   box-shadow: inset 0 0 0 1px #b6bfcd;
@@ -429,7 +430,7 @@
 }
 
 .space-reservation__legend-swatch--available {
-  background: #f0f2f5;
+  background: var(--color-line);
   box-shadow: inset 0 0 0 1px #d7dee8;
 }
 
@@ -441,7 +442,7 @@
 
 .space-reservation__legend-swatch--selected {
   background: #fffbee;
-  box-shadow: inset 0 0 0 1px #ffa20c;
+  box-shadow: inset 0 0 0 1px var(--color-accent-text);
 }
 
 .space-reservation__field-list {
@@ -535,15 +536,44 @@
 }
 
 .space-reservation__field > span {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   color: var(--color-black);
   font-size: 13px;
   font-weight: 700;
   line-height: 22px;
 }
 
-.space-reservation__field input {
+.space-reservation__required-mark {
+  border-radius: 999px;
+  background: #fff4d3;
+  color: #c26b00;
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 800;
+  line-height: 1;
+  padding: 4px 7px;
+}
+
+.space-reservation__field-help {
+  color: #68778a;
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.space-reservation__field input,
+.space-reservation__field select {
   min-height: 50px;
   padding: 15px;
+}
+
+.space-reservation__field select {
+  border: 1px solid #d9e1ec;
+  border-radius: 10px;
+  background: #fff;
+  color: var(--color-black);
+  font: inherit;
 }
 
 .space-reservation__field textarea {
@@ -695,7 +725,7 @@
   font-size: 16px;
   font-weight: 700;
   line-height: 24px;
-  color: #ff3a3d;
+  color: var(--color-danger);
 }
 
 .space-reservation__payment-agreement-all {
@@ -826,7 +856,7 @@
   min-height: 56px;
   border: 0;
   border-radius: 10px;
-  background: #c4c9d4;
+  background: var(--color-gray-4);
   color: var(--color-white);
   font-size: 15px;
   font-weight: 600;
@@ -872,7 +902,7 @@
   width: 18px;
   height: 18px;
   border-radius: 5px;
-  background: #eff2f5;
+  background: var(--color-surface-alt);
   color: transparent;
   font-size: 11px;
   font-weight: 700;
@@ -1069,7 +1099,7 @@
   width: 50px;
   height: 50px;
   border-radius: 10px;
-  background: #eff1f5;
+  background: var(--color-surface-alt);
   color: var(--color-muted-strong);
   font-size: 16px;
   font-weight: 700;
@@ -1125,7 +1155,7 @@
   height: 26px;
   border: 0;
   border-radius: 5px;
-  background: #f6f8fa;
+  background: var(--color-surface);
   color: var(--color-black);
   font-size: 16px;
   line-height: 1;
@@ -1156,7 +1186,7 @@
 }
 
 .space-reservation__modal-submit:disabled {
-  background: #c4c9d4;
+  background: var(--color-gray-4);
   color: var(--color-white);
   cursor: default;
 }
@@ -1489,7 +1519,7 @@
   min-height: 40px;
   border: 0;
   border-radius: 10px;
-  background: #c4c9d4;
+  background: var(--color-gray-4);
   color: var(--color-white);
   font-size: 14px;
   font-weight: 600;

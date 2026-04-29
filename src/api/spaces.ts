@@ -104,6 +104,16 @@ export type SpaceGalleryImageDto = {
   sortOrder: number;
 };
 
+export type SpaceReservationFieldDto = {
+  fieldId: string;
+  inputType: string;
+  title: string;
+  required: boolean;
+  inputFrequency: string | null;
+  sortOrder: number;
+  options?: string[];
+};
+
 export type SpaceDetailDto = {
   id: string;
   studioId: string | null;
@@ -135,6 +145,7 @@ export type SpaceDetailDto = {
   detailBenefitChips: SpaceBenefitChipDto[];
   notices: SpaceNoticeDto[];
   policies: SpacePolicyDto[];
+  reservationFields?: SpaceReservationFieldDto[];
   description: string | null;
   couponStripLabel: string | null;
   trustBanner: string | null;

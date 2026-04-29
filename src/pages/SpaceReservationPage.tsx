@@ -17,7 +17,9 @@ import {
   createBooking,
   type BookingCommandResponse,
   type SpaceAvailabilitySlot,
+  type ReservationAnswerRequest,
 } from '../api/bookings';
+import type { SpaceReservationFieldDto } from '../api/spaces';
 import { useSagaPolling } from '../hooks/useSagaPolling';
 import { isMockMode, getTossPaymentsClientKey } from '../config/publicEnv';
 import { requestTossPayment } from '../utils/tossPayments';
@@ -117,6 +119,13 @@ function normalizeReservationDateParam(dateParam: string | null) {
   return toLocalDateParam(parsed);
 }
 
+function reservationFieldInputMode(inputType: string | null | undefined) {
+  const normalized = (inputType ?? '').toUpperCase();
+  if (normalized === 'SELECT') return 'select';
+  if (normalized === 'FILE') return 'file';
+  return 'text';
+}
+
 function formatReservationDate(dateParam: string | null) {
   const parsed = parseLocalDateParam(dateParam) ?? startOfLocalDay();
 
@@ -207,6 +216,22 @@ export function SpaceReservationPage() {
   const setPaymentResultSafe = useCallback((next: PaymentResultState) => {
     setPaymentResult((prev) => (prev === 'success' && next === 'failed' ? prev : next));
   }, []);
+  // 결과 모달 transition 정책 — 결제 응답이 도착해도 1초 동안 최종값 안정화 후 modal 표시.
+  // 이 1초 안에 paymentResult 가 다른 값으로 바뀌면 timer 리셋 → 마지막 값만 사용자에게 노출.
+  // success/failed/null 모두 동일 패턴이라 여러 microtask race (failed→success, success→failed)
+  // 모두 흡수. 사용자는 결제 결과를 정확히 한 번만 봄.
+  // null (모달 닫기 click) 은 즉시 — 사용자 응답성 우선.
+  const [paymentResultDisplayed, setPaymentResultDisplayed] = useState<PaymentResultState>(null);
+  useEffect(() => {
+    if (paymentResult === null) {
+      setPaymentResultDisplayed(null);
+      return;
+    }
+    const timer = window.setTimeout(() => {
+      setPaymentResultDisplayed(paymentResult);
+    }, 1000);
+    return () => window.clearTimeout(timer);
+  }, [paymentResult]);
   // Guard: once the saga polling response surfaces orderId/amount/customerKey,
   // we open the Toss SDK exactly once. Polling continues until COMPLETED.
   const tossLaunchedRef = useRef(false);
@@ -219,6 +244,7 @@ export function SpaceReservationPage() {
     piano: 0,
   });
   const [availabilitySlots, setAvailabilitySlots] = useState<SpaceAvailabilitySlot[]>([]);
+  const [reservationAnswers, setReservationAnswers] = useState<Record<string, string>>({});
   const timelineScrollRef = useRef<HTMLDivElement | null>(null);
   const scrollDragStateRef = useRef({ active: false, scrollLeft: 0, startX: 0 });
 
@@ -227,6 +253,23 @@ export function SpaceReservationPage() {
   const detailRoomId =
     detail && 'id' in detail && typeof detail.id === 'string' ? detail.id : null;
   const roomId = roomIdParam ?? detailRoomId;
+  const reservationFields = useMemo(() => {
+    const rawFields = ((detail as { reservationFields?: SpaceReservationFieldDto[] } | null)?.reservationFields ?? []);
+    return rawFields
+      .slice()
+      .sort((a, b) => a.sortOrder - b.sortOrder);
+  }, [detail]);
+
+  useEffect(() => {
+    setReservationAnswers((current) => {
+      const next: Record<string, string> = {};
+      reservationFields.forEach((field, index) => {
+        const key = field.fieldId || `field-${index}`;
+        next[key] = current[key] ?? '';
+      });
+      return next;
+    });
+  }, [reservationFields]);
 
   const updateTimelineNavState = () => {
     if (!timelineScrollRef.current) {
@@ -414,7 +457,18 @@ export function SpaceReservationPage() {
   );
   const requiredAgreementsChecked =
     agreements.collection && agreements.thirdParty && agreements.paymentAgency;
-  const canSubmitPayment = requiredAgreementsChecked && selectedTimes.length > 0 && (isMockMode() || Boolean(roomId));
+  const requiredReservationFieldsFilled = reservationFields.every((field, index) => {
+    if (!field.required) {
+      return true;
+    }
+    const key = field.fieldId || `field-${index}`;
+    return Boolean(reservationAnswers[key]?.trim());
+  });
+  const canSubmitPayment =
+    requiredAgreementsChecked &&
+    requiredReservationFieldsFilled &&
+    selectedTimes.length > 0 &&
+    (isMockMode() || Boolean(roomId));
   const modalRoot = typeof document !== 'undefined' ? document.body : null;
   const couponCount = isMockMode() ? COUPON_ITEMS.length : availableCoupons.length;
 
@@ -440,6 +494,24 @@ export function SpaceReservationPage() {
       };
     });
   };
+
+  const updateReservationAnswer = (fieldKey: string, value: string) => {
+    setReservationAnswers((current) => ({
+      ...current,
+      [fieldKey]: value,
+    }));
+  };
+
+  const buildReservationAnswerPayload = (): ReservationAnswerRequest[] =>
+    reservationFields.map((field, index) => {
+      const key = field.fieldId || `field-${index}`;
+      return {
+        fieldId: field.fieldId,
+        sortOrder: field.sortOrder ?? index,
+        title: field.title,
+        value: reservationAnswers[key]?.trim() ?? '',
+      };
+    });
 
   const buildContinuousSelection = (startIndex: number, endIndex: number) => {
     const step = startIndex <= endIndex ? 1 : -1;
@@ -541,6 +613,7 @@ export function SpaceReservationPage() {
         startsAt,
         endsAt,
         couponId: selectedCouponId ?? undefined,
+        reservationAnswers: buildReservationAnswerPayload(),
       });
 
       if (result.kind === 'saga') {
@@ -553,7 +626,10 @@ export function SpaceReservationPage() {
 
       await proceedWithLegacyBooking(result.booking);
     } catch {
-      setPaymentResult('failed');
+      // saga lane 으로 갔다가 후처리 단계에서 throw 시 saga 는 이미 background 에서
+      // 진행 중일 수 있음. saga COMPLETED 가 도착해 success 로 set 된 뒤 이 catch 가
+      // failed 로 덮어쓰면 깜빡임 발생. setPaymentResultSafe 로 success-우선 guard 적용.
+      setPaymentResultSafe('failed');
     }
   };
 
@@ -567,7 +643,7 @@ export function SpaceReservationPage() {
 
     const clientKey = getTossPaymentsClientKey();
     if (!clientKey || !booking.orderId) {
-      setPaymentResult('failed');
+      setPaymentResultSafe('failed');
       return;
     }
 
@@ -600,8 +676,10 @@ export function SpaceReservationPage() {
       tossLaunchedRef.current = true;
       const clientKey = getTossPaymentsClientKey();
       if (!clientKey) {
+        // saga 가 이미 진행되어 server-side 에서 결제 완료된 후 polling 의 다음 tick
+        // 에서 success 가 set 될 가능성. setPaymentResultSafe 로 깜빡임 방지.
         setSagaPending(false);
-        setPaymentResult('failed');
+        setPaymentResultSafe('failed');
         return;
       }
       if (data.bookingId) {
@@ -699,10 +777,6 @@ export function SpaceReservationPage() {
               <div>
                 <span>예약 시간</span>
                 <strong>{selectedTimeRange}</strong>
-              </div>
-              <div>
-                <span>예약 인원</span>
-                <strong>2명</strong>
               </div>
             </div>
             <div className="space-reservation__summary-grid-col">
@@ -819,19 +893,55 @@ export function SpaceReservationPage() {
             </div>
             <label className="space-reservation__field">
               <span>예약자 이름</span>
-              <input defaultValue="김은수" type="text" />
+              <input placeholder="이름을 입력해주세요" type="text" />
             </label>
             <label className="space-reservation__field">
               <span>연락처</span>
-              <input defaultValue="010-1234-5678" type="text" />
+              <input placeholder="010-0000-0000" type="text" />
             </label>
+            {reservationFields.map((field, index) => {
+              const key = field.fieldId || `field-${index}`;
+              const inputMode = reservationFieldInputMode(field.inputType);
+              return (
+                <label className="space-reservation__field" key={key}>
+                  <span>
+                    {field.title}
+                    {field.required && <em className="space-reservation__required-mark">필수</em>}
+                  </span>
+                  {inputMode === 'file' ? (
+                    <input
+                      type="file"
+                      onChange={(event) => updateReservationAnswer(key, event.target.files?.[0]?.name ?? '')}
+                    />
+                  ) : inputMode === 'select' ? (
+                    <select
+                      value={reservationAnswers[key] ?? ''}
+                      onChange={(event) => updateReservationAnswer(key, event.target.value)}
+                    >
+                      <option value="">{field.title} 선택</option>
+                      {(field.options ?? []).map((option) => (
+                        <option key={option} value={option}>
+                          {option}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input
+                      placeholder={`${field.title}을(를) 입력해주세요`}
+                      type="text"
+                      value={reservationAnswers[key] ?? ''}
+                      onChange={(event) => updateReservationAnswer(key, event.target.value)}
+                    />
+                  )}
+                  {field.inputFrequency && (
+                    <small className="space-reservation__field-help">{field.inputFrequency}</small>
+                  )}
+                </label>
+              );
+            })}
             <label className="space-reservation__field">
               <span>추가 요청사항</span>
-              <textarea
-                defaultValue={
-                  '일렉기타 앰프는 마샬로 부탁드립니다.\n환기 잘되는 방으로 부탁드려요'
-                }
-              />
+              <textarea placeholder="요청사항이 있다면 입력해주세요" />
             </label>
           </div>
         </section>
@@ -1082,7 +1192,12 @@ export function SpaceReservationPage() {
           )
         : null}
 
-      {paymentResult && modalRoot
+      {/* 결과 모달 mount 조건:
+          1. sagaPending=true 인 동안 차단 (saga 진행 중 결과 모달 X)
+          2. paymentResultDisplayed 사용 — paymentResult 의 500ms debounce 값.
+             failed 가 먼저, success 가 늦게 도착해도 최종값만 mount 되어
+             깜빡임 흡수. */}
+      {paymentResultDisplayed && !sagaPending && modalRoot
         ? createPortal(
             <div className="space-reservation__modal">
               <div className="space-reservation__modal-backdrop" onClick={() => setPaymentResult(null)} />
@@ -1110,8 +1225,7 @@ export function SpaceReservationPage() {
                 </div>
                 <div className="space-reservation__result-info">
                   <div><span>예약 날짜</span><strong>{reservationDateLabel}</strong></div>
-                  <div><span>예약 시간</span><strong>{selectedTimeRange === '-' ? '16:00 ~ 17:00 (총 1시간)' : selectedTimeRange}</strong></div>
-                  <div><span>예약 인원</span><strong>2명</strong></div>
+                  <div><span>예약 시간</span><strong>{selectedTimeRange}</strong></div>
                   <div><span>상품 옵션</span><strong>{selectedOptionSummary || '-'}</strong></div>
                   <div><span>가격</span><strong>{totalPrice.toLocaleString()}원</strong></div>
                 </div>

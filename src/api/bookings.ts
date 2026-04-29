@@ -8,6 +8,14 @@ export type CreateBookingRequest = {
   startsAt: string;
   endsAt: string;
   couponId?: string;
+  reservationAnswers?: ReservationAnswerRequest[];
+};
+
+export type ReservationAnswerRequest = {
+  fieldId: string;
+  title: string;
+  value: string;
+  sortOrder: number;
 };
 
 export type CancelBookingRequest = {
@@ -45,6 +53,7 @@ export type BookingDetailResponse = {
   bookerName: string;
   bookerPhone: string;
   bookerNote: string | null;
+  reservationAnswers?: ReservationAnswerRequest[];
   cancelReason: string | null;
   createdAt: string;
 };
