@@ -149,6 +149,56 @@ export function markAsRead(roomId: string) {
   return postJson<number>(`/api/v1/chat/rooms/${roomId}/messages/read`, {});
 }
 
+/**
+ * chat-image upload grant + S3 PUT + commit.
+ *
+ * <p>Flow (community 의 uploadPostInlineImage 와 동일 패턴):
+ *   1. POST /api/v1/media/uploads (ownerType=CHAT, targetType=CHAT_IMAGE)
+ *      → mediaRef + uploadUrl + ownershipTicket + publicUrl
+ *   2. PUT to S3 (resize 자동 적용 by putAndCommit)
+ *   3. POST /api/v1/media/{mediaRef}/commit
+ *
+ * <p>호출자는 응답의 imageUrl 을 sendMessage 의 imageUrl 필드에 그대로 부착해야
+ * 한다. content 필드는 mediaRef 를 사용 (R1-J 백엔드는 IMAGE 메시지에서
+ * content=mediaRef 를 기대).
+ */
+export type ChatImageUploadResult = {
+  mediaRef: string;
+  imageUrl: string;
+  ownershipTicket: string;
+};
+
+export async function uploadChatImage(file: File): Promise<ChatImageUploadResult> {
+  type Grant = {
+    mediaRef: string;
+    uploadUrl: string;
+    publicUrl: string;
+    uploadHeaders?: Record<string, string>;
+    ownershipTicket?: string;
+  };
+  const grant = await postJson<Grant>('/api/v1/media/uploads', {
+    contentLength: file.size,
+    contentType: file.type,
+    fileName: file.name,
+    ownerKey: null,
+    ownerType: 'CHAT',
+    targetType: 'CHAT_IMAGE',
+  });
+  const { putAndCommit } = await import('./media');
+  await putAndCommit({
+    mediaId: grant.mediaRef,
+    uploadUrl: grant.uploadUrl,
+    uploadHeaders: grant.uploadHeaders,
+    ownershipTicket: grant.ownershipTicket,
+    file,
+  });
+  return {
+    mediaRef: grant.mediaRef,
+    imageUrl: grant.publicUrl ?? '',
+    ownershipTicket: grant.ownershipTicket ?? '',
+  };
+}
+
 export type DeviceCursorResponse = {
   chatRoomId: string;
   deviceId: string;

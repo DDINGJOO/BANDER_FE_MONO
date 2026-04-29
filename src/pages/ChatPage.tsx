@@ -74,14 +74,6 @@ const FALLBACK_PANEL: ChatVendorPanel = {
   stats: [],
 };
 
-function getLatestMessageId(messages: ChatMessageResponse[]): string | null {
-  if (messages.length === 0) return null;
-  return messages.reduce<string | null>((latest, message) => {
-    if (!latest) return message.messageId;
-    return BigInt(message.messageId) > BigInt(latest) ? message.messageId : latest;
-  }, null);
-}
-
 export function ChatPage() {
   const navigate = useNavigate();
   const { openGuestGate } = useGuestGate();
@@ -187,6 +179,7 @@ export function ChatPage() {
         saveAuthSession(savedSession);
         setLoading(false);
       });
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- activeRoomId/authSession 는 의도적으로 제외: 방 전환마다 전체 room list 재fetch 불필요
   }, [isAuthenticated]);
 
   // Vendor rooms: fetch vendor details for name/image enrichment
@@ -220,6 +213,7 @@ export function ChatPage() {
       next.set('t', String(filtered[0].chatRoomId));
       setSearchParams(next);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- activeRoomId/searchParams/setSearchParams 는 의도적으로 제외: 필터 변경시만 재계산, URL 변경 cascade 방지
   }, [allRooms, chatFilter]);
 
   // Load messages when active room changes
@@ -419,8 +413,11 @@ export function ChatPage() {
 
   useEffect(() => {
     if (!activeRoomId) return;
-    const latestMessageId = getLatestMessageId(messages);
-    if (!latestMessageId) return;
+    const latestMessage = messages[messages.length - 1];
+    // CRITICAL: 방 전환 직후 messages 가 이전 방 데이터일 수 있음.
+    // latestMessage.chatRoomId 가 activeRoomId 와 일치할 때만 cursor advance.
+    if (!latestMessage || latestMessage.chatRoomId !== activeRoomId) return;
+    const latestMessageId = latestMessage.messageId;
     if (lastCursorUpdateRef.current[activeRoomId] === latestMessageId) return;
 
     lastCursorUpdateRef.current[activeRoomId] = latestMessageId;
@@ -508,6 +505,43 @@ export function ChatPage() {
     if (e.key === 'Enter') {
       e.preventDefault();
       handleSend();
+    }
+  };
+
+  // 사진 업로드: file picker → media-service grant → S3 PUT + commit →
+  // sendMessage(messageType=IMAGE, content=mediaRef, imageUrl=cdnUrl).
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
+
+  const handleCameraClick = () => {
+    if (!activeRoomId || uploadingImage) return;
+    fileInputRef.current?.click();
+  };
+
+  const handleFileSelected = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    // 같은 파일 재선택 시에도 onChange 가 발화하도록 input value reset.
+    event.target.value = '';
+    if (!file || !activeRoomId) return;
+    if (!file.type.startsWith('image/')) {
+      console.warn('[ChatPage] non-image file rejected:', file.type);
+      return;
+    }
+    setUploadingImage(true);
+    try {
+      const { mediaRef, imageUrl } = await uploadChatImage(file);
+      const msg = await sendMessage(activeRoomId, {
+        content: mediaRef,
+        messageType: 'IMAGE',
+        imageUrl,
+      });
+      setMessages((prev) =>
+        prev.some((message) => message.messageId === msg.messageId) ? prev : [...prev, msg],
+      );
+    } catch (err) {
+      console.error('[ChatPage] uploadChatImage failed:', err);
+    } finally {
+      setUploadingImage(false);
     }
   };
 
@@ -823,9 +857,22 @@ export function ChatPage() {
             ) : null}
 
             <footer className="chat-page__composer">
-              <button type="button" className="chat-page__composer-camera" aria-label="사진 첨부">
+              <button
+                type="button"
+                className="chat-page__composer-camera"
+                aria-label="사진 첨부"
+                onClick={handleCameraClick}
+                disabled={!activeRoomId || uploadingImage}
+              >
                 <CameraGlyph24 />
               </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                hidden
+                onChange={handleFileSelected}
+              />
               <div className="chat-page__composer-input-wrap">
                 <input
                   className="chat-page__composer-input"
