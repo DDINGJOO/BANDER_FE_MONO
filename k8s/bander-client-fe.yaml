@@ -19,7 +19,7 @@ spec:
     spec:
       containers:
         - name: nginx
-          image: bander/client-fe:onprem-20260429-80
+          image: bander/client-fe:onprem-20260430-010323-fe
           imagePullPolicy: Never
           ports:
             - containerPort: 80
@@ -62,10 +62,30 @@ metadata:
   labels:
     app.kubernetes.io/name: bander-client-fe
     app.kubernetes.io/part-of: bander
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
 spec:
   ingressClassName: nginx
+  tls:
+    - hosts:
+        - bander.co.kr
+        - www.bander.co.kr
+      secretName: bander-co-kr-tls
   rules:
-    - http:
+    - host: bander.co.kr
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: bander-client-fe
+                port:
+                  name: http
+    - host: www.bander.co.kr
+      http:
         paths:
           - path: /
             pathType: Prefix
