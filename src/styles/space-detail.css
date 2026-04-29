@@ -910,6 +910,11 @@
   flex: 0 0 auto;
 }
 
+.space-detail__vendor-avatar--image {
+  display: block;
+  object-fit: cover;
+}
+
 .space-detail__vendor-name,
 .space-detail__review-author {
   margin: 0;

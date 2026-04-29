@@ -70,6 +70,8 @@ export type VendorDetailDto = {
   rooms: VendorRoomCardDto[];
   hashTags: string[];
   basicInfoRows: VendorBasicInfoRowDto[];
+  primaryImageRef?: string | null;
+  primaryImageUrl?: string | null;
 };
 
 export function fetchVendorDetail(slug: string) {
@@ -84,7 +86,12 @@ export type SpaceFacilityChipDto = { key: string; label: string };
 export type SpaceBenefitChipDto = { label: string };
 export type SpaceNoticeDto = { title: string; body: string; imageUrl: string | null };
 export type SpacePolicyDto = { title: string; body: string; imageUrl: string | null };
-export type SpaceVendorInfoDto = { name: string; spaces: string | null };
+export type SpaceVendorInfoDto = {
+  name: string;
+  spaces: string | null;
+  primaryImageRef?: string | null;
+  primaryImageUrl?: string | null;
+};
 
 /**
  * R1-I: per-image payload from RoomDetailResponse.GalleryImage. The FE

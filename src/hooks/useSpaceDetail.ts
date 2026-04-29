@@ -62,6 +62,9 @@ function mapApiToViewModel(dto: SpaceDetailDto) {
         .sort((a, b) => a.sortOrder - b.sortOrder)
         .map((img) => resolveProfileImageUrl(img.mediaId ?? null, img.imageUrl ?? null))
     : dto.galleryUrls;
+  const studioThumbnailUrl = dto.vendor?.primaryImageUrl?.trim()
+    ? resolveProfileImageUrl(dto.vendor.primaryImageRef ?? null, dto.vendor.primaryImageUrl)
+    : null;
 
   return {
     ...dto,
@@ -88,6 +91,7 @@ function mapApiToViewModel(dto: SpaceDetailDto) {
     vendor: {
       name: dto.vendor?.name ?? dto.studioName,
       spaces: dto.vendor?.spaces ?? '',
+      thumbnailUrl: studioThumbnailUrl,
     },
     descriptionCategoryLabel: '전체',
   };
@@ -109,6 +113,7 @@ function buildMockDetail(slug: string | undefined) {
     vendor: {
       ...ROOM_DETAIL_DATA.vendor,
       name: spaceCard.studio,
+      thumbnailUrl: spaceCard.image,
     },
     summaryHashTags: [...SPACE_DETAIL_SUMMARY_HASH_TAGS],
     notices: SPACE_DETAIL_NOTICES,

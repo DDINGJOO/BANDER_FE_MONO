@@ -127,6 +127,20 @@ function DetailPolicyBlock({ body, title, imageUrl }: { body: string; title: str
   );
 }
 
+function SpaceVendorThumbnail({ name, src }: { name: string; src?: string | null }) {
+  if (src) {
+    return (
+      <img
+        alt={`${name} 스튜디오 썸네일`}
+        className="space-detail__vendor-avatar space-detail__vendor-avatar--image"
+        src={src}
+      />
+    );
+  }
+
+  return <div aria-hidden="true" className="space-detail__vendor-avatar" />;
+}
+
 export function SpaceDetailPage() {
   const navigate = useNavigate();
   const { openGuestGate } = useGuestGate();
@@ -585,7 +599,7 @@ export function SpaceDetailPage() {
                     <div className="space-detail__vendor-top">
                       {vendorSlug ? (
                         <Link className="space-detail__vendor-main space-detail__vendor-main--link" to={`/vendors/${vendorSlug}`}>
-                          <div className="space-detail__vendor-avatar" />
+                          <SpaceVendorThumbnail name={detail.vendor.name} src={detail.vendor.thumbnailUrl} />
                           <div>
                             <p className="space-detail__vendor-name">{detail.vendor.name}</p>
                             <p className="space-detail__vendor-meta">{detail.vendor.spaces}</p>
@@ -593,7 +607,7 @@ export function SpaceDetailPage() {
                         </Link>
                       ) : (
                         <div className="space-detail__vendor-main">
-                          <div className="space-detail__vendor-avatar" />
+                          <SpaceVendorThumbnail name={detail.vendor.name} src={detail.vendor.thumbnailUrl} />
                           <div>
                             <p className="space-detail__vendor-name">{detail.vendor.name}</p>
                             <p className="space-detail__vendor-meta">{detail.vendor.spaces}</p>
