@@ -115,6 +115,11 @@ export function ChatPage() {
   // append (WS 신규/sendMessage) 일 때는 false 라 기존처럼 맨 아래로 스크롤.
   const isPrependingRef = useRef(false);
   const prevScrollHeightRef = useRef(0);
+  // near-bottom auto-scroll: 첫 로드/방 진입 직후엔 무조건 맨 아래로 점프하지만
+  // 그 이후 append (WS 신규 / sync-hint gap fill) 는 사용자가 하단 근처일 때만
+  // 자동 스크롤. 사용자가 과거 메시지를 읽는 중이면 강제 점프하지 않고 토스트.
+  const isInitialLoadRef = useRef(true);
+  const [hasNewMessageBelow, setHasNewMessageBelow] = useState(false);
   // CRITICAL-2: 첫 페이지 로드 직후 sentinel 이 자동 트리거되어 cascade 되는 걸 막기 위한 게이트.
   // 첫 페이지 set 후 한 frame 뒤에 true 로 전환해 사용자 의도 스크롤만 받음.
   const observerEnabledRef = useRef(false);
@@ -230,6 +235,9 @@ export function ChatPage() {
     // 잘못 prepend 분기로 들어가므로 명시 reset.
     isPrependingRef.current = false;
     observerEnabledRef.current = false;
+    // 새 방 진입 → 첫 로드는 무조건 맨 아래로 점프 (near-bottom 체크 우회).
+    isInitialLoadRef.current = true;
+    setHasNewMessageBelow(false);
     const requestedRoomId = activeRoomId;
     getChatMessages(activeRoomId, { size: MESSAGE_PAGE_SIZE })
       .then((page) => {
@@ -434,10 +442,46 @@ export function ChatPage() {
       const diff = el.scrollHeight - prevScrollHeightRef.current;
       el.scrollTop = el.scrollTop + diff;
       isPrependingRef.current = false;
-    } else {
+      return;
+    }
+    if (isInitialLoadRef.current) {
+      // 방 진입 첫 로드 — 무조건 맨 아래로 점프
       el.scrollTop = el.scrollHeight;
+      isInitialLoadRef.current = false;
+      setHasNewMessageBelow(false);
+      return;
+    }
+    // append (WS 신규 / sendMessage / sync-hint gap fill).
+    // 사용자가 하단 근처일 때만 자동 스크롤. threshold 200px → 1-2 메시지 여유.
+    // (append 후 측정이라 새 메시지의 높이만큼 늘어난 상태 — threshold 가 그걸 흡수.)
+    const NEAR_BOTTOM_THRESHOLD_PX = 200;
+    const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+    if (distanceFromBottom < NEAR_BOTTOM_THRESHOLD_PX) {
+      el.scrollTop = el.scrollHeight;
+      setHasNewMessageBelow(false);
+    } else {
+      // 사용자가 위로 스크롤해서 과거 메시지를 보는 중 → 강제 점프 회피.
+      // "새 메시지 ↓" 토스트 활성.
+      setHasNewMessageBelow(true);
     }
   }, [messages]);
+
+  // 컨테이너 onScroll 로 사용자가 직접 하단 도달 시 토스트 dismiss.
+  const handleMessagesScroll = useCallback(() => {
+    const el = messagesContainerRef.current;
+    if (!el) return;
+    const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+    if (distanceFromBottom < 80) {
+      setHasNewMessageBelow(false);
+    }
+  }, []);
+
+  const jumpToLatest = useCallback(() => {
+    const el = messagesContainerRef.current;
+    if (!el) return;
+    el.scrollTop = el.scrollHeight;
+    setHasNewMessageBelow(false);
+  }, []);
 
   const setThread = (roomId: string) => {
     const next = new URLSearchParams(searchParams);
@@ -656,7 +700,11 @@ export function ChatPage() {
             </div>
             <p className="chat-page__date-pill">{todayLabel}</p>
 
-            <div className="chat-page__messages" ref={messagesContainerRef}>
+            <div
+              className="chat-page__messages"
+              ref={messagesContainerRef}
+              onScroll={handleMessagesScroll}
+            >
               {/* HIGH-1: sentinel 은 항상 mount, hasMoreOlder 일 때만 display 로 노출.
                   conditional render 가 ref attach/detach 와 effect 의존성을 어긋나게 만드는
                   fragile 패턴 회피. */}
@@ -744,6 +792,35 @@ export function ChatPage() {
                 </div>
               )}
             </div>
+
+            {hasNewMessageBelow ? (
+              <div
+                role="status"
+                aria-live="polite"
+                style={{
+                  display: 'flex',
+                  justifyContent: 'center',
+                  padding: '6px 0 0',
+                }}
+              >
+                <button
+                  type="button"
+                  onClick={jumpToLatest}
+                  style={{
+                    padding: '8px 16px',
+                    borderRadius: 20,
+                    background: '#5b8def',
+                    color: '#fff',
+                    border: 'none',
+                    cursor: 'pointer',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+                    fontSize: 13,
+                  }}
+                >
+                  ↓ 새 메시지 보기
+                </button>
+              </div>
+            ) : null}
 
             <footer className="chat-page__composer">
               <button type="button" className="chat-page__composer-camera" aria-label="사진 첨부">
