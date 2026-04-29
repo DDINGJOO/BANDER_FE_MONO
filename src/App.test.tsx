@@ -1009,6 +1009,7 @@ test('my scraps: unscrapping in 저장 tab flips state in 최근 본 tab for the
   const savedTab = screen.getByRole('tab', { name: /저장\s+\d+/ });
   const recentTab = screen.getByRole('tab', { name: /최근 본\s+\d+/ });
 
+  // eslint-disable-next-line testing-library/no-node-access -- closest('article') needed to scope within-card queries; no accessible article role available
   const moonOnSaved = screen.getByRole('link', { name: /^Moon 합주실 룸$/ }).closest('article');
   expect(moonOnSaved).toBeTruthy();
   fireEvent.click(within(moonOnSaved as HTMLElement).getByRole('button', { name: '스크랩 해제' }));
@@ -1017,6 +1018,7 @@ test('my scraps: unscrapping in 저장 tab flips state in 최근 본 tab for the
   expect(savedTab).toHaveAccessibleName(/저장\s+5/);
 
   fireEvent.click(recentTab);
+  // eslint-disable-next-line testing-library/no-node-access -- closest('article') needed to scope within-card queries; no accessible article role available
   const moonOnRecent = screen.getByRole('link', { name: /^Moon 합주실 룸$/ }).closest('article');
   expect(within(moonOnRecent as HTMLElement).getByRole('button', { name: '스크랩' })).toBeInTheDocument();
 });
@@ -1035,14 +1037,14 @@ test('support page switches between FAQ and 1:1 문의 tabs', () => {
 });
 
 test('inquiry detail renders answered vs waiting states', () => {
-  const answered = render(
+  const view = render(
     <MemoryRouter initialEntries={['/support/inquiry/inq-1']}>
       <App />
     </MemoryRouter>,
   );
   expect(screen.getByRole('heading', { level: 1, name: '채팅에 답변이 계속 없어요.' })).toBeInTheDocument();
   expect(screen.getAllByText('답변완료').length).toBeGreaterThan(0);
-  answered.unmount();
+  view.unmount();
 
   renderAt('/support/inquiry/inq-2');
   expect(screen.getByRole('heading', { level: 1, name: '해당 공간에 제대로 예약이 됐는지 확인하고 싶어요.' })).toBeInTheDocument();
@@ -1147,6 +1149,7 @@ test('my scraps: scrapping in 최근 본 tab adds the space to the 저장 tab', 
 
   fireEvent.click(screen.getByRole('tab', { name: /최근 본\s+\d+/ }));
 
+  // eslint-disable-next-line testing-library/no-node-access -- closest('article') needed to scope within-card queries; no accessible article role available
   const grooveArticle = screen.getByRole('link', { name: /^GROOVE$/ }).closest('article');
   fireEvent.click(within(grooveArticle as HTMLElement).getByRole('button', { name: '스크랩' }));
 

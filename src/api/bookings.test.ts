@@ -43,9 +43,7 @@ describe('createBooking discriminated union', () => {
     const result = await createBooking({ roomId: 'r-1', startsAt: 's', endsAt: 'e' });
 
     expect(result.kind).toBe('legacy');
-    if (result.kind === 'legacy') {
-      expect(result.booking.bookingId).toBe('b-1');
-    }
+    expect((result as Extract<typeof result, { kind: 'legacy' }>).booking.bookingId).toBe('b-1');
   });
 
   it('returns kind=saga when backend responds 202 with sagaId', async () => {
@@ -59,10 +57,9 @@ describe('createBooking discriminated union', () => {
     const result = await createBooking({ roomId: 'r-1', startsAt: 's', endsAt: 'e' });
 
     expect(result.kind).toBe('saga');
-    if (result.kind === 'saga') {
-      expect(result.saga.sagaId).toBe('sg-42');
-      expect(result.saga.expiresAt).toBe('2026-04-27T15:00:00+09:00');
-    }
+    const sagaResult = result as Extract<typeof result, { kind: 'saga' }>;
+    expect(sagaResult.saga.sagaId).toBe('sg-42');
+    expect(sagaResult.saga.expiresAt).toBe('2026-04-27T15:00:00+09:00');
   });
 
   it('still detects saga shape even when status is 200 (canary edge case)', async () => {
