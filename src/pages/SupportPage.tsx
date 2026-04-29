@@ -8,7 +8,6 @@ import { loadAuthSession } from '../data/authSession';
 import {
   FAQ_ITEMS,
   INQUIRY_LIST,
-  type FaqCategory,
   type FaqFilter,
   type FaqItem,
   type InquiryListItem,

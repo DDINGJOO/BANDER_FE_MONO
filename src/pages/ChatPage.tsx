@@ -75,6 +75,7 @@ const FALLBACK_PANEL: ChatVendorPanel = {
   stats: [],
 };
 
+
 export function ChatPage() {
   const navigate = useNavigate();
   const { openGuestGate } = useGuestGate();

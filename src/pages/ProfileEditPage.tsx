@@ -98,7 +98,7 @@ export function ProfileEditPage() {
   const [formDirty, setFormDirty] = useState(false);
   /** 서버에서 받은 원본 gender 문자열 — PREFER_NOT_TO_SAY 보존용 */
   const [serverGender, setServerGender] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [, setLoading] = useState(true);
   const [submitLoading, setSubmitLoading] = useState(false);
   const [submitError, setSubmitError] = useState('');
   const [successOpen, setSuccessOpen] = useState(false);

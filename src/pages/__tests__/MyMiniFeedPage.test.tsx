@@ -155,6 +155,7 @@ test('fetches the profile feed and refetches on tab and sort changes', async () 
   renderPage();
 
   expect(await screen.findByText('작성한 글 제목')).toBeInTheDocument();
+  // eslint-disable-next-line testing-library/no-node-access -- avatar img has alt="" so getByRole('img') won't match; CSS class is the only selector available
   const writtenCardAvatar = document.querySelector<HTMLImageElement>('.my-mini-feed-card__meta-avatar');
   expect(writtenCardAvatar).toHaveAttribute('src', 'https://cdn.example.com/profile.png');
   expect(mockedFetchMyMiniFeed).toHaveBeenNthCalledWith(1, {

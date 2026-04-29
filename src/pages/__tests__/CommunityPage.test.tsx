@@ -57,7 +57,7 @@ test('loads the community feed with default API params and renders mapped cards'
 
   renderPage();
 
-  expect(screen.queryByText('커뮤니티 글을 불러오는 중입니다.')).toBeInTheDocument();
+  expect(screen.getByText('커뮤니티 글을 불러오는 중입니다.')).toBeInTheDocument();
 
   expect(await screen.findByText('첫 번째 라이브 API 글')).toBeInTheDocument();
   expect(screen.getByText('실 API에서 내려온 첫 번째 글입니다.')).toBeInTheDocument();
@@ -68,7 +68,7 @@ test('loads the community feed with default API params and renders mapped cards'
   expect(screen.getByText('1페이지')).toBeInTheDocument();
   expect(screen.getByRole('button', { name: '다음 페이지' })).toBeEnabled();
   expect(screen.getByRole('button', { name: '이전 페이지' })).toBeDisabled();
-  expect(screen.getByText('첫 번째 라이브 API 글').closest('a')).toHaveAttribute(
+  expect(screen.getByRole('link', { name: /첫 번째 라이브 API 글/ })).toHaveAttribute(
     'href',
     '/community/post/101',
   );

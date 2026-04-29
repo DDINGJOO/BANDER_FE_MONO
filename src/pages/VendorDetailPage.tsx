@@ -42,7 +42,7 @@ export function VendorDetailPage() {
   const navigate = useNavigate();
   const { openGuestGate } = useGuestGate();
   const { slug } = useParams();
-  const { vendor, loading } = useVendorDetail(slug);
+  const { vendor } = useVendorDetail(slug);
   const isAuthenticated = Boolean(loadAuthSession());
   const [descExpanded, setDescExpanded] = useState(false);
   const [copied, setCopied] = useState(false);
