@@ -4,7 +4,7 @@
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  background: #ffffff;
+  background: var(--color-white);
 }
 
 .payment-info-page__main {
@@ -20,7 +20,7 @@
   max-width: 852px;
   margin: 0 auto;
   font-family: 'Pretendard', system-ui, sans-serif;
-  color: #000000;
+  color: var(--color-black);
 }
 
 .payment-info__header {
@@ -34,9 +34,9 @@
   flex-shrink: 0;
   width: 40px;
   height: 40px;
-  border: 1px solid #f0f2f5;
+  border: 1px solid var(--color-line);
   border-radius: 50%;
-  background: #ffffff;
+  background: var(--color-white);
   padding: 0;
   cursor: pointer;
   display: flex;
@@ -50,7 +50,7 @@
   align-items: center;
   justify-content: center;
   transform: rotate(180deg);
-  color: #000000;
+  color: var(--color-black);
 }
 
 .payment-info__back-chevron .signup-profile__chevron {
@@ -87,14 +87,14 @@
 
 .payment-info__filter--active {
   border-radius: 25px;
-  background: #000000;
-  color: #ffffff;
+  background: var(--color-black);
+  color: var(--color-white);
 }
 
 .payment-info__filter--inactive {
   border-radius: 20px;
-  background: #eff1f5;
-  color: #000000;
+  background: var(--color-surface-alt);
+  color: var(--color-black);
 }
 
 .payment-info__filter--inactive:hover {
@@ -146,7 +146,7 @@
 }
 
 .payment-info__tag--refund {
-  color: #ff3a3d;
+  color: var(--color-danger);
 }
 
 .payment-info__row-title {
@@ -154,7 +154,7 @@
   font-size: 15px;
   font-weight: 600;
   line-height: 22px;
-  color: #000000;
+  color: var(--color-black);
 }
 
 .payment-info__row-date {
@@ -162,7 +162,7 @@
   font-size: 12px;
   font-weight: 500;
   line-height: 16px;
-  color: #a3a9b5;
+  color: var(--color-muted);
 }
 
 .payment-info__amount {
@@ -171,7 +171,7 @@
   font-size: 15px;
   font-weight: 600;
   line-height: 22px;
-  color: #ffa20c;
+  color: var(--color-accent-text);
   max-width: 45%;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -186,5 +186,5 @@
   font-size: 15px;
   font-weight: 500;
   line-height: 22px;
-  color: #a3a9b5;
+  color: var(--color-muted);
 }

@@ -13,6 +13,8 @@ import { loadAuthSession, saveAuthSession } from '../data/authSession';
 import { HomeSpaceCard } from '../components/home/HomeSpaceCard';
 import { ROOM_DETAIL_RECOMMENDATIONS } from '../data/spaceDetail';
 import { SpaceSummaryFeatureIcon } from '../components/space/SpaceSummaryFeatureIcon';
+import { KeywordChip } from '../components/space/KeywordChip';
+import { resolveKeywordIcon } from '../data/keywordIcons';
 import { BanderUsagePolicyModal } from '../components/space/BanderUsagePolicyModal';
 import { CouponDownloadModal } from '../components/space/CouponDownloadModal';
 import { useCouponDownloads } from '../hooks/useCouponDownloads';
@@ -100,6 +102,7 @@ function buildDetailCalendarDays(
 }
 
 function DetailPolicyBlock({ body, title, imageUrl }: { body: string; title: string; imageUrl?: string | null }) {
+  const [imageFailed, setImageFailed] = useState(false);
   const lines = body
     .split(/\n+/)
     .map((line) => line.trim())
@@ -110,10 +113,11 @@ function DetailPolicyBlock({ body, title, imageUrl }: { body: string; title: str
         <span aria-hidden="true" className="space-detail__detail-policy-sq" />
         <h3>{title}</h3>
       </div>
-      {imageUrl ? (
+      {imageUrl && !imageFailed ? (
         <img
           alt={title}
           className="space-detail__detail-policy-image"
+          onError={() => setImageFailed(true)}
           src={imageUrl}
         />
       ) : null}
@@ -407,28 +411,26 @@ export function SpaceDetailPage() {
                   {/* Figma 6071:32916 — 해시태그 (시설 아이콘 칩과 별도) */}
                   <ul className="space-detail__summary-hash-tags" aria-label="공간 태그">
                     {detail.summaryHashTags.map((tag) => (
-                      <li className="space-detail__summary-hash-tag" key={tag}>
-                        {tag}
+                      <li className="space-detail__summary-hash-tag keyword-chip" key={tag}>
+                        <KeywordChip label={tag} />
                       </li>
                     ))}
                   </ul>
 
                   <hr className="space-detail__rule" />
 
-                  {/* Figma 6071:32854 / Frame 6071:32924 — 요금 2줄 + 운영시간(요일 펼침) */}
+                  {/* Figma 6071:32924 — 이용시간 / 영업시간 / 이용정책 3행 고정 */}
                   <div
                     className="space-detail__pricing-spec space-detail__pricing-spec--figma-summary"
-                    aria-label="요금 및 운영"
+                    aria-label="이용 안내"
                   >
-                    {detail.pricingLines.map((line) => (
-                      <div className="space-detail__pricing-spec-row" key={`${line.label}-${line.value}`}>
-                        <span className="space-detail__pricing-spec-label">{line.label}</span>
-                        <span className="space-detail__pricing-spec-value">{line.value}</span>
-                      </div>
-                    ))}
+                    <div className="space-detail__pricing-spec-row">
+                      <span className="space-detail__pricing-spec-label">이용시간</span>
+                      <span className="space-detail__pricing-spec-value">최소 30분 단위로 선택</span>
+                    </div>
                     <div className="space-detail__pricing-spec-row">
                       <span className="space-detail__pricing-spec-label" id="space-detail-hours-label">
-                        운영시간
+                        영업시간
                       </span>
                       <button
                         aria-expanded={summaryOperatingOpen}
@@ -492,11 +494,30 @@ export function SpaceDetailPage() {
                   <hr className="space-detail__rule" />
 
                   <div className="space-detail__description-block">
-                    <p
+                    <div
                       className={`space-detail__description space-detail__description--lead ${descriptionExpanded ? '' : 'space-detail__description--lead-clamped'}`}
                     >
-                      {detail.description}
-                    </p>
+                      {(detail.description ?? '')
+                        .split(/\r?\n/)
+                        .map((line) => line.trim())
+                        .filter(Boolean)
+                        .map((line, i) => {
+                          const numbered = line.match(/^(\d+)\.\s+(.+)$/);
+                          if (numbered) {
+                            return (
+                              <p className="space-detail__description-line space-detail__description-line--numbered" key={`d-${i}`}>
+                                <span className="space-detail__description-bullet">{numbered[1]}.</span>
+                                <span>{numbered[2]}</span>
+                              </p>
+                            );
+                          }
+                          return (
+                            <p className="space-detail__description-line" key={`d-${i}`}>
+                              {line}
+                            </p>
+                          );
+                        })}
+                    </div>
                     <button
                       aria-expanded={descriptionExpanded}
                       className="space-detail__description-more"
@@ -574,22 +595,27 @@ export function SpaceDetailPage() {
                     />
                   </div>
                   <ul className="space-detail__facility-chips" aria-label="편의 시설">
-                    {detail.facilityChips.map((item) => (
-                      <li
-                        aria-label={`${item.label} 지원`}
-                        className="space-detail__facility-chip"
-                        key={item.key ? `${item.key}-${item.label}` : item.label}
-                      >
-                        <span className="space-detail__facility-chip-icon">
-                          {item.key ? (
-                            <SpaceSummaryFeatureIcon featureKey={item.key} />
-                          ) : (
-                            <span aria-hidden="true" className="space-detail__detail-benefit-icon-ph" />
-                          )}
-                        </span>
-                        <span className="space-detail__facility-chip-label">{item.label}</span>
-                      </li>
-                    ))}
+                    {detail.facilityChips.map((item) => {
+                      const labelIcon = resolveKeywordIcon(item.label);
+                      return (
+                        <li
+                          aria-label={`${item.label} 지원`}
+                          className="space-detail__facility-chip"
+                          key={item.key ? `${item.key}-${item.label}` : item.label}
+                        >
+                          <span className="space-detail__facility-chip-icon">
+                            {labelIcon ? (
+                              <img alt="" aria-hidden="true" className="space-detail__facility-chip-svg" src={labelIcon.src} />
+                            ) : item.key ? (
+                              <SpaceSummaryFeatureIcon featureKey={item.key} />
+                            ) : (
+                              <span aria-hidden="true" className="space-detail__detail-benefit-icon-ph" />
+                            )}
+                          </span>
+                          <span className="space-detail__facility-chip-label">{item.label}</span>
+                        </li>
+                      );
+                    })}
                   </ul>
                 </section>
 

@@ -392,8 +392,16 @@ export function ReservationDetailPage() {
         onConfirm={() => {
           if (bookingId) {
             cancelBooking(bookingId, { cancelReason: '고객 취소' })
-              .then(() => navigate('/my-reservations'))
-              .catch(() => undefined);
+              .then(() => {
+                window.alert('예약취소에 성공했습니다.');
+                navigate('/my-reservations');
+              })
+              .catch((err) => {
+                const message = err instanceof Error && err.message
+                  ? err.message
+                  : '예약 취소에 실패했습니다. 잠시 후 다시 시도해주세요.';
+                window.alert(message);
+              });
           }
           setCancelModalOpen(false);
         }}

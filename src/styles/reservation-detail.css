@@ -4,7 +4,7 @@
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  background: #f6f8fa;
+  background: var(--color-surface);
 }
 
 .res-detail-page__main {
@@ -19,10 +19,10 @@
   width: 100%;
   max-width: 852px;
   margin: 0 auto;
-  background: #ffffff;
+  background: var(--color-white);
   padding: 24px 30px 0;
   font-family: 'Pretendard', system-ui, sans-serif;
-  color: #000000;
+  color: var(--color-black);
 }
 
 .res-detail__title-row {
@@ -44,7 +44,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #000000;
+  color: var(--color-black);
 }
 
 .res-detail__back-chevron {
@@ -78,8 +78,8 @@
 }
 
 .res-detail__badge--muted {
-  background: #eff1f5;
-  color: #a3a9b5;
+  background: var(--color-surface-alt);
+  color: var(--color-muted);
 }
 
 .res-detail__badge--blue {
@@ -137,7 +137,7 @@
   font-size: 15px;
   font-weight: 500;
   line-height: 22px;
-  color: #6d7a87;
+  color: var(--color-muted-strong);
 }
 
 .res-detail__chat {
@@ -146,7 +146,7 @@
   height: 40px;
   border: none;
   border-radius: 10px;
-  background: #eff2f5;
+  background: var(--color-surface-alt);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -156,7 +156,7 @@
   font-size: 14px;
   font-weight: 500;
   line-height: 20px;
-  color: #000000;
+  color: var(--color-black);
 }
 
 .res-detail__chat-icon {
@@ -165,7 +165,7 @@
   height: 20px;
   align-items: center;
   justify-content: center;
-  color: #000000;
+  color: var(--color-black);
 }
 
 .res-detail__chat-icon svg {
@@ -174,8 +174,8 @@
 }
 
 .res-detail__card {
-  background: #ffffff;
-  border: 1px solid #f0f2f5;
+  background: var(--color-white);
+  border: 1px solid var(--color-line);
   border-radius: 10px;
   padding: 20px;
   margin-bottom: 32px;
@@ -199,11 +199,11 @@
 .res-detail__row-label {
   flex-shrink: 0;
   width: 80px;
-  color: #a3a9b5;
+  color: var(--color-muted);
 }
 
 .res-detail__row-value {
-  color: #000000;
+  color: var(--color-black);
 }
 
 .res-detail__section-title {
@@ -222,10 +222,10 @@
   width: 100%;
   aspect-ratio: 792 / 447;
   max-height: 447px;
-  border: 1px solid #f0f2f5;
+  border: 1px solid var(--color-line);
   border-radius: 15px;
   overflow: hidden;
-  background: #f0f2f5;
+  background: var(--color-line);
 }
 
 .res-detail__map img {
@@ -258,12 +258,12 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #6d7a87;
+  color: var(--color-muted-strong);
 }
 
 .res-detail__divider {
   height: 1px;
-  background: #f0f2f5;
+  background: var(--color-line);
   margin: 0 -30px 32px;
   border: none;
 }
@@ -276,8 +276,8 @@
 }
 
 .res-detail__subcard {
-  background: #ffffff;
-  border: 1px solid #f0f2f5;
+  background: var(--color-white);
+  border: 1px solid var(--color-line);
   border-radius: 10px;
   padding: 20px;
 }
@@ -301,7 +301,7 @@
   font-size: 16px;
   font-weight: 700;
   line-height: 24px;
-  color: #ff3a3d;
+  color: var(--color-danger);
 }
 
 .res-detail__pay-split {
@@ -315,7 +315,7 @@
   flex-direction: column;
   gap: 10px;
   padding-bottom: 20px;
-  border-bottom: 1px solid #f0f2f5;
+  border-bottom: 1px solid var(--color-line);
 }
 
 .res-detail__pay-split-bottom {
@@ -344,17 +344,17 @@
 }
 
 .res-detail__cta--muted {
-  background: #eff2f5;
-  color: #000000;
+  background: var(--color-surface-alt);
+  color: var(--color-black);
 }
 
 .res-detail__cta--yellow {
-  background: #f6d155;
-  color: #000000;
+  background: var(--color-main-yellow);
+  color: var(--color-black);
 }
 
 .res-detail__refund {
-  background: #eff1f5;
+  background: var(--color-surface-alt);
   margin: 0 -30px 0;
   padding: 20px 30px 32px;
 }
@@ -372,7 +372,7 @@
 .res-detail__refund-dot {
   width: 6px;
   height: 6px;
-  background: #000000;
+  background: var(--color-black);
   border-radius: 1px;
   flex-shrink: 0;
 }
@@ -404,12 +404,12 @@
 }
 
 .res-detail__refund-item--lead {
-  color: #000000;
+  color: var(--color-black);
   font-weight: 400;
 }
 
 .res-detail__refund-item--rule {
-  color: #6d7a87;
+  color: var(--color-muted-strong);
   font-weight: 400;
 }
 

@@ -275,11 +275,15 @@ export function MainPage({ previewAuthenticated = false }: { previewAuthenticate
 
       <section aria-label="공간 호스트 모집" className="home-host-cta">
         <div className="home-host-cta__inner">
-          <span aria-hidden="true" className="home-host-cta__pick" />
-          <p className="home-host-cta__copy">당신의 공간, 밴더와 함께하고 수익 창출을 누려보세요.</p>
+          <div className="home-host-cta__text">
+            <span className="home-host-cta__badge">밴더 비즈니스</span>
+            <p className="home-host-cta__copy">당신의 공간, 밴더와 함께하고 수익 창출을 누려보세요.</p>
+          </div>
           <Link className="home-host-cta__link" to="/business/apply">
-            신청하러 가기 &gt;
+            <span>신청하기</span>
+            <img alt="" aria-hidden="true" className="home-host-cta__arrow" src={`${process.env.PUBLIC_URL ?? ''}/main/host-cta-arrow.svg`} />
           </Link>
+          <img alt="" aria-hidden="true" className="home-host-cta__pick" src={`${process.env.PUBLIC_URL ?? ''}/main/host-cta-pick.svg`} />
         </div>
       </section>
 
@@ -315,8 +319,7 @@ export function MainPage({ previewAuthenticated = false }: { previewAuthenticate
           </div>
         </div>
         <div className="home-app-banner__phones">
-          <div className="home-phone home-phone--left" />
-          <div className="home-phone home-phone--right" />
+          <img alt="" className="home-app-banner__phones-image" src={`${process.env.PUBLIC_URL ?? ''}/main/app-phones.png`} />
         </div>
       </section>
 

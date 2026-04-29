@@ -4,7 +4,7 @@
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  background: #ffffff;
+  background: var(--color-white);
 }
 
 .coupons-page__main {
@@ -20,7 +20,7 @@
   max-width: 852px;
   margin: 0 auto;
   font-family: 'Pretendard', system-ui, sans-serif;
-  color: #000000;
+  color: var(--color-black);
 }
 
 .coupons__head {
@@ -34,15 +34,15 @@
   flex-shrink: 0;
   width: 40px;
   height: 40px;
-  border: 1px solid #f0f2f5;
+  border: 1px solid var(--color-line);
   border-radius: 50px;
-  background: #ffffff;
+  background: var(--color-white);
   padding: 0;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #000000;
+  color: var(--color-black);
   box-sizing: border-box;
 }
 
@@ -62,7 +62,7 @@
   font-weight: 700;
   line-height: 1.2;
   letter-spacing: -0.02em;
-  color: #000000;
+  color: var(--color-black);
 }
 
 /* 쿠폰 등록 */
@@ -78,7 +78,7 @@
   font-size: 18px;
   font-weight: 600;
   line-height: 26px;
-  color: #000000;
+  color: var(--color-black);
 }
 
 .coupon-register__row {
@@ -86,15 +86,15 @@
   align-items: center;
   gap: 10px;
   padding: 15px;
-  background: #f6f8fa;
+  background: var(--color-surface);
   border-radius: 10px;
   border: 1px solid transparent;
   transition: border-color 120ms ease, background 120ms ease;
 }
 
 .coupon-register__row:focus-within {
-  background: #ffffff;
-  border-color: #000000;
+  background: var(--color-white);
+  border-color: var(--color-black);
 }
 
 .coupon-register__input {
@@ -107,12 +107,12 @@
   font-size: 15px;
   font-weight: 500;
   line-height: 22px;
-  color: #000000;
+  color: var(--color-black);
   outline: none;
 }
 
 .coupon-register__input::placeholder {
-  color: #a3a9b5;
+  color: var(--color-muted);
 }
 
 .coupon-register__button {
@@ -122,7 +122,7 @@
   padding: 8px 14px;
   border-radius: 6px;
   background: transparent;
-  color: #000000;
+  color: var(--color-black);
   font-family: inherit;
   font-size: 14px;
   font-weight: 500;
@@ -132,12 +132,12 @@
 }
 
 .coupon-register__button:not(:disabled):hover {
-  background: #000000;
-  color: #ffffff;
+  background: var(--color-black);
+  color: var(--color-white);
 }
 
 .coupon-register__button:disabled {
-  color: #a3a9b5;
+  color: var(--color-muted);
   cursor: default;
 }
 
@@ -151,7 +151,7 @@
 /* divider under 쿠폰등록 */
 .coupons__divider {
   height: 1px;
-  background: #f0f2f5;
+  background: var(--color-line);
   margin-bottom: 20px;
 }
 
@@ -167,9 +167,9 @@
   appearance: none;
   border: 0;
   padding: 10px 12px;
-  border-radius: 25px;
-  background: #eff1f5;
-  color: #000000;
+  border-radius: 20px;
+  background: var(--color-surface-alt);
+  color: var(--color-black);
   font-family: inherit;
   font-size: 13px;
   font-weight: 500;
@@ -183,8 +183,9 @@
 }
 
 .coupon-filters__chip--active {
-  background: #000000;
-  color: #ffffff;
+  border-radius: 25px;
+  background: var(--color-black);
+  color: var(--color-white);
 }
 
 .coupon-filters__chip--active:hover {
@@ -204,7 +205,7 @@
 .coupons__empty {
   margin: 60px 0;
   text-align: center;
-  color: #6d7a87;
+  color: var(--color-muted-strong);
   font-size: 15px;
   line-height: 22px;
 }
@@ -216,9 +217,9 @@
   align-self: stretch;
   gap: 15px;
   padding: 20px 15px;
-  border: 1px solid #f0f2f5;
-  border-radius: 10px;
-  background: #ffffff;
+  border: 1px solid var(--color-line);
+  border-radius: 15px;
+  background: var(--color-white);
 }
 
 .coupon-card[data-status='USED'],
@@ -239,7 +240,7 @@
   font-size: 14px;
   font-weight: 500;
   line-height: 20px;
-  color: #000000;
+  color: var(--color-black);
 }
 
 .coupon-card__discount {
@@ -253,14 +254,14 @@
   font-size: 22px;
   font-weight: 700;
   line-height: 28px;
-  color: #ffa20c;
+  color: var(--color-accent-text);
 }
 
 .coupon-card__discount-suffix {
   font-size: 15px;
   font-weight: 500;
   line-height: 22px;
-  color: #000000;
+  color: var(--color-black);
 }
 
 .coupon-card__cap {
@@ -268,7 +269,7 @@
   font-size: 14px;
   font-weight: 500;
   line-height: 20px;
-  color: #a3a9b5;
+  color: var(--color-muted);
 }
 
 .coupon-card__right {
@@ -285,7 +286,7 @@
   font-size: 14px;
   font-weight: 500;
   line-height: 20px;
-  color: #6d7a87;
+  color: var(--color-muted-strong);
   overflow: hidden;
   text-overflow: ellipsis;
 }

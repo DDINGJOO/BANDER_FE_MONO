@@ -2377,48 +2377,86 @@ img.home-header__avatar::after {
 }
 
 .home-host-cta__inner {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 24px;
   width: min(1288px, 100%);
+  height: 150px;
   margin: 0 auto;
-  padding: 22px 28px;
-  border-radius: 14px;
-  background: linear-gradient(90deg, #1e242d 0%, #2a313d 100%);
-  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.12);
+  padding: 0 40px;
+  border-radius: 15px;
+  overflow: hidden;
+  background-image:
+    linear-gradient(180deg, rgba(58, 62, 73, 0.5) 0%, rgba(0, 0, 0, 0.5) 100%),
+    url('../assets/main/host-cta-bg.png');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
 }
 
-.home-host-cta__pick {
-  flex: 0 0 auto;
-  width: 44px;
-  height: 44px;
-  border-radius: 12px;
-  background: linear-gradient(145deg, #ffe387 0%, #f6d155 100%);
-  clip-path: polygon(50% 0%, 100% 38%, 82% 100%, 18% 100%, 0% 38%);
-  transform: rotate(18deg);
+.home-host-cta__text {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.home-host-cta__badge {
+  display: inline-flex;
+  align-self: flex-start;
+  align-items: center;
+  padding: 2px 4px;
+  border-radius: 2px;
+  background: #F6D155;
+  color: var(--color-black);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 18px;
 }
 
 .home-host-cta__copy {
   margin: 0;
-  flex: 1 1 auto;
   color: var(--color-white);
-  font-size: 17px;
-  font-weight: 600;
-  line-height: 26px;
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 28px;
 }
 
 .home-host-cta__link {
   flex: 0 0 auto;
-  color: var(--color-main-yellow);
-  font-size: 15px;
-  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--color-white);
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 26px;
   text-decoration: none;
   white-space: nowrap;
 }
 
-.home-host-cta__link:hover {
-  text-decoration: underline;
+.home-host-cta__link:hover,
+.home-host-cta__link:focus-visible {
+  opacity: 0.9;
+}
+
+.home-host-cta__arrow {
+  width: 16px;
+  height: 16px;
+  display: block;
+}
+
+.home-host-cta__pick {
+  position: absolute;
+  right: 200px;
+  top: 50%;
+  width: 50px;
+  height: 50px;
+  transform: translateY(-50%);
+  pointer-events: none;
 }
 
 .home-section--popular-spaces {
@@ -2472,6 +2510,15 @@ img.home-header__avatar::after {
 .home-app-banner__phones {
   display: flex;
   gap: 18px;
+  align-items: center;
+  justify-content: center;
+}
+
+.home-app-banner__phones-image {
+  width: 100%;
+  max-width: 360px;
+  height: auto;
+  display: block;
 }
 
 .home-phone {
@@ -2516,6 +2563,24 @@ img.home-header__avatar::after {
 
 .home-footer .brand-mark__dot {
   background: #ffd351;
+}
+
+.home-footer__brand {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+  min-height: 44px;
+}
+
+.home-footer__brand:hover,
+.home-footer__brand:focus-visible {
+  opacity: 0.9;
+}
+
+.home-footer__brand-image {
+  display: block;
+  width: auto;
+  height: 36px;
 }
 
 .home-footer__brand-block {

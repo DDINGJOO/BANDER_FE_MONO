@@ -1,0 +1,1463 @@
+{
+  "fileKey": "EoBH3U1mU3oQBMTnpOO2r8",
+  "defaults": {
+    "format": "svg",
+    "scale": 1
+  },
+  "assets": [
+    {
+      "name": "logo",
+      "id": "6163:44098",
+      "out": "public/logo.svg"
+    },
+    {
+      "name": "icon-search",
+      "id": "I6346:40290;6341:9551;6253:34189",
+      "out": "src/assets/icons/search.svg",
+      "currentColor": true
+    },
+    {
+      "name": "icon-wishlist",
+      "id": "I6346:40290;6341:34263",
+      "out": "src/assets/icons/wishlist.svg",
+      "currentColor": true
+    },
+    {
+      "name": "icon-chat-off",
+      "id": "6254:35447",
+      "out": "src/assets/icons/chat-off.svg",
+      "currentColor": true
+    },
+    {
+      "name": "icon-chat-on",
+      "id": "6254:35466",
+      "out": "src/assets/icons/chat-on.svg",
+      "currentColor": true
+    },
+    {
+      "name": "icon-alarm",
+      "id": "6254:35456",
+      "out": "src/assets/icons/alarm.svg",
+      "currentColor": true
+    },
+    {
+      "name": "icon-alarm-dot",
+      "id": "6254:35448",
+      "out": "src/assets/icons/alarm-dot.svg",
+      "currentColor": true
+    },
+    {
+      "name": "main-app-phones",
+      "id": "6539:33599",
+      "format": "png",
+      "scale": 2,
+      "out": "public/main/app-phones.png"
+    },
+    {
+      "name": "main-hero-image",
+      "id": "6052:3633",
+      "format": "png",
+      "scale": 2,
+      "out": "public/main/hero-image.png"
+    },
+    {
+      "name": "main-host-cta-pick",
+      "id": "6539:33619",
+      "out": "public/main/host-cta-pick.svg"
+    },
+    {
+      "name": "main-host-cta-arrow",
+      "id": "6539:33553",
+      "out": "public/main/host-cta-arrow.svg"
+    },
+    {
+      "name": "map-pin-default",
+      "id": "6253:33802",
+      "format": "png",
+      "scale": 2,
+      "out": "public/map-pins/default.png"
+    },
+    {
+      "name": "map-pin-active",
+      "id": "6253:33813",
+      "format": "png",
+      "scale": 2,
+      "out": "public/map-pins/active.png"
+    },
+    {
+      "name": "map-pin-default-svg",
+      "id": "6253:33802",
+      "out": "public/map-pins/default.svg"
+    },
+    {
+      "name": "map-pin-active-svg",
+      "id": "6253:33813",
+      "out": "public/map-pins/active.svg"
+    },
+    {
+      "name": "icon-scrap-scrap-off",
+      "id": "6346:37575",
+      "out": "src/assets/icons/scrap-scrap-off.svg",
+      "currentColor": true
+    },
+    {
+      "name": "icon-scrap-scrap-on",
+      "id": "6346:37583",
+      "out": "src/assets/icons/scrap-scrap-on.svg",
+      "currentColor": true
+    },
+    {
+      "name": "icon-switch-off",
+      "id": "6253:33624",
+      "out": "src/assets/icons/switch-off.svg",
+      "currentColor": true
+    },
+    {
+      "name": "icon-switch-on",
+      "id": "6253:33627",
+      "out": "src/assets/icons/switch-on.svg",
+      "currentColor": true
+    },
+    {
+      "name": "icon-star-half",
+      "id": "6253:33631",
+      "out": "src/assets/icons/star-half.svg",
+      "currentColor": true
+    },
+    {
+      "name": "icon-star-none",
+      "id": "6253:33635",
+      "out": "src/assets/icons/star-none.svg",
+      "currentColor": true
+    },
+    {
+      "name": "icon-star-full",
+      "id": "6253:33639",
+      "out": "src/assets/icons/star-full.svg",
+      "currentColor": true
+    },
+    {
+      "name": "icon-star-full-2",
+      "id": "6253:33641",
+      "out": "src/assets/icons/star-full-2.svg",
+      "currentColor": true
+    },
+    {
+      "name": "icon-star-half-2",
+      "id": "6253:33643",
+      "out": "src/assets/icons/star-half-2.svg",
+      "currentColor": true
+    },
+    {
+      "name": "icon-star-none-2",
+      "id": "6253:33647",
+      "out": "src/assets/icons/star-none-2.svg",
+      "currentColor": true
+    },
+    {
+      "name": "icon-mypage-icon-version",
+      "id": "6253:33685",
+      "out": "src/assets/icons/mypage-icon-version.svg",
+      "currentColor": true
+    },
+    {
+      "name": "icon-mypage-icon-policy",
+      "id": "6253:33690",
+      "out": "src/assets/icons/mypage-icon-policy.svg",
+      "currentColor": true
+    },
+    {
+      "name": "icon-mypage-icon-customer-center",
+      "id": "6253:33694",
+      "out": "src/assets/icons/mypage-icon-customer-center.svg",
+      "currentColor": true
+    },
+    {
+      "name": "icon-mypage-icon-announcement",
+      "id": "6253:33699",
+      "out": "src/assets/icons/mypage-icon-announcement.svg",
+      "currentColor": true
+    },
+    {
+      "name": "icon-scrap",
+      "id": "6254:35446",
+      "out": "src/assets/icons/scrap.svg",
+      "currentColor": true
+    },
+    {
+      "name": "icon-scrap-on",
+      "id": "6254:35489",
+      "out": "src/assets/icons/scrap-on.svg",
+      "currentColor": true
+    },
+    {
+      "name": "icon-chat-off-2",
+      "id": "6254:35447",
+      "out": "src/assets/icons/chat-off-2.svg",
+      "currentColor": true
+    },
+    {
+      "name": "icon-alram-dot",
+      "id": "6254:35448",
+      "out": "src/assets/icons/alram-dot.svg",
+      "currentColor": true
+    },
+    {
+      "name": "icon-alram",
+      "id": "6254:35456",
+      "out": "src/assets/icons/alram.svg",
+      "currentColor": true
+    },
+    {
+      "name": "icon-alram-on",
+      "id": "6254:35499",
+      "out": "src/assets/icons/alram-on.svg",
+      "currentColor": true
+    },
+    {
+      "name": "icon-alram-doton",
+      "id": "6383:44625",
+      "out": "src/assets/icons/alram-doton.svg",
+      "currentColor": true
+    },
+    {
+      "name": "icon-chat-on-2",
+      "id": "6254:35466",
+      "out": "src/assets/icons/chat-on-2.svg",
+      "currentColor": true
+    },
+    {
+      "name": "icon-icon-gnb",
+      "id": "6341:9393",
+      "out": "src/assets/icons/icon-gnb.svg",
+      "currentColor": true
+    },
+    {
+      "name": "icon-arrow",
+      "id": "6254:35410",
+      "out": "src/assets/icons/arrow.svg",
+      "currentColor": true
+    },
+    {
+      "name": "icon-arrow-gray",
+      "id": "6346:35836",
+      "out": "src/assets/icons/arrow-gray.svg",
+      "currentColor": true
+    },
+    {
+      "name": "icon-arrow-lightgray",
+      "id": "6383:45378",
+      "out": "src/assets/icons/arrow-lightgray.svg",
+      "currentColor": true
+    },
+    {
+      "name": "icon-search-2",
+      "id": "6341:34360",
+      "out": "src/assets/icons/search-2.svg",
+      "currentColor": true
+    },
+    {
+      "name": "icon-logo",
+      "id": "6341:34458",
+      "out": "src/assets/icons/logo.svg",
+      "currentColor": true
+    },
+    {
+      "name": "icon-close",
+      "id": "6346:35334",
+      "out": "src/assets/icons/close.svg",
+      "currentColor": true
+    },
+    {
+      "name": "icon-close-2",
+      "id": "6465:59899",
+      "out": "src/assets/icons/close-2.svg",
+      "currentColor": true
+    },
+    {
+      "name": "icon-check-18x18",
+      "id": "6346:36546",
+      "out": "src/assets/icons/check-18x18.svg",
+      "currentColor": true
+    },
+    {
+      "name": "icon-check-18x18-2",
+      "id": "6419:86453",
+      "out": "src/assets/icons/check-18x18-2.svg",
+      "currentColor": true
+    },
+    {
+      "name": "icon-group-2147227670",
+      "id": "6346:40350",
+      "out": "src/assets/icons/group-2147227670.svg",
+      "currentColor": true
+    },
+    {
+      "name": "icon-circle-back",
+      "id": "6368:10487",
+      "out": "src/assets/icons/circle-back.svg",
+      "currentColor": true
+    },
+    {
+      "name": "icon-community-reveiw",
+      "id": "6346:40610",
+      "out": "src/assets/icons/community-reveiw.svg",
+      "currentColor": true
+    },
+    {
+      "name": "icon-community-tip",
+      "id": "6346:40611",
+      "out": "src/assets/icons/community-tip.svg",
+      "currentColor": true
+    },
+    {
+      "name": "icon-community-help",
+      "id": "6346:40612",
+      "out": "src/assets/icons/community-help.svg",
+      "currentColor": true
+    },
+    {
+      "name": "icon-community-free",
+      "id": "6346:40613",
+      "out": "src/assets/icons/community-free.svg",
+      "currentColor": true
+    },
+    {
+      "name": "icon-write",
+      "id": "6368:9955",
+      "out": "src/assets/icons/write.svg",
+      "currentColor": true
+    },
+    {
+      "name": "icon-frame-10431",
+      "id": "6368:11793",
+      "out": "src/assets/icons/frame-10431.svg",
+      "currentColor": true
+    },
+    {
+      "name": "icon-dropdown-black-18",
+      "id": "6372:36347",
+      "out": "src/assets/icons/dropdown-black-18.svg",
+      "currentColor": true
+    },
+    {
+      "name": "icon-icon-library",
+      "id": "6376:37632",
+      "out": "src/assets/icons/icon-library.svg",
+      "currentColor": true
+    },
+    {
+      "name": "icon-image-delete",
+      "id": "6376:39747",
+      "out": "src/assets/icons/image-delete.svg",
+      "currentColor": true
+    },
+    {
+      "name": "icon-plus",
+      "id": "6471:63263",
+      "out": "src/assets/icons/plus.svg",
+      "currentColor": true
+    },
+    {
+      "name": "icon-plus-2",
+      "id": "6539:62361",
+      "out": "src/assets/icons/plus-2.svg",
+      "currentColor": true
+    },
+    {
+      "name": "icon-location-pin-one",
+      "id": "6253:33802",
+      "out": "src/assets/icons/location-pin-one.svg",
+      "currentColor": true
+    },
+    {
+      "name": "icon-location-pin-over",
+      "id": "6253:33813",
+      "out": "src/assets/icons/location-pin-over.svg",
+      "currentColor": true
+    },
+    {
+      "name": "icon-company-benefit-coffee",
+      "id": "6253:33827",
+      "out": "src/assets/icons/company-benefit-coffee.svg",
+      "currentColor": true
+    },
+    {
+      "name": "icon-company-benefit-internat",
+      "id": "6253:33836",
+      "out": "src/assets/icons/company-benefit-internat.svg",
+      "currentColor": true
+    },
+    {
+      "name": "icon-company-benefit-charging",
+      "id": "6253:33842",
+      "out": "src/assets/icons/company-benefit-charging.svg",
+      "currentColor": true
+    },
+    {
+      "name": "icon-company-benefit-monitor",
+      "id": "6253:33851",
+      "out": "src/assets/icons/company-benefit-monitor.svg",
+      "currentColor": true
+    },
+    {
+      "name": "icon-company-benefit-drop",
+      "id": "6253:33857",
+      "out": "src/assets/icons/company-benefit-drop.svg",
+      "currentColor": true
+    },
+    {
+      "name": "icon-company-benefit-car",
+      "id": "6253:33862",
+      "out": "src/assets/icons/company-benefit-car.svg",
+      "currentColor": true
+    },
+    {
+      "name": "icon-mypage-icon-scrap-mypage",
+      "id": "6253:33929",
+      "out": "src/assets/icons/mypage-icon-scrap-mypage.svg",
+      "currentColor": true
+    },
+    {
+      "name": "icon-mypage-icon-write-mypage",
+      "id": "6253:33943",
+      "out": "src/assets/icons/mypage-icon-write-mypage.svg",
+      "currentColor": true
+    },
+    {
+      "name": "icon-mypage-icon-review-mypage",
+      "id": "6253:33959",
+      "out": "src/assets/icons/mypage-icon-review-mypage.svg",
+      "currentColor": true
+    },
+    {
+      "name": "icon-mypage-icon-reservation-mypage",
+      "id": "6253:33970",
+      "out": "src/assets/icons/mypage-icon-reservation-mypage.svg",
+      "currentColor": true
+    },
+    {
+      "name": "icon-mypage-icon-scrap-mypage-2",
+      "id": "6253:33982",
+      "out": "src/assets/icons/mypage-icon-scrap-mypage-2.svg",
+      "currentColor": true
+    },
+    {
+      "name": "icon-mypage-icon-write-mypage-2",
+      "id": "6253:33985",
+      "out": "src/assets/icons/mypage-icon-write-mypage-2.svg",
+      "currentColor": true
+    },
+    {
+      "name": "icon-mypage-icon-review-mypage-2",
+      "id": "6253:33990",
+      "out": "src/assets/icons/mypage-icon-review-mypage-2.svg",
+      "currentColor": true
+    },
+    {
+      "name": "icon-mypage-icon-reservation-mypage-2",
+      "id": "6253:33994",
+      "out": "src/assets/icons/mypage-icon-reservation-mypage-2.svg",
+      "currentColor": true
+    },
+    {
+      "name": "icon-select-circle-black-off",
+      "id": "6253:34021",
+      "out": "src/assets/icons/select-circle-black-off.svg",
+      "currentColor": true
+    },
+    {
+      "name": "icon-select-circle-black-on",
+      "id": "6253:34023",
+      "out": "src/assets/icons/select-circle-black-on.svg",
+      "currentColor": true
+    },
+    {
+      "name": "icon-check-button-22-on",
+      "id": "6253:33620",
+      "out": "src/assets/icons/check-button-22-on.svg",
+      "currentColor": true
+    },
+    {
+      "name": "icon-check-button-22-off",
+      "id": "6253:33617",
+      "out": "src/assets/icons/check-button-22-off.svg",
+      "currentColor": true
+    },
+    {
+      "name": "icon-check-button-22-off2",
+      "id": "6381:43251",
+      "out": "src/assets/icons/check-button-22-off2.svg",
+      "currentColor": true
+    },
+    {
+      "name": "icon-check-button-18-on",
+      "id": "6435:27857",
+      "out": "src/assets/icons/check-button-18-on.svg",
+      "currentColor": true
+    },
+    {
+      "name": "icon-check-button-18-off",
+      "id": "6435:27859",
+      "out": "src/assets/icons/check-button-18-off.svg",
+      "currentColor": true
+    },
+    {
+      "name": "icon-check-button-18-off2",
+      "id": "6435:27861",
+      "out": "src/assets/icons/check-button-18-off2.svg",
+      "currentColor": true
+    },
+    {
+      "name": "icon-logo-2",
+      "id": "6341:9531",
+      "out": "src/assets/icons/logo-2.svg",
+      "currentColor": true
+    },
+    {
+      "name": "icon-list-view-off",
+      "id": "6376:42765",
+      "out": "src/assets/icons/list-view-off.svg",
+      "currentColor": true
+    },
+    {
+      "name": "icon-calendar-view-on",
+      "id": "6376:42766",
+      "out": "src/assets/icons/calendar-view-on.svg",
+      "currentColor": true
+    },
+    {
+      "name": "icon-calendar-view-off",
+      "id": "6376:42813",
+      "out": "src/assets/icons/calendar-view-off.svg",
+      "currentColor": true
+    },
+    {
+      "name": "icon-calendar-14",
+      "id": "6489:32876",
+      "out": "src/assets/icons/calendar-14.svg",
+      "currentColor": true
+    },
+    {
+      "name": "icon-list-view-on",
+      "id": "6376:42820",
+      "out": "src/assets/icons/list-view-on.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-logo",
+      "id": "330:10085",
+      "out": "src/assets/icons/mobile/mobile-logo.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-alram",
+      "id": "252:6718",
+      "out": "src/assets/icons/mobile/mobile-alram.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-search",
+      "id": "252:6717",
+      "out": "src/assets/icons/mobile/mobile-search.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-siren",
+      "id": "252:6691",
+      "out": "src/assets/icons/mobile/mobile-siren.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-back",
+      "id": "252:6690",
+      "out": "src/assets/icons/mobile/mobile-back.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-arrow",
+      "id": "252:6754",
+      "out": "src/assets/icons/mobile/mobile-arrow.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-next-white-14x14",
+      "id": "4003:13987",
+      "out": "src/assets/icons/mobile/mobile-next-white-14x14.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-calendar-s",
+      "id": "460:15736",
+      "out": "src/assets/icons/mobile/mobile-calendar-s.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-camera",
+      "id": "252:6759",
+      "out": "src/assets/icons/mobile/mobile-camera.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-send",
+      "id": "252:6779",
+      "out": "src/assets/icons/mobile/mobile-send.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-image-delete",
+      "id": "252:6765",
+      "out": "src/assets/icons/mobile/mobile-image-delete.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-scrap-off",
+      "id": "252:7287",
+      "out": "src/assets/icons/mobile/mobile-scrap-off.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-scrap-on",
+      "id": "252:7283",
+      "out": "src/assets/icons/mobile/mobile-scrap-on.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-map",
+      "id": "252:7889",
+      "out": "src/assets/icons/mobile/mobile-map.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-phone",
+      "id": "252:8481",
+      "out": "src/assets/icons/mobile/mobile-phone.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-phone-white",
+      "id": "299:7740",
+      "out": "src/assets/icons/mobile/mobile-phone-white.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-more",
+      "id": "252:8493",
+      "out": "src/assets/icons/mobile/mobile-more.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-more-20",
+      "id": "399:11644",
+      "out": "src/assets/icons/mobile/mobile-more-20.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-reordering-20",
+      "id": "4033:32598",
+      "out": "src/assets/icons/mobile/mobile-reordering-20.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-back-circle",
+      "id": "266:7246",
+      "out": "src/assets/icons/mobile/mobile-back-circle.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-share-white",
+      "id": "266:7241",
+      "out": "src/assets/icons/mobile/mobile-share-white.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-share",
+      "id": "4124:31704",
+      "out": "src/assets/icons/mobile/mobile-share.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-icon-library",
+      "id": "266:7503",
+      "out": "src/assets/icons/mobile/mobile-icon-library.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-copy",
+      "id": "266:7582",
+      "out": "src/assets/icons/mobile/mobile-copy.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-calendar",
+      "id": "266:9244",
+      "out": "src/assets/icons/mobile/mobile-calendar.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-close",
+      "id": "266:9600",
+      "out": "src/assets/icons/mobile/mobile-close.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-close-w",
+      "id": "4124:32588",
+      "out": "src/assets/icons/mobile/mobile-close-w.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-chat-white",
+      "id": "299:7733",
+      "out": "src/assets/icons/mobile/mobile-chat-white.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-chat",
+      "id": "350:9468",
+      "out": "src/assets/icons/mobile/mobile-chat.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-chat-20x20",
+      "id": "350:9509",
+      "out": "src/assets/icons/mobile/mobile-chat-20x20.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-phone-20x20",
+      "id": "350:9490",
+      "out": "src/assets/icons/mobile/mobile-phone-20x20.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-check",
+      "id": "350:9760",
+      "out": "src/assets/icons/mobile/mobile-check.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-search-s",
+      "id": "452:10152",
+      "out": "src/assets/icons/mobile/mobile-search-s.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-check-orange",
+      "id": "350:11329",
+      "out": "src/assets/icons/mobile/mobile-check-orange.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-error",
+      "id": "350:9784",
+      "out": "src/assets/icons/mobile/mobile-error.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-presentationchart",
+      "id": "405:13521",
+      "out": "src/assets/icons/mobile/mobile-presentationchart.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-icon",
+      "id": "405:13514",
+      "out": "src/assets/icons/mobile/mobile-icon.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-icon-library-2",
+      "id": "405:14020",
+      "out": "src/assets/icons/mobile/mobile-icon-library-2.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-check-button-18-off",
+      "id": "330:9687",
+      "out": "src/assets/icons/mobile/mobile-check-button-18-off.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-check-button-18-on",
+      "id": "330:9688",
+      "out": "src/assets/icons/mobile/mobile-check-button-18-on.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-check-big",
+      "id": "350:8188",
+      "out": "src/assets/icons/mobile/mobile-check-big.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-error-big",
+      "id": "4012:35973",
+      "out": "src/assets/icons/mobile/mobile-error-big.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-check-button-22-off",
+      "id": "350:11610",
+      "out": "src/assets/icons/mobile/mobile-check-button-22-off.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-check-button-22-on",
+      "id": "350:11617",
+      "out": "src/assets/icons/mobile/mobile-check-button-22-on.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-switch-off",
+      "id": "405:13863",
+      "out": "src/assets/icons/mobile/mobile-switch-off.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-switch-on",
+      "id": "405:13929",
+      "out": "src/assets/icons/mobile/mobile-switch-on.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-star-half",
+      "id": "405:12100",
+      "out": "src/assets/icons/mobile/mobile-star-half.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-star-none",
+      "id": "405:12110",
+      "out": "src/assets/icons/mobile/mobile-star-none.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-star-full",
+      "id": "405:12094",
+      "out": "src/assets/icons/mobile/mobile-star-full.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-star-full-2",
+      "id": "405:12095",
+      "out": "src/assets/icons/mobile/mobile-star-full-2.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-star-half-2",
+      "id": "4001:20117",
+      "out": "src/assets/icons/mobile/mobile-star-half-2.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-star-none-2",
+      "id": "4001:20127",
+      "out": "src/assets/icons/mobile/mobile-star-none-2.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-reservation",
+      "id": "4001:10328",
+      "out": "src/assets/icons/mobile/mobile-reservation.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-location",
+      "id": "4001:10327",
+      "out": "src/assets/icons/mobile/mobile-location.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-announcement",
+      "id": "4001:13275",
+      "out": "src/assets/icons/mobile/mobile-announcement.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-like-14x14",
+      "id": "4001:13286",
+      "out": "src/assets/icons/mobile/mobile-like-14x14.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-comment-14x14",
+      "id": "4001:13290",
+      "out": "src/assets/icons/mobile/mobile-comment-14x14.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-scarp-14x14",
+      "id": "4001:13365",
+      "out": "src/assets/icons/mobile/mobile-scarp-14x14.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-filter",
+      "id": "4001:13383",
+      "out": "src/assets/icons/mobile/mobile-filter.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-circle-next-yellow",
+      "id": "4001:15245",
+      "out": "src/assets/icons/mobile/mobile-circle-next-yellow.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-circle-next-gray",
+      "id": "4001:15244",
+      "out": "src/assets/icons/mobile/mobile-circle-next-gray.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-community-reveiw",
+      "id": "4001:18058",
+      "out": "src/assets/icons/mobile/mobile-community-reveiw.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-community-tip",
+      "id": "4001:18056",
+      "out": "src/assets/icons/mobile/mobile-community-tip.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-community-help",
+      "id": "4001:18057",
+      "out": "src/assets/icons/mobile/mobile-community-help.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-community-free",
+      "id": "4001:18055",
+      "out": "src/assets/icons/mobile/mobile-community-free.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-write",
+      "id": "4001:18176",
+      "out": "src/assets/icons/mobile/mobile-write.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-like-24x24",
+      "id": "4001:18250",
+      "out": "src/assets/icons/mobile/mobile-like-24x24.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-like-on-24x24",
+      "id": "4012:25822",
+      "out": "src/assets/icons/mobile/mobile-like-on-24x24.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-comment-24x24",
+      "id": "4001:18249",
+      "out": "src/assets/icons/mobile/mobile-comment-24x24.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-list-view",
+      "id": "4001:18496",
+      "out": "src/assets/icons/mobile/mobile-list-view.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-recent-location",
+      "id": "4001:18486",
+      "out": "src/assets/icons/mobile/mobile-recent-location.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-dropdown-14x14-gray",
+      "id": "4001:19261",
+      "out": "src/assets/icons/mobile/mobile-dropdown-14x14-gray.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-minus-off",
+      "id": "4003:12946",
+      "out": "src/assets/icons/mobile/mobile-minus-off.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-minus-on",
+      "id": "4003:12945",
+      "out": "src/assets/icons/mobile/mobile-minus-on.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-plus-off",
+      "id": "4003:12944",
+      "out": "src/assets/icons/mobile/mobile-plus-off.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-plus-on",
+      "id": "4003:12943",
+      "out": "src/assets/icons/mobile/mobile-plus-on.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-people",
+      "id": "4003:13004",
+      "out": "src/assets/icons/mobile/mobile-people.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-set",
+      "id": "4003:13922",
+      "out": "src/assets/icons/mobile/mobile-set.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-company-gnb",
+      "id": "4003:14890",
+      "out": "src/assets/icons/mobile/mobile-company-gnb.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-plus-24x24",
+      "id": "4003:14934",
+      "out": "src/assets/icons/mobile/mobile-plus-24x24.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-plack",
+      "id": "4003:15142",
+      "out": "src/assets/icons/mobile/mobile-plack.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-circle-next-16x16-white",
+      "id": "4003:14236",
+      "out": "src/assets/icons/mobile/mobile-circle-next-16x16-white.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-next-black-18x18",
+      "id": "4003:14184",
+      "out": "src/assets/icons/mobile/mobile-next-black-18x18.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-point",
+      "id": "4003:14016",
+      "out": "src/assets/icons/mobile/mobile-point.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-coupon",
+      "id": "4003:14017",
+      "out": "src/assets/icons/mobile/mobile-coupon.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-edit",
+      "id": "4003:13971",
+      "out": "src/assets/icons/mobile/mobile-edit.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-circle-next-16x16",
+      "id": "4003:13964",
+      "out": "src/assets/icons/mobile/mobile-circle-next-16x16.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-mypage-icon-version",
+      "id": "4003:14206",
+      "out": "src/assets/icons/mobile/mobile-mypage-icon-version.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-mypage-icon-policy",
+      "id": "4003:14205",
+      "out": "src/assets/icons/mobile/mobile-mypage-icon-policy.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-mypage-icon-customer-center",
+      "id": "4003:14203",
+      "out": "src/assets/icons/mobile/mobile-mypage-icon-customer-center.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-mypage-icon-announcement",
+      "id": "4003:14204",
+      "out": "src/assets/icons/mobile/mobile-mypage-icon-announcement.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-rotation",
+      "id": "4003:15157",
+      "out": "src/assets/icons/mobile/mobile-rotation.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-calendar-view",
+      "id": "4003:15361",
+      "out": "src/assets/icons/mobile/mobile-calendar-view.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-list-view-2",
+      "id": "4003:15360",
+      "out": "src/assets/icons/mobile/mobile-list-view-2.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-up",
+      "id": "4003:15596",
+      "out": "src/assets/icons/mobile/mobile-up.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-down",
+      "id": "4003:15601",
+      "out": "src/assets/icons/mobile/mobile-down.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-error-2",
+      "id": "4003:16440",
+      "out": "src/assets/icons/mobile/mobile-error-2.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-check-18x18",
+      "id": "4005:14909",
+      "out": "src/assets/icons/mobile/mobile-check-18x18.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-camera-12x12",
+      "id": "4005:15823",
+      "out": "src/assets/icons/mobile/mobile-camera-12x12.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-symbol",
+      "id": "4008:17234",
+      "out": "src/assets/icons/mobile/mobile-symbol.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-recent-location-16x16",
+      "id": "4012:19175",
+      "out": "src/assets/icons/mobile/mobile-recent-location-16x16.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-reset",
+      "id": "4012:21529",
+      "out": "src/assets/icons/mobile/mobile-reset.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-search-2",
+      "id": "4012:23885",
+      "out": "src/assets/icons/mobile/mobile-search-2.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-delete",
+      "id": "4012:23967",
+      "out": "src/assets/icons/mobile/mobile-delete.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-delete-circle",
+      "id": "4012:24445",
+      "out": "src/assets/icons/mobile/mobile-delete-circle.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-secret",
+      "id": "4012:27662",
+      "out": "src/assets/icons/mobile/mobile-secret.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-link",
+      "id": "4012:27690",
+      "out": "src/assets/icons/mobile/mobile-link.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-download",
+      "id": "4012:34546",
+      "out": "src/assets/icons/mobile/mobile-download.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-check-24",
+      "id": "4113:29666",
+      "out": "src/assets/icons/mobile/mobile-check-24.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-unprofile",
+      "id": "4077:29015",
+      "out": "src/assets/icons/mobile/mobile-unprofile.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-location-pin",
+      "id": "4124:31048",
+      "out": "src/assets/icons/mobile/mobile-location-pin.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-service-gnb",
+      "id": "4001:15192",
+      "out": "src/assets/icons/mobile/mobile-service-gnb.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-service-gnb-icon-home",
+      "id": "4001:15140",
+      "out": "src/assets/icons/mobile/mobile-service-gnb-icon-home.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-service-gnb-icon-community",
+      "id": "4001:15139",
+      "out": "src/assets/icons/mobile/mobile-service-gnb-icon-community.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-service-gnb-icon-map",
+      "id": "4001:15138",
+      "out": "src/assets/icons/mobile/mobile-service-gnb-icon-map.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-service-gnb-icon-chat",
+      "id": "4001:15137",
+      "out": "src/assets/icons/mobile/mobile-service-gnb-icon-chat.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-service-gnb-icon-mypage",
+      "id": "4001:15136",
+      "out": "src/assets/icons/mobile/mobile-service-gnb-icon-mypage.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-service-gnb-icon-mypage-2",
+      "id": "4001:15135",
+      "out": "src/assets/icons/mobile/mobile-service-gnb-icon-mypage-2.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-service-gnb-icon-chat-2",
+      "id": "4001:15134",
+      "out": "src/assets/icons/mobile/mobile-service-gnb-icon-chat-2.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-service-gnb-icon-map-2",
+      "id": "4001:15132",
+      "out": "src/assets/icons/mobile/mobile-service-gnb-icon-map-2.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-service-gnb-icon-community-2",
+      "id": "4001:15133",
+      "out": "src/assets/icons/mobile/mobile-service-gnb-icon-community-2.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-service-gnb-icon-home-2",
+      "id": "4001:15131",
+      "out": "src/assets/icons/mobile/mobile-service-gnb-icon-home-2.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-location-pin-one",
+      "id": "4001:18360",
+      "out": "src/assets/icons/mobile/mobile-location-pin-one.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-location-pin-over",
+      "id": "4001:18383",
+      "out": "src/assets/icons/mobile/mobile-location-pin-over.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-company-benefit-coffee",
+      "id": "4001:20039",
+      "out": "src/assets/icons/mobile/mobile-company-benefit-coffee.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-company-benefit-internat",
+      "id": "4001:20038",
+      "out": "src/assets/icons/mobile/mobile-company-benefit-internat.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-company-benefit-charging",
+      "id": "4001:20037",
+      "out": "src/assets/icons/mobile/mobile-company-benefit-charging.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-company-benefit-monitor",
+      "id": "4001:20036",
+      "out": "src/assets/icons/mobile/mobile-company-benefit-monitor.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-company-benefit-drop",
+      "id": "4001:20035",
+      "out": "src/assets/icons/mobile/mobile-company-benefit-drop.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-company-benefit-car",
+      "id": "4124:31823",
+      "out": "src/assets/icons/mobile/mobile-company-benefit-car.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-company-gnb-icon-home",
+      "id": "4003:14829",
+      "out": "src/assets/icons/mobile/mobile-company-gnb-icon-home.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-company-gnb-icon-resevation",
+      "id": "4003:14828",
+      "out": "src/assets/icons/mobile/mobile-company-gnb-icon-resevation.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-company-gnb-icon-resevation-2",
+      "id": "4003:14826",
+      "out": "src/assets/icons/mobile/mobile-company-gnb-icon-resevation-2.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-company-gnb-icon-chat",
+      "id": "4003:14825",
+      "out": "src/assets/icons/mobile/mobile-company-gnb-icon-chat.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-company-gnb-icon-more",
+      "id": "4003:14824",
+      "out": "src/assets/icons/mobile/mobile-company-gnb-icon-more.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-company-gnb-icon-my-room",
+      "id": "4003:14823",
+      "out": "src/assets/icons/mobile/mobile-company-gnb-icon-my-room.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-company-gnb-icon-home-2",
+      "id": "4003:14822",
+      "out": "src/assets/icons/mobile/mobile-company-gnb-icon-home-2.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-company-gnb-icon-my-room-2",
+      "id": "4003:14821",
+      "out": "src/assets/icons/mobile/mobile-company-gnb-icon-my-room-2.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-company-gnb-icon-chat-2",
+      "id": "4003:14827",
+      "out": "src/assets/icons/mobile/mobile-company-gnb-icon-chat-2.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-company-gnb-icon-more-2",
+      "id": "4003:14820",
+      "out": "src/assets/icons/mobile/mobile-company-gnb-icon-more-2.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-mypage-icon-scrap-mypage",
+      "id": "4003:14104",
+      "out": "src/assets/icons/mobile/mobile-mypage-icon-scrap-mypage.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-mypage-icon-write-mypage",
+      "id": "4003:14102",
+      "out": "src/assets/icons/mobile/mobile-mypage-icon-write-mypage.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-mypage-icon-review-mypage",
+      "id": "4003:14103",
+      "out": "src/assets/icons/mobile/mobile-mypage-icon-review-mypage.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-mypage-icon-reservation-mypage",
+      "id": "4003:14101",
+      "out": "src/assets/icons/mobile/mobile-mypage-icon-reservation-mypage.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-mypage-icon-scrap-mypage-2",
+      "id": "4003:14554",
+      "out": "src/assets/icons/mobile/mobile-mypage-icon-scrap-mypage-2.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-mypage-icon-write-mypage-2",
+      "id": "4003:14553",
+      "out": "src/assets/icons/mobile/mobile-mypage-icon-write-mypage-2.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-mypage-icon-review-mypage-2",
+      "id": "4003:14552",
+      "out": "src/assets/icons/mobile/mobile-mypage-icon-review-mypage-2.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-mypage-icon-reservation-mypage-2",
+      "id": "4003:14551",
+      "out": "src/assets/icons/mobile/mobile-mypage-icon-reservation-mypage-2.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-sns-kakao",
+      "id": "4008:17506",
+      "out": "src/assets/icons/mobile/mobile-sns-kakao.svg"
+    },
+    {
+      "name": "mobile-sns-google",
+      "id": "4008:17505",
+      "out": "src/assets/icons/mobile/mobile-sns-google.svg"
+    },
+    {
+      "name": "mobile-sns-apple",
+      "id": "4008:17504",
+      "out": "src/assets/icons/mobile/mobile-sns-apple.svg"
+    },
+    {
+      "name": "mobile-select-circle-black-off",
+      "id": "4012:37830",
+      "out": "src/assets/icons/mobile/mobile-select-circle-black-off.svg",
+      "currentColor": true
+    },
+    {
+      "name": "mobile-select-circle-black-on",
+      "id": "4012:37829",
+      "out": "src/assets/icons/mobile/mobile-select-circle-black-on.svg",
+      "currentColor": true
+    }
+  ]
+}

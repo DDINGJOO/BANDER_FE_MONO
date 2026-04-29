@@ -1,7 +1,7 @@
 {
-  "tool_name": "Bash",
-  "tool_input_preview": "{\"command\":\"cat /Users/ddingjoo/IdeaProjects/BANDER/BANDER_BACKEND_MONO/services/identity-service/build.gradle.kts\",\"description\":\"Read build.gradle.kts\"}",
-  "error": "Exit code 1\ncat: /Users/ddingjoo/IdeaProjects/BANDER/BANDER_BACKEND_MONO/services/identity-service/build.gradle.kts: No such file or directory",
-  "timestamp": "2026-04-06T14:46:41.664Z",
-  "retry_count": 1
+  "tool_name": "mcp__claude_ai_Figma__get_metadata",
+  "tool_input_preview": "{\"nodeId\":\"1:2\",\"fileKey\":\"EoBH3U1mU3oQBMTnpOO2r8\",\"clientLanguages\":\"typescript,css\",\"clientFrameworks\":\"react\"}",
+  "error": "The node ID provided was invalid. Please ensure the node ID was extracted correctly from the URL.For example, if given the URL https://figma.com/design/:fileKey/:fileName?node-id=1-2, the extracted nodeId would be `1:2`.If the node ID was extracted correctly, please ask the user to confirm the node is still in the file.\nFigma Debug UUID: 76ea3f54-57b0-4523-b282-3cb2f5767dca",
+  "timestamp": "2026-04-29T06:13:23.196Z",
+  "retry_count": 2
 }

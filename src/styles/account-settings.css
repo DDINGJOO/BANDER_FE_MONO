@@ -4,7 +4,7 @@
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  background: #ffffff;
+  background: var(--color-white);
 }
 
 .account-settings-page__main {
@@ -20,7 +20,7 @@
   max-width: 852px;
   margin: 0 auto;
   font-family: 'Pretendard', system-ui, sans-serif;
-  color: #000000;
+  color: var(--color-black);
 }
 
 .account-settings__header {
@@ -34,9 +34,9 @@
   flex-shrink: 0;
   width: 40px;
   height: 40px;
-  border: 1px solid #f0f2f5;
+  border: 1px solid var(--color-line);
   border-radius: 50%;
-  background: #ffffff;
+  background: var(--color-white);
   padding: 0;
   cursor: pointer;
   display: flex;
@@ -50,7 +50,7 @@
   align-items: center;
   justify-content: center;
   transform: rotate(180deg);
-  color: #000000;
+  color: var(--color-black);
 }
 
 .account-settings__back-chevron .signup-profile__chevron {
@@ -82,7 +82,7 @@
   font-size: 15px;
   font-weight: 500;
   line-height: 22px;
-  color: #6d7a87;
+  color: var(--color-muted-strong);
 }
 
 .account-settings__readonly {
@@ -91,12 +91,12 @@
   padding: 0 15px;
   display: flex;
   align-items: center;
-  background: #f6f8fa;
+  background: var(--color-surface);
   border-radius: 10px;
   font-size: 15px;
   font-weight: 500;
   line-height: 22px;
-  color: #a3a9b5;
+  color: var(--color-muted);
 }
 
 .account-settings__password-btn {
@@ -106,8 +106,8 @@
   padding: 15px;
   border: none;
   border-radius: 10px;
-  background: #000000;
-  color: #ffffff;
+  background: var(--color-black);
+  color: var(--color-white);
   font-family: inherit;
   font-size: 14px;
   font-weight: 600;
@@ -127,7 +127,7 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  background: #f6f8fa;
+  background: var(--color-surface);
   border-radius: 10px;
 }
 
@@ -137,7 +137,7 @@
   font-size: 15px;
   font-weight: 500;
   line-height: 22px;
-  color: #000000;
+  color: var(--color-black);
 }
 
 .account-settings__verify-btn {
@@ -146,8 +146,8 @@
   padding: 8px 10px;
   border: none;
   border-radius: 5px;
-  background: #f6d155;
-  color: #000000;
+  background: var(--color-main-yellow);
+  color: var(--color-black);
   font-family: inherit;
   font-size: 14px;
   font-weight: 500;
@@ -180,13 +180,13 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  background: #eff2f5;
-  color: #6d7a87;
+  background: var(--color-surface-alt);
+  color: var(--color-muted-strong);
 }
 
 .account-settings__consent-toggle[aria-pressed='true'] {
-  background: #f6d155;
-  color: #000000;
+  background: var(--color-main-yellow);
+  color: var(--color-black);
 }
 
 .account-settings__consent-toggle:focus-visible {
@@ -205,18 +205,18 @@
 }
 
 .account-settings__consent-optional {
-  color: #a3a9b5;
+  color: var(--color-muted);
 }
 
 .account-settings__consent-main {
-  color: #000000;
+  color: var(--color-black);
 }
 
 .account-settings__marketing-chevron {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #000000;
+  color: var(--color-black);
   transform: rotate(-90deg);
 }
 
@@ -226,7 +226,7 @@
 }
 
 .account-settings__link-box {
-  background: #fafafc;
+  background: var(--color-surface);
   border-radius: 8px;
   padding: 20px;
   display: flex;
@@ -263,19 +263,19 @@
 }
 
 .account-settings__sns-icon--google {
-  background: #ffffff;
-  border: 1px solid #eef0f3;
+  background: var(--color-white);
+  border: 1px solid var(--color-line);
 }
 
 .account-settings__sns-icon--apple {
-  background: #000000;
+  background: var(--color-black);
 }
 
 .account-settings__sns-name {
   font-size: 15px;
   font-weight: 500;
   line-height: 22px;
-  color: #000000;
+  color: var(--color-black);
 }
 
 .account-settings__link-status {
@@ -289,7 +289,7 @@
   font-size: 15px;
   font-weight: 500;
   line-height: 22px;
-  color: #6d7a87;
+  color: var(--color-muted-strong);
   white-space: nowrap;
 }
 
@@ -301,7 +301,7 @@
   font-size: 15px;
   font-weight: 500;
   line-height: 22px;
-  color: #ffa20c;
+  color: var(--color-accent-text);
   text-decoration: underline;
   text-underline-offset: 2px;
   cursor: pointer;
@@ -311,7 +311,7 @@
   position: fixed;
   left: 0;
   right: 0;
-  bottom: 40px;
+  bottom: 100px;
   display: flex;
   justify-content: center;
   pointer-events: none;
@@ -321,19 +321,19 @@
   pointer-events: auto;
   height: 40px;
   padding: 8px 15px;
-  border: 1px solid #f0f2f5;
+  border: 1px solid var(--color-line);
   border-radius: 50px;
-  background: #ffffff;
+  background: var(--color-white);
   font-family: inherit;
   font-size: 15px;
   font-weight: 500;
   line-height: 22px;
-  color: #6d7a87;
+  color: var(--color-muted-strong);
   cursor: pointer;
 }
 
 .account-settings__withdraw:hover {
-  background: #fafafc;
+  background: var(--color-surface);
 }
 
 .account-settings__check-glyph {

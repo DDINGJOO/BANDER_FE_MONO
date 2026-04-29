@@ -1,12 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { deactivateAccount, getMyAccount } from '../api/users';
-import { sendPhoneCode, updatePhone, verifyPhoneCode } from '../api/phone';
 import { getLinkedProviders, socialUnlink } from '../api/social';
 import { getMarketingConsent, updateMarketingConsent } from '../api/marketing-consent';
 import { startOAuth } from '../config/oauth';
-import { ApiError } from '../api/client';
 import { ChangePasswordModal } from '../components/account/ChangePasswordModal';
+import { PhoneVerifyModal } from '../components/account/PhoneVerifyModal';
 import { HomeFooter } from '../components/home/HomeFooter';
 import { HomeHeader } from '../components/home/HomeHeader';
 import { ChevronIcon } from '../components/shared/Icons';
@@ -20,12 +19,7 @@ import {
   type AccountLinkProvider,
 } from '../data/accountSettings';
 import '../styles/account-settings.css';
-
-function maskPhoneForDisplay(phoneNumber: string) {
-  const digits = phoneNumber.replace(/[^0-9]/g, '');
-  if (digits.length < 7) return '';
-  return `${digits.slice(0, 3)}-****-${digits.slice(-4)}`;
-}
+import '../styles/phone-verify-modal.css';
 
 function LinkDoneCheck() {
   return (
@@ -79,14 +73,10 @@ export function AccountSettingsPage() {
   });
   const [changePasswordOpen, setChangePasswordOpen] = useState(false);
 
-  // Phone verification
-  const [phone, setPhone] = useState('');
-  const [phoneStep, setPhoneStep] = useState<'idle' | 'sent' | 'verified'>('idle');
-  const [phoneCode, setPhoneCode] = useState('');
+  // Phone verification — handled in PhoneVerifyModal
   const [verifiedPhoneMasked, setVerifiedPhoneMasked] = useState('');
-  const [phoneSending, setPhoneSending] = useState(false);
-  const [phoneVerifying, setPhoneVerifying] = useState(false);
-  const [phoneError, setPhoneError] = useState('');
+  const [phoneVerified, setPhoneVerified] = useState(false);
+  const [phoneModalOpen, setPhoneModalOpen] = useState(false);
 
   const filteredSuggestions = HEADER_SEARCH_KEYWORD_SUGGESTIONS.filter((item) =>
     item.toLowerCase().includes(headerSearchQuery.toLowerCase()),
@@ -119,7 +109,7 @@ export function AccountSettingsPage() {
         setEmail(account.email);
         if (account.phoneVerified) {
           setVerifiedPhoneMasked(account.phoneMasked ?? '');
-          setPhoneStep('verified');
+          setPhoneVerified(true);
         }
       })
       .catch(() => {
@@ -266,90 +256,19 @@ export function AccountSettingsPage() {
 
             <section className="account-settings__section">
               <span className="account-settings__label">휴대폰 번호</span>
-              {phoneStep === 'verified' ? (
+              {phoneVerified ? (
                 <div className="account-settings__readonly">
                   휴대폰 인증 완료{verifiedPhoneMasked ? ` (${verifiedPhoneMasked})` : ''}
                 </div>
               ) : (
-                <>
-                  <div className="account-settings__phone-row">
-                    <input
-                      className="account-settings__phone-input"
-                      placeholder="01012345678"
-                      value={phone}
-                      onChange={(e) => {
-                        setPhone(e.target.value.replace(/[^0-9]/g, ''));
-                        if (phoneStep !== 'idle') {
-                          setPhoneStep('idle');
-                          setPhoneCode('');
-                          setPhoneError('');
-                        }
-                      }}
-                      maxLength={11}
-                      style={{ flex: 1, padding: '8px 12px', border: '1px solid #ddd', borderRadius: '8px', fontSize: '14px' }}
-                    />
-                    <button
-                      type="button"
-                      className="account-settings__verify-btn"
-                      disabled={phone.length < 10 || phoneSending}
-                      onClick={async () => {
-                        setPhoneSending(true);
-                        setPhoneError('');
-                        try {
-                          await sendPhoneCode(phone);
-                          setPhoneStep('sent');
-                        } catch (err) {
-                          setPhoneError(err instanceof ApiError ? err.message : '인증번호 전송에 실패했습니다.');
-                        } finally {
-                          setPhoneSending(false);
-                        }
-                      }}
-                    >
-                      {phoneSending ? '전송 중...' : phoneStep === 'sent' ? '재전송' : '인증받기'}
-                    </button>
-                  </div>
-                  {phoneStep === 'sent' ? (
-                    <div style={{ marginTop: '8px', display: 'flex', gap: '8px', alignItems: 'center' }}>
-                      <input
-                        className="account-settings__phone-code"
-                        placeholder="인증번호 입력"
-                        value={phoneCode}
-                        onChange={(e) => setPhoneCode(e.target.value.replace(/[^0-9]/g, ''))}
-                        maxLength={6}
-                        style={{ flex: 1, padding: '8px 12px', border: '1px solid #ddd', borderRadius: '8px', fontSize: '14px' }}
-                      />
-                      <button
-                        type="button"
-                        className="account-settings__verify-btn"
-                        disabled={phoneCode.length !== 6 || phoneVerifying}
-                        onClick={async () => {
-                          setPhoneVerifying(true);
-                          setPhoneError('');
-                          try {
-                            const result = await verifyPhoneCode(phone, phoneCode);
-                            if (result.verified) {
-                              await updatePhone(phone, result.verificationToken);
-                              setVerifiedPhoneMasked(maskPhoneForDisplay(phone));
-                              setPhoneStep('verified');
-                            } else {
-                              setPhoneError('인증번호가 올바르지 않습니다.');
-                            }
-                          } catch (err) {
-                            setPhoneError(err instanceof ApiError ? err.message : '인증에 실패했습니다.');
-                          } finally {
-                            setPhoneVerifying(false);
-                          }
-                        }}
-                      >
-                        {phoneVerifying ? '확인 중...' : '확인'}
-                      </button>
-                    </div>
-                  ) : null}
-                </>
+                <button
+                  className="account-settings__password-btn"
+                  onClick={() => setPhoneModalOpen(true)}
+                  type="button"
+                >
+                  휴대폰 인증하기
+                </button>
               )}
-              {phoneError ? (
-                <p style={{ marginTop: '8px', color: '#e74c3c', fontSize: '13px' }}>{phoneError}</p>
-              ) : null}
             </section>
 
             <section className="account-settings__section">
@@ -535,6 +454,16 @@ export function AccountSettingsPage() {
       <ChangePasswordModal
         open={changePasswordOpen}
         onClose={() => setChangePasswordOpen(false)}
+      />
+
+      <PhoneVerifyModal
+        onClose={() => setPhoneModalOpen(false)}
+        onVerified={(masked) => {
+          setVerifiedPhoneMasked(masked);
+          setPhoneVerified(true);
+          setPhoneModalOpen(false);
+        }}
+        open={phoneModalOpen}
       />
 
       <HomeFooter />

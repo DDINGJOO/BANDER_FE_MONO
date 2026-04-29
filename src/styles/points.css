@@ -4,7 +4,7 @@
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  background: #ffffff;
+  background: var(--color-white);
 }
 
 .points-page__main {
@@ -20,7 +20,7 @@
   max-width: 852px;
   margin: 0 auto;
   font-family: 'Pretendard', system-ui, sans-serif;
-  color: #000000;
+  color: var(--color-black);
 }
 
 .points__head {
@@ -34,15 +34,15 @@
   flex-shrink: 0;
   width: 40px;
   height: 40px;
-  border: 1px solid #f0f2f5;
+  border: 1px solid var(--color-line);
   border-radius: 50px;
-  background: #ffffff;
+  background: var(--color-white);
   padding: 0;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #000000;
+  color: var(--color-black);
   box-sizing: border-box;
 }
 
@@ -62,7 +62,7 @@
   font-weight: 700;
   line-height: 1.2;
   letter-spacing: -0.02em;
-  color: #000000;
+  color: var(--color-black);
 }
 
 .points-coming-soon {
@@ -74,7 +74,7 @@
   justify-content: center;
   min-height: 320px;
   padding: 56px 24px;
-  border: 1px solid #f0f2f5;
+  border: 1px solid var(--color-line);
   border-radius: 8px;
   background: #fafbfc;
   text-align: center;
@@ -93,7 +93,7 @@
   font-size: 28px;
   font-weight: 700;
   line-height: 34px;
-  color: #000000;
+  color: var(--color-black);
 }
 
 .points-coming-soon__description {

@@ -4,7 +4,7 @@
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  background: #ffffff;
+  background: var(--color-white);
 }
 
 .my-reservations-page__main {
@@ -20,7 +20,7 @@
   max-width: 852px;
   margin: 0 auto;
   font-family: 'Pretendard', system-ui, sans-serif;
-  color: #000000;
+  color: var(--color-black);
 }
 
 .my-reservations__flash {
@@ -46,9 +46,9 @@
   flex-shrink: 0;
   width: 40px;
   height: 40px;
-  border: 1px solid #f0f2f5;
+  border: 1px solid var(--color-line);
   border-radius: 50%;
-  background: #ffffff;
+  background: var(--color-white);
   padding: 0;
   cursor: pointer;
   display: flex;
@@ -62,7 +62,7 @@
   align-items: center;
   justify-content: center;
   transform: rotate(180deg);
-  color: #000000;
+  color: var(--color-black);
 }
 
 .my-reservations__back-chevron .signup-profile__chevron {
@@ -82,7 +82,7 @@
   display: flex;
   align-items: center;
   gap: 20px;
-  border-bottom: 1px solid #f0f2f5;
+  border-bottom: 1px solid var(--color-line);
   margin-bottom: 28px;
 }
 
@@ -96,7 +96,7 @@
   font-family: inherit;
   font-size: 18px;
   line-height: 26px;
-  color: #a3a9b5;
+  color: var(--color-muted);
   font-weight: 600;
   height: 46px;
   box-sizing: border-box;
@@ -107,7 +107,7 @@
 }
 
 .my-reservations__tab--active {
-  color: #000000;
+  color: var(--color-black);
   font-weight: 700;
 }
 
@@ -119,7 +119,7 @@
 }
 
 .my-reservations__tab--active .my-reservations__tab-line {
-  background: #000000;
+  background: var(--color-black);
 }
 
 .my-reservations__list {
@@ -133,7 +133,7 @@
   text-align: center;
   font-size: 15px;
   font-weight: 500;
-  color: #a3a9b5;
+  color: var(--color-muted);
   line-height: 22px;
 }
 
@@ -172,6 +172,7 @@
   display: flex;
   flex-direction: column;
   gap: 15px;
+  background: var(--color-white);
 }
 
 .my-res-card__meta-row {
@@ -209,20 +210,20 @@
 }
 
 .my-res-card__pill--muted {
-  background: #eff1f5;
-  color: #a3a9b5;
+  background: var(--color-surface-alt);
+  color: var(--color-muted);
 }
 
 .my-res-card__pill--canceled {
   background: #ffecec;
-  color: #ff3a3d;
+  color: var(--color-danger);
 }
 
 .my-res-card__no {
   font-size: 13px;
   font-weight: 500;
   line-height: 18px;
-  color: #a3a9b5;
+  color: var(--color-muted);
 }
 
 .my-res-card__meta-right {
@@ -246,7 +247,7 @@
 }
 
 .my-res-card__headline--muted {
-  color: #a0a5ad;
+  color: var(--color-muted);
 }
 
 .my-res-card__chevron {
@@ -255,7 +256,7 @@
   justify-content: center;
   flex-shrink: 0;
   transform: rotate(-90deg);
-  color: #a3a9b5;
+  color: var(--color-muted);
 }
 
 .my-res-card__chevron .signup-profile__chevron {
@@ -326,7 +327,7 @@
   font-size: 13px;
   font-weight: 500;
   line-height: 18px;
-  color: #6d7a87;
+  color: var(--color-muted-strong);
 }
 
 .my-res-card__action {
@@ -344,17 +345,17 @@
   font-size: 14px;
   font-weight: 500;
   line-height: 20px;
-  color: #000000;
+  color: var(--color-black);
   cursor: pointer;
   box-sizing: border-box;
 }
 
 .my-res-card__action--gray {
-  background: #eff1f5;
+  background: var(--color-surface-alt);
 }
 
 .my-res-card__action--yellow {
-  background: #f6d155;
+  background: var(--color-main-yellow);
 }
 
 .my-res-card__action:hover {
@@ -362,7 +363,7 @@
 }
 
 .my-res-card__bottom {
-  background: #ffffff;
+  background: var(--color-white);
   border: 1px solid #ededf0;
   border-top: none;
   border-radius: 0 0 15px 15px;
@@ -387,12 +388,12 @@
 }
 
 .my-res-card__detail-label {
-  color: #a3a9b5;
+  color: var(--color-muted);
   flex-shrink: 0;
 }
 
 .my-res-card__detail-value {
-  color: #000000;
+  color: var(--color-black);
   text-align: right;
   white-space: nowrap;
   overflow: hidden;

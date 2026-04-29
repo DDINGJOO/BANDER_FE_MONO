@@ -387,17 +387,25 @@ export function MyReservationsPage() {
           setSelectedBookingId(null);
         }}
         onConfirm={() => {
+          // 이전엔 cancel API 응답 전에 toast 를 띄워 실제 실패해도 "취소 성공" 으로 보였음.
+          // 이제 API 성공 후에만 toast 띄움 + 실패 시 error alert.
           if (selectedBookingId != null) {
+            const targetId = selectedBookingId;
             import('../api/bookings').then(({ cancelBooking }) => {
-              cancelBooking(selectedBookingId, { cancelReason: '고객 취소' }).then(() => {
-                setBookings((prev) => prev.filter((b) => b.bookingId !== selectedBookingId));
-              }).catch(() => undefined);
+              cancelBooking(targetId, { cancelReason: '고객 취소' }).then(() => {
+                setBookings((prev) => prev.filter((b) => b.bookingId !== targetId));
+                setCancelToast(true);
+                window.setTimeout(() => setCancelToast(false), 6000);
+              }).catch((err) => {
+                const message = err instanceof Error && err.message
+                  ? err.message
+                  : '예약 취소에 실패했습니다. 잠시 후 다시 시도해주세요.';
+                window.alert(message);
+              });
             });
           }
           setCancelModalOpen(false);
           setSelectedBookingId(null);
-          setCancelToast(true);
-          window.setTimeout(() => setCancelToast(false), 6000);
         }}
         open={cancelModalOpen}
       />

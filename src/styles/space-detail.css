@@ -354,7 +354,7 @@
 /* Figma 6071:32886 — 아이브로·타이틀 */
 .space-detail__summary .space-detail__eyebrow {
   gap: 5px;
-  color: #a3a9b5;
+  color: var(--color-muted);
   font-size: 13px;
   font-weight: 500;
   line-height: 18px;
@@ -425,7 +425,7 @@
   flex-wrap: wrap;
   gap: 5px;
   margin: 10px 0 0;
-  color: #6d7a87;
+  color: var(--color-muted-strong);
   font-size: 13px;
   font-weight: 500;
   line-height: 18px;
@@ -436,7 +436,7 @@
   width: 2px;
   height: 2px;
   border-radius: 999px;
-  background: #6d7a87;
+  background: var(--color-muted-strong);
 }
 
 /* Figma 6071:32899 + 6071:32908 */
@@ -465,7 +465,7 @@
 }
 
 .space-detail__summary-price-suffix {
-  color: #a3a9b5;
+  color: var(--color-muted);
   font-size: 15px;
   font-weight: 500;
   line-height: 22px;
@@ -512,7 +512,7 @@
   gap: 12px 14px;
   margin: 24px 0 0;
   padding: 20px 0 0;
-  border-top: 1px solid #f0f2f5;
+  border-top: 1px solid var(--color-line);
   list-style: none;
 }
 
@@ -609,7 +609,7 @@
   align-items: center;
   gap: 7px;
   color: var(--color-muted);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 500;
   line-height: 18px;
 }
@@ -624,9 +624,9 @@
 .space-detail__title {
   margin: 6px 0 0;
   color: var(--color-black);
-  font-size: 32px;
+  font-size: 25px;
   font-weight: 700;
-  line-height: 1.2;
+  line-height: 32px;
 }
 
 .space-detail__rating-row,
@@ -685,9 +685,9 @@
 
 .space-detail__price strong {
   color: var(--color-accent-text);
-  font-size: 30px;
+  font-size: 24px;
   font-weight: 700;
-  line-height: 38px;
+  line-height: 30px;
 }
 
 .space-detail__price span {
@@ -743,8 +743,8 @@
 
 .space-detail__info-row {
   display: grid;
-  grid-template-columns: 84px minmax(0, 1fr);
-  gap: 18px;
+  grid-template-columns: 130px minmax(0, 1fr);
+  gap: 24px;
   padding: 10px 0;
 }
 
@@ -1191,11 +1191,35 @@
   height: 28px;
   padding: 7px 8px;
   border-radius: 5px;
-  background: #eff2f5;
-  color: #6d7a87;
+  background: var(--color-surface-alt);
+  color: var(--color-muted-strong);
   font-size: 12px;
   font-weight: 500;
   line-height: 16px;
+}
+
+.space-detail__summary-hash-tag.keyword-chip > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.keyword-chip__icon--svg {
+  width: 14px;
+  height: 14px;
+  display: block;
+  object-fit: contain;
+}
+
+.space-detail__facility-chip-svg {
+  width: 30px;
+  height: 30px;
+  display: block;
+  object-fit: contain;
+}
+
+.keyword-chip__label {
+  display: inline-block;
 }
 
 /* Figma 6372:36353 */
@@ -1249,8 +1273,8 @@
 
 /* Figma 6071:32924 — 라벨 52px, 값 간격 50px */
 .space-detail__pricing-spec--figma-summary .space-detail__pricing-spec-row {
-  grid-template-columns: 52px minmax(0, 1fr);
-  gap: 50px;
+  grid-template-columns: 130px minmax(0, 1fr);
+  gap: 24px;
 }
 
 .space-detail__pricing-spec-label {
@@ -1481,14 +1505,43 @@
   font-size: 16px;
   font-weight: 400;
   line-height: 24px;
-  white-space: pre-wrap;
+}
+
+.space-detail__description-line {
+  margin: 0;
+}
+
+.space-detail__description-line + .space-detail__description-line {
+  margin-top: 6px;
+}
+
+.space-detail__description-line--numbered {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.space-detail__description-bullet {
+  flex: 0 0 auto;
+  color: var(--color-muted-strong);
+  font-weight: 600;
+  min-width: 20px;
+}
+
+.space-detail__description--lead-clamped .space-detail__description-line {
+  display: none;
+}
+
+.space-detail__description--lead-clamped .space-detail__description-line:nth-child(-n + 4) {
+  display: block;
+}
+
+.space-detail__description--lead-clamped .space-detail__description-line--numbered:nth-child(-n + 4) {
+  display: flex;
 }
 
 /* Figma 6372:36352 — 접힘 시 미리보기 (대략 4줄) */
 .space-detail__description--lead-clamped {
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 4;
   overflow: hidden;
 }
 
