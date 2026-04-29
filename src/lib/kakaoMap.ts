@@ -10,34 +10,47 @@ type KakaoWindow = Window & {
 
 let kakaoLoaderPromise: Promise<void> | null = null;
 
-const SDK_LOAD_FAILED_HINT =
-  '카카오맵 SDK 로드에 실패했습니다. 카카오 Developers → 내 애플리케이션 → 플랫폼 Web에 ' +
-  '개발 주소(예: http://localhost:3000)를 등록했는지, appkey에 JavaScript 키를 썼는지, ' +
-  '브라우저 확장 프로그램이 dapi.kakao.com을 차단하지 않는지 확인해 주세요.';
+function sdkLoadFailedHint(): string {
+  const origin = window.location.origin;
+  const localAddressHint = origin.includes('127.0.0.1')
+    ? ' 현재 127.0.0.1로 접속 중이면 http://localhost:3000으로 열거나 카카오 Web 도메인에 127.0.0.1 주소도 추가해 주세요.'
+    : '';
+  return (
+    `카카오맵 SDK 로드에 실패했습니다. 카카오 Developers → 내 애플리케이션 → 플랫폼 Web에 현재 주소(${origin})를 등록했는지, ` +
+    'appkey에 JavaScript 키를 썼는지, 브라우저 확장 프로그램이 dapi.kakao.com을 차단하지 않는지 확인해 주세요.' +
+    localAddressHint
+  );
+}
 
 function appendKakaoScript(appKey: string): Promise<void> {
   return new Promise<void>((resolve, reject) => {
     const globalWindow = window as KakaoWindow;
     const existing = document.querySelector<HTMLScriptElement>('script[data-bander-kakao-maps-sdk="1"]');
     if (existing) {
-      if (globalWindow.kakao?.maps) {
-        resolve();
+      if (existing.dataset.banderKakaoMapsSdkFailed === '1') {
+        existing.remove();
+      } else {
+        if (globalWindow.kakao?.maps) {
+          resolve();
+          return;
+        }
+
+        existing.addEventListener('load', () => resolve(), { once: true });
+        existing.addEventListener('error', () => reject(new Error(sdkLoadFailedHint())), { once: true });
         return;
       }
-
-      existing.addEventListener('load', () => resolve(), { once: true });
-      existing.addEventListener('error', () => reject(new Error(SDK_LOAD_FAILED_HINT)), { once: true });
-      return;
     }
 
     const script = document.createElement('script');
     script.async = true;
     script.defer = true;
     script.dataset.banderKakaoMapsSdk = '1';
-    /** 공식 가이드와 동일: // 프로토콜 */
-    script.src = `//dapi.kakao.com/v2/maps/sdk.js?autoload=false&appkey=${encodeURIComponent(appKey)}`;
+    script.src = `https://dapi.kakao.com/v2/maps/sdk.js?autoload=false&appkey=${encodeURIComponent(appKey)}`;
     script.onload = () => resolve();
-    script.onerror = () => reject(new Error(SDK_LOAD_FAILED_HINT));
+    script.onerror = () => {
+      script.dataset.banderKakaoMapsSdkFailed = '1';
+      reject(new Error(sdkLoadFailedHint()));
+    };
     document.head.appendChild(script);
   });
 }
