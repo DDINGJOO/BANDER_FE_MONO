@@ -28,6 +28,7 @@ export type AuthSession = {
 const SIGNUP_DRAFT_KEY = 'bander.signupDraft';
 const PASSWORD_RESET_DRAFT_KEY = 'bander.passwordResetDraft';
 const AUTH_SESSION_KEY = 'bander.authSession';
+const GATEWAY_CONTEXT_COOKIE_NAME = 'bander_gateway_context';
 
 function readJson<T>(key: string): T | null {
   if (typeof window === 'undefined') {
@@ -53,6 +54,22 @@ function writeJson<T>(key: string, value: T) {
   }
 
   window.sessionStorage.setItem(key, JSON.stringify(value));
+}
+
+function clearCookie(name: string) {
+  if (typeof document === 'undefined' || typeof window === 'undefined') {
+    return;
+  }
+
+  const host = window.location.hostname;
+  const domainPart =
+    host === 'bander.co.kr' || host.endsWith('.bander.co.kr') ? '; Domain=.bander.co.kr' : '';
+
+  document.cookie = `${name}=; Path=/; Max-Age=0; SameSite=Lax${domainPart}`;
+}
+
+function clearLegacyGatewayContextCookie() {
+  clearCookie(GATEWAY_CONTEXT_COOKIE_NAME);
 }
 
 export function loadSignupDraft() {
@@ -88,11 +105,13 @@ export function clearPasswordResetDraft() {
 }
 
 export function loadAuthSession() {
+  clearLegacyGatewayContextCookie();
   return readJson<AuthSession>(AUTH_SESSION_KEY);
 }
 
 export function saveAuthSession(session: AuthSession) {
   writeJson(AUTH_SESSION_KEY, session);
+  clearLegacyGatewayContextCookie();
 }
 
 export function clearAuthSession() {
@@ -101,4 +120,5 @@ export function clearAuthSession() {
   }
 
   window.sessionStorage.removeItem(AUTH_SESSION_KEY);
+  clearLegacyGatewayContextCookie();
 }

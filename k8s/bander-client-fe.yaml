@@ -1,0 +1,76 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bander-client-fe
+  namespace: bander
+  labels:
+    app.kubernetes.io/name: bander-client-fe
+    app.kubernetes.io/part-of: bander
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: bander-client-fe
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: bander-client-fe
+        app.kubernetes.io/part-of: bander
+    spec:
+      containers:
+        - name: nginx
+          image: bander/client-fe:onprem-20260429-80
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 80
+              name: http
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 3
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 20
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: bander-client-fe
+  namespace: bander
+  labels:
+    app.kubernetes.io/name: bander-client-fe
+    app.kubernetes.io/part-of: bander
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: bander-client-fe
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: bander-client-fe
+  namespace: bander
+  labels:
+    app.kubernetes.io/name: bander-client-fe
+    app.kubernetes.io/part-of: bander
+spec:
+  ingressClassName: nginx
+  rules:
+    - http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: bander-client-fe
+                port:
+                  name: http
