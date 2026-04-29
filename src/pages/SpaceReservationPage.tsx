@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState, useEffect } from 'react';
+import React, { useMemo, useRef, useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { HomeHeader } from '../components/home/HomeHeader';
@@ -130,6 +130,11 @@ function slotLabelToIso(date: string, label: string): string {
   return `${date}T${label}:00`;
 }
 
+function isReservationSlotInPast(date: string, label: string, nowMs = Date.now()) {
+  const slotStart = new Date(slotLabelToIso(date, label)).getTime();
+  return Number.isFinite(slotStart) && slotStart <= nowMs;
+}
+
 export function SpaceReservationPage() {
   const navigate = useNavigate();
   const { openGuestGate } = useGuestGate();
@@ -139,6 +144,7 @@ export function SpaceReservationPage() {
   const authSession = loadAuthSession();
   const isAuthenticated = Boolean(authSession);
   const [selectedTimes, setSelectedTimes] = useState<string[]>([]);
+  const [currentTimeMs, setCurrentTimeMs] = useState(() => Date.now());
   const [isSelectingTime, setIsSelectingTime] = useState(false);
   const [timeSelectionStart, setTimeSelectionStart] = useState<number | null>(null);
   const [agreements, setAgreements] = useState({
@@ -157,6 +163,13 @@ export function SpaceReservationPage() {
   const [paymentResult, setPaymentResult] = useState<PaymentResultState>(null);
   const [sagaId, setSagaId] = useState<string | null>(null);
   const [sagaPending, setSagaPending] = useState(false);
+  // success 가 한번 set 되면 failed 로 덮어쓰기 거부 — 토스 SDK 의 redirect-induced
+  // reject 와 saga COMPLETED 가 동시에 도착할 때 발생하던 "실패→성공" 깜빡임 차단.
+  // null 로의 전환 (모달 닫기) 은 허용. SDK 진짜 오류는 success 가 아직 set 되지
+  // 않은 상태이므로 정상적으로 'failed' 표시됨 → saga timeout 까지 대기하는 일도 없음.
+  const setPaymentResultSafe = useCallback((next: PaymentResultState) => {
+    setPaymentResult((prev) => (prev === 'success' && next === 'failed' ? prev : next));
+  }, []);
   // Guard: once the saga polling response surfaces orderId/amount/customerKey,
   // we open the Toss SDK exactly once. Polling continues until COMPLETED.
   const tossLaunchedRef = useRef(false);
@@ -226,6 +239,14 @@ export function SpaceReservationPage() {
   }, []);
 
   useEffect(() => {
+    const timerId = window.setInterval(() => {
+      setCurrentTimeMs(Date.now());
+    }, 30_000);
+
+    return () => window.clearInterval(timerId);
+  }, []);
+
+  useEffect(() => {
     if (isMockMode()) return;
     if (!roomId) return;
     getSpaceAvailability(roomId, dateParam)
@@ -261,26 +282,32 @@ export function SpaceReservationPage() {
       const findSlot = (label: string) =>
         availabilitySlots.find((s) => s.startTime.slice(0, 5) === label);
 
-      const firstApiSlot = findSlot(firstLabel);
-      const secondApiSlot = findSlot(secondLabel);
+      const buildSlot = (label: string, apiSlot: SpaceAvailabilitySlot | undefined, fallbackAvailable: boolean) => {
+        const past = isReservationSlotInPast(dateParam, label, currentTimeMs);
+        return {
+          available: !past && (apiSlot ? apiSlot.bookable : fallbackAvailable),
+          label,
+          price: apiSlot ? apiSlot.priceWon : (hour >= 18 ? 8000 : 5000),
+        };
+      };
 
       return {
         hour,
         slots: [
-          {
-            available: firstApiSlot ? firstApiSlot.bookable : !(hour < 6 || hour === 17),
-            label: firstLabel,
-            price: firstApiSlot ? firstApiSlot.priceWon : (hour >= 18 ? 8000 : 5000),
-          },
-          {
-            available: secondApiSlot ? secondApiSlot.bookable : !(hour < 6 || (hour === 18 && secondLabel === '18:30')),
-            label: secondLabel,
-            price: secondApiSlot ? secondApiSlot.priceWon : (hour >= 18 ? 8000 : 5000),
-          },
+          buildSlot(firstLabel, findSlot(firstLabel), !(hour < 6 || hour === 17)),
+          buildSlot(secondLabel, findSlot(secondLabel), !(hour < 6 || (hour === 18 && secondLabel === '18:30'))),
         ],
       };
     });
-  }, [availabilitySlots]);
+  }, [availabilitySlots, currentTimeMs, dateParam]);
+
+  const linearSlots = useMemo(() => timeColumns.flatMap((column) => column.slots), [timeColumns]);
+
+  useEffect(() => {
+    setSelectedTimes((current) =>
+      current.filter((label) => linearSlots.some((slot) => slot.label === label && slot.available))
+    );
+  }, [linearSlots]);
 
   const spaceCard = useMemo(
     () => HOME_SPACE_CARDS.find((item) => item.detailPath === `/spaces/${slug}`) ?? HOME_SPACE_CARDS[1],
@@ -296,7 +323,6 @@ export function SpaceReservationPage() {
   }, [detail, spaceCard]);
 
   const reservationDateLabel = formatReservationDate(dateParam);
-  const linearSlots = timeColumns.flatMap((column) => column.slots);
   const selectedSlotDetails = linearSlots.filter((slot) => selectedTimes.includes(slot.label));
   const basePrice = selectedSlotDetails.reduce((sum, slot) => sum + slot.price, 0) || 10000;
   const optionTotal = RESERVATION_OPTION_ITEMS.reduce(
@@ -441,6 +467,10 @@ export function SpaceReservationPage() {
     }
 
     const sorted = [...selectedTimes].sort();
+    if (sorted.some((label) => isReservationSlotInPast(dateParam, label))) {
+      setSelectedTimes((current) => current.filter((label) => !isReservationSlotInPast(dateParam, label)));
+      return;
+    }
     const startsAt = slotLabelToIso(dateParam, sorted[0]);
     const last = sorted[sorted.length - 1];
     const [hour, minute] = last.split(':').map(Number);
@@ -529,15 +559,27 @@ export function SpaceReservationPage() {
         customerKey: data.customerKey,
         successUrl: `${window.location.origin}/payment/success`,
         failUrl: `${window.location.origin}/payment/fail`,
-      }).catch(() => {
+      }).catch((err) => {
+        // 토스 SDK reject 는 두 가지 흐름이 섞임:
+        //   (1) 결제 완료 후 successUrl 로 redirect 직전 (server-side saga 가 곧
+        //       COMPLETED 로 진행됨) — 여기서 failed 를 set 하면 redirect 직전에
+        //       "실패" 가 잠깐 보이고 곧 success 가 덮어써 깜빡임 발생.
+        //   (2) 진짜 오류 (USER_CANCEL / SDK init 실패 / network down 등) — 이
+        //       경우 saga 는 widget 결과를 기다리다가 timeout(15분) 까지 무한
+        //       대기. 여기서 failed 를 set 하지 않으면 사용자는 빈 화면.
+        // 두 흐름 모두 안전하게 처리하기 위해 (a) failed 를 set 하되 (b) 아래
+        // setPaymentResultSafe 의 success-우선 guard 가 깜빡임을 흡수한다 —
+        // saga 가 먼저 COMPLETED 를 받아 success 가 set 됐다면 이 failed 는 거부됨.
+        // eslint-disable-next-line no-console
+        console.warn('[toss] requestPayment rejected', err);
         setSagaPending(false);
-        setPaymentResult('failed');
+        setPaymentResultSafe('failed');
       });
     }
 
     if (sagaState.timedOut) {
       setSagaPending(false);
-      setPaymentResult('failed');
+      setPaymentResultSafe('failed');
       return;
     }
     if (sagaState.status === 'COMPLETED') {
@@ -552,9 +594,9 @@ export function SpaceReservationPage() {
     }
     if (sagaState.status === 'FAILED') {
       setSagaPending(false);
-      setPaymentResult('failed');
+      setPaymentResultSafe('failed');
     }
-  }, [sagaPending, sagaState.status, sagaState.timedOut, sagaState.data, reservationSummary.title]);
+  }, [sagaPending, sagaState.status, sagaState.timedOut, sagaState.data, reservationSummary.title, setPaymentResultSafe]);
 
   const handleDownloadCoupon = async (couponId: string) => {
     if (!isAuthenticated) {
