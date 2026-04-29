@@ -207,3 +207,36 @@ test('GET 로딩 중 관심/커뮤니티 토글 disabled', () => {
   expect(interestToggle).toBeDisabled();
   expect(communityToggle).toBeDisabled();
 });
+
+test('관심+커뮤니티 빠른 연속 토글 → PATCH 1회 + body 에 두 필드 모두 포함', async () => {
+  // Codex P1: debounce 누적 검증 — 두 클릭이 각각 덮어쓰지 않고 merge 돼 1회 PATCH 로 전송되어야 함
+  mockedGet.mockResolvedValue({ ...DEFAULT_VIEW, interestAppPush: true, communityAppPush: true });
+  mockedUpdate.mockResolvedValue({ ...DEFAULT_VIEW, interestAppPush: false, communityAppPush: false });
+
+  renderPage();
+
+  const interestToggle = screen.getByRole('switch', { name: /관심 알림/ });
+  const communityToggle = screen.getByRole('switch', { name: /커뮤니티 알림/ });
+  await waitFor(() => expect(interestToggle).not.toBeDisabled());
+
+  // debounce 내에서 두 토글 연속 클릭 (timer 아직 미발화)
+  fireEvent.click(interestToggle);
+  fireEvent.click(communityToggle);
+
+  // optimistic: 두 값 모두 즉시 반영
+  expect(interestToggle).toHaveAttribute('aria-checked', 'false');
+  expect(communityToggle).toHaveAttribute('aria-checked', 'false');
+
+  // 마지막 timer 발화
+  await act(async () => {
+    jest.advanceTimersByTime(300);
+  });
+
+  await waitFor(() => expect(mockedUpdate).toHaveBeenCalledTimes(1));
+
+  // PATCH body 에 두 필드 모두 포함
+  expect(mockedUpdate).toHaveBeenCalledWith({
+    interestAppPush: false,
+    communityAppPush: false,
+  });
+});

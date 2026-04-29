@@ -25,6 +25,8 @@ export function NotificationSettingsPage() {
   const [prefError, setPrefError] = useState<string | null>(null);
   const [prefPending, setPrefPending] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // debounce 구간 동안 누적된 delta — 마지막 timer 하나가 전부 포함해 PATCH 발송
+  const pendingChangeRef = useRef<NotificationPreferencesChange>({});
 
   // 마케팅 — Phase 4 에서 AccountSettingsPage 에 처리됨, 본 페이지는 local 상태 유지
   const [marketingEnabled, setMarketingEnabled] = useState(false);
@@ -73,11 +75,16 @@ export function NotificationSettingsPage() {
   }, []);
 
   const patchDebounced = (
-    change: NotificationPreferencesChange,
+    delta: NotificationPreferencesChange,
     prevSnapshot: { interest: boolean; community: boolean },
   ) => {
+    // debounce 구간 동안 발생한 delta 를 누적 — timer 덮어쓰기 시 이전 변경 유실 방지
+    pendingChangeRef.current = { ...pendingChangeRef.current, ...delta };
+
     if (debounceRef.current !== null) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(async () => {
+      const change = pendingChangeRef.current;
+      pendingChangeRef.current = {}; // reset after capture
       setPrefPending(true);
       try {
         const view = await updateNotificationPreferences(change);
