@@ -58,6 +58,21 @@ export function paymentFailureFromSearchParams(searchParams: URLSearchParams): P
   }, '결제가 취소되었거나 실패했습니다.');
 }
 
+export function isPaymentAlreadyConfirmed(failure: PaymentFailureInfo): boolean {
+  const code = failure.code ?? '';
+  const message = failure.message.toLowerCase();
+  return [
+    'ALREADY_PROCESSED_PAYMENT',
+    'PAYMENT_ALREADY_APPROVED',
+    'PAYMENT-002',
+  ].includes(code)
+    || message.includes('already approved')
+    || message.includes('already processed')
+    || message.includes('duplicate payment')
+    || failure.message.includes('이미 승인된 결제')
+    || failure.message.includes('이미 처리된 결제');
+}
+
 export function roomDetailPathFromPaymentContext(searchParams: URLSearchParams): string {
   const roomSlug = searchParams.get('roomSlug') || sessionStorage.getItem('bander_pending_room_slug');
   return roomSlug ? `/spaces/${roomSlug}` : '/';

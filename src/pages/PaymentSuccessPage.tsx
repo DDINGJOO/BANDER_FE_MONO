@@ -1,10 +1,15 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { confirmPayment } from '../api/bookings';
 import { HomeHeader } from '../components/home/HomeHeader';
 import { ErrorIcon, SuccessIcon } from '../components/shared/Icons';
 import { loadAuthSession } from '../data/authSession';
-import { normalizePaymentFailure, roomDetailPathFromPaymentContext } from '../utils/paymentFailure';
+import {
+  isPaymentAlreadyConfirmed,
+  normalizePaymentFailure,
+  roomDetailPathFromPaymentContext,
+  type PaymentFailureInfo,
+} from '../utils/paymentFailure';
 import '../styles/payment-result.css';
 
 type ResultState = 'loading' | 'success' | 'error';
@@ -14,6 +19,7 @@ export function PaymentSuccessPage() {
   const [searchParams] = useSearchParams();
   const [resultState, setResultState] = useState<ResultState>('loading');
   const [errorMessage, setErrorMessage] = useState('');
+  const confirmKeyRef = useRef('');
   const authSession = loadAuthSession();
   const isAuthenticated = Boolean(authSession);
   const roomDetailPath = roomDetailPathFromPaymentContext(searchParams);
@@ -23,22 +29,59 @@ export function PaymentSuccessPage() {
   const amount = searchParams.get('amount') ?? '';
 
   useEffect(() => {
-    const bookingId = sessionStorage.getItem('bander_pending_booking_id');
-    if (!bookingId || !paymentKey || !orderId || !amount) {
-      setResultState('error');
-      setErrorMessage('결제 정보가 올바르지 않습니다.');
+    const confirmKey = `${paymentKey}:${orderId}:${amount}`;
+    if (confirmKeyRef.current === confirmKey) {
+      return;
+    }
+    confirmKeyRef.current = confirmKey;
+
+    const showSuccess = () => {
+      setResultState('success');
+      sessionStorage.setItem('bander_last_payment_success_order_id', orderId);
+      sessionStorage.removeItem('bander_pending_booking_id');
+    };
+    const showError = (message: string) => {
+      setErrorMessage(message);
+      setResultState((current) => (current === 'success' ? current : 'error'));
+    };
+    const delay = (ms: number) => new Promise((resolve) => {
+      window.setTimeout(resolve, ms);
+    });
+    if (sessionStorage.getItem('bander_last_payment_success_order_id') === orderId) {
+      showSuccess();
       return;
     }
 
-    confirmPayment(bookingId, { paymentKey, orderId, amount })
-      .then(() => {
-        setResultState('success');
-        sessionStorage.removeItem('bander_pending_booking_id');
-      })
-      .catch((err) => {
-        setResultState('error');
-        setErrorMessage(normalizePaymentFailure(err, '결제 확인에 실패했습니다.').message);
-      });
+    const bookingId = sessionStorage.getItem('bander_pending_booking_id');
+    if (!bookingId || !paymentKey || !orderId || !amount) {
+      window.setTimeout(() => showError('결제 정보가 올바르지 않습니다.'), 1000);
+      return;
+    }
+
+    const confirmOnce = async (): Promise<{ ok: true } | { ok: false; failure: PaymentFailureInfo }> => {
+      try {
+        await confirmPayment(bookingId, { paymentKey, orderId, amount });
+        return { ok: true };
+      } catch (err) {
+        const failure = normalizePaymentFailure(err, '결제 확인에 실패했습니다.');
+        return isPaymentAlreadyConfirmed(failure)
+          ? { ok: true }
+          : { ok: false, failure };
+      }
+    };
+
+    void (async () => {
+      const first = await confirmOnce();
+      await delay(1000);
+      const second = await confirmOnce();
+
+      if (first.ok || second.ok) {
+        showSuccess();
+        return;
+      }
+
+      showError(second.failure.message || first.failure.message);
+    })();
   }, [paymentKey, orderId, amount]);
 
   return (

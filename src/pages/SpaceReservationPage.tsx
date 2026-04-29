@@ -227,7 +227,7 @@ export function SpaceReservationPage() {
   const [paymentFailure, setPaymentFailure] = useState<PaymentFailureInfo>(DEFAULT_PAYMENT_FAILURE);
   const [sagaId, setSagaId] = useState<string | null>(null);
   const [sagaPending, setSagaPending] = useState(false);
-  // success 가 한번 set 되면 failed 로 덮어쓰기 거부 — 토스 SDK 의 redirect-induced
+  // success 가 한번 set 되면 failed 로 덮어쓰기 거부. 토스 SDK 의 redirect-induced
   // reject 와 saga COMPLETED 가 동시에 도착할 때 발생하던 "실패→성공" 깜빡임 차단.
   // null 로의 전환 (모달 닫기) 은 허용. SDK 진짜 오류는 success 가 아직 set 되지
   // 않은 상태이므로 정상적으로 'failed' 표시됨 → saga timeout 까지 대기하는 일도 없음.
@@ -238,20 +238,21 @@ export function SpaceReservationPage() {
     setPaymentFailure(normalizePaymentFailure(error, fallback));
     setPaymentResultSafe('failed');
   }, [setPaymentResultSafe]);
-  // 결과 모달 transition 정책 — 결제 응답이 도착해도 1초 동안 최종값 안정화 후 modal 표시.
-  // 이 1초 안에 paymentResult 가 다른 값으로 바뀌면 timer 리셋 → 마지막 값만 사용자에게 노출.
-  // success/failed/null 모두 동일 패턴이라 여러 microtask race (failed→success, success→failed)
-  // 모두 흡수. 사용자는 결제 결과를 정확히 한 번만 봄.
-  // null (모달 닫기 click) 은 즉시 — 사용자 응답성 우선.
+  // 성공 우선 렌더링: 결제 SDK reject 직후 saga/redirect 성공이 늦게 들어올 수 있다.
+  // 실패는 잠깐 보류하고, 성공은 즉시 표시해서 실패→성공 깜빡임을 막는다.
   const [paymentResultDisplayed, setPaymentResultDisplayed] = useState<PaymentResultState>(null);
   useEffect(() => {
     if (paymentResult === null) {
       setPaymentResultDisplayed(null);
       return;
     }
+    if (paymentResult === 'success') {
+      setPaymentResultDisplayed('success');
+      return;
+    }
     const timer = window.setTimeout(() => {
-      setPaymentResultDisplayed(paymentResult);
-    }, 1000);
+      setPaymentResultDisplayed('failed');
+    }, 2500);
     return () => window.clearTimeout(timer);
   }, [paymentResult]);
   // Guard: once the saga polling response surfaces orderId/amount/customerKey,
@@ -1225,7 +1226,7 @@ export function SpaceReservationPage() {
 
       {/* 결과 모달 mount 조건:
           1. sagaPending=true 인 동안 차단 (saga 진행 중 결과 모달 X)
-          2. paymentResultDisplayed 사용 — paymentResult 의 500ms debounce 값.
+          2. paymentResultDisplayed 사용. paymentResult 의 2.5s failure debounce 값.
              failed 가 먼저, success 가 늦게 도착해도 최종값만 mount 되어
              깜빡임 흡수. */}
       {paymentResultDisplayed && !sagaPending && modalRoot
@@ -1237,17 +1238,17 @@ export function SpaceReservationPage() {
                   ×
                 </button>
                 <div
-                  className={`space-reservation__result-icon ${paymentResult === 'success' ? 'space-reservation__result-icon--success' : 'space-reservation__result-icon--failed'}`}
+                  className={`space-reservation__result-icon ${paymentResultDisplayed === 'success' ? 'space-reservation__result-icon--success' : 'space-reservation__result-icon--failed'}`}
                 >
-                  {paymentResult === 'success' ? '✓' : '×'}
+                  {paymentResultDisplayed === 'success' ? '✓' : '×'}
                 </div>
-                <h2>{paymentResult === 'success' ? '예약 완료!' : '결제 실패'}</h2>
+                <h2>{paymentResultDisplayed === 'success' ? '예약 완료!' : '결제 실패'}</h2>
                 <p className="space-reservation__result-desc">
-                  {paymentResult === 'success'
+                  {paymentResultDisplayed === 'success'
                     ? '업체의 승인 후 공간 사용 가능합니다.'
                     : paymentFailure.message}
                 </p>
-                {paymentResult === 'failed' && paymentFailure.code ? (
+                {paymentResultDisplayed === 'failed' && paymentFailure.code ? (
                   <p className="space-reservation__result-error-code">오류 코드: {paymentFailure.code}</p>
                 ) : null}
                 <div className="space-reservation__result-summary">
@@ -1267,10 +1268,10 @@ export function SpaceReservationPage() {
                   <button onClick={() => navigate('/')} type="button">홈으로</button>
                   <button
                     className="space-reservation__result-primary"
-                    onClick={() => navigate(paymentResult === 'success' ? '/my-reservations' : roomDetailPath)}
+                    onClick={() => navigate(paymentResultDisplayed === 'success' ? '/my-reservations' : roomDetailPath)}
                     type="button"
                   >
-                    {paymentResult === 'success' ? '예약현황 이동' : '확인'}
+                    {paymentResultDisplayed === 'success' ? '예약현황 이동' : '확인'}
                   </button>
                 </div>
               </div>
