@@ -575,20 +575,33 @@ export function SpaceDetailPage() {
                           openGuestGate(dest);
                           return;
                         }
-                        if (vendorSlug) {
-                          try {
-                            const vendorDto = await fetchVendorDetail(vendorSlug);
-                            const room = await createVendorChatRoom({
-                              targetUserId: vendorDto.ownerUserId,
-                              vendorId: vendorDto.vendorId,
-                              vendorSlug,
-                            });
-                            navigate(`/chat?t=${room.chatRoomId}`);
-                          } catch {
-                            navigate(buildChatHref({ space: slug || undefined, vendor: vendorSlug }));
+                        if (!vendorSlug) {
+                          console.error('[SpaceDetailPage] missing vendorSlug');
+                          window.alert('업체 정보를 찾을 수 없습니다. 페이지를 새로고침해주세요.');
+                          return;
+                        }
+                        try {
+                          const vendorDto = await fetchVendorDetail(vendorSlug);
+                          if (!vendorDto.ownerUserId) {
+                            console.error('[SpaceDetailPage] missing ownerUserId, dto=', vendorDto);
+                            window.alert('업체 사장 정보를 가져오지 못했습니다.');
+                            return;
                           }
-                        } else {
-                          navigate(buildChatHref({ space: slug || undefined }));
+                          if (!vendorDto.vendorId) {
+                            console.error('[SpaceDetailPage] missing vendorId, dto=', vendorDto);
+                            window.alert('업체 ID 를 가져오지 못했습니다.');
+                            return;
+                          }
+                          const room = await createVendorChatRoom({
+                            targetUserId: vendorDto.ownerUserId,
+                            vendorId: vendorDto.vendorId,
+                            vendorSlug,
+                          });
+                          navigate(`/chat?t=${room.chatRoomId}`);
+                        } catch (err) {
+                          console.error('[SpaceDetailPage] createVendorChatRoom failed', err);
+                          const msg = err instanceof Error ? err.message : '알 수 없는 오류';
+                          window.alert(`채팅방 생성에 실패했습니다: ${msg}`);
                         }
                       }}
                     >

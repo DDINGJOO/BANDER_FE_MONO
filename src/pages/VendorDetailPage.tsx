@@ -109,19 +109,27 @@ export function VendorDetailPage() {
                 openGuestGate(dest);
                 return;
               }
-              if (vendor.ownerUserId) {
-                try {
-                  const room = await createVendorChatRoom({
-                    targetUserId: vendor.ownerUserId,
-                    vendorId: vendor.vendorId ?? undefined,
-                    vendorSlug: vendor.slug ?? undefined,
-                  });
-                  navigate(`/chat?t=${room.chatRoomId}`);
-                } catch {
-                  navigate(buildChatHref({ vendor: slug }));
-                }
-              } else {
-                navigate(buildChatHref({ vendor: slug }));
+              if (!vendor.ownerUserId) {
+                console.error('[VendorDetailPage] missing ownerUserId, vendor=', vendor);
+                window.alert('업체 정보가 아직 로딩 중입니다. 잠시 후 다시 시도해주세요.');
+                return;
+              }
+              if (!vendor.vendorId) {
+                console.error('[VendorDetailPage] missing vendorId, vendor=', vendor);
+                window.alert('업체 ID 를 가져오지 못했습니다. 페이지를 새로고침해주세요.');
+                return;
+              }
+              try {
+                const room = await createVendorChatRoom({
+                  targetUserId: vendor.ownerUserId,
+                  vendorId: vendor.vendorId,
+                  vendorSlug: vendor.slug ?? undefined,
+                });
+                navigate(`/chat?t=${room.chatRoomId}`);
+              } catch (err) {
+                console.error('[VendorDetailPage] createVendorChatRoom failed', err);
+                const msg = err instanceof Error ? err.message : '알 수 없는 오류';
+                window.alert(`채팅방 생성에 실패했습니다: ${msg}`);
               }
             }}
           >
