@@ -22,9 +22,6 @@ import { useSagaPolling } from '../hooks/useSagaPolling';
 import { isMockMode, getTossPaymentsClientKey } from '../config/publicEnv';
 import { requestTossPayment } from '../utils/tossPayments';
 
-const TOSS_PAY_IMAGE =
-  'https://www.figma.com/api/mcp/asset/2eae63a4-d92c-4d34-9e5c-985a8b6f3ade';
-
 /** Figma 6225:45288 — 시간 선택 카드 캘린더 아이콘 */
 function ReservationCalendarIcon() {
   return (
@@ -33,6 +30,17 @@ function ReservationCalendarIcon() {
       <rect height="11.5" rx="2" stroke="currentColor" strokeWidth="1.2" width="11.5" x="2.25" y="2.75" />
       <path d="M5 1.5v2M11 1.5v2" stroke="currentColor" strokeLinecap="round" strokeWidth="1.2" />
     </svg>
+  );
+}
+
+function TossPaymentsMark() {
+  return (
+    <span aria-label="토스페이먼츠" className="space-reservation__toss-mark" role="img">
+      <span aria-hidden="true" className="space-reservation__toss-symbol">
+        t
+      </span>
+      <span className="space-reservation__toss-word">toss payments</span>
+    </span>
   );
 }
 
@@ -864,7 +872,7 @@ export function SpaceReservationPage() {
           <p className="space-reservation__payment-only-note">토스페이먼츠로 결제합니다.</p>
           <div className="space-reservation__payment-methods space-reservation__payment-methods--single" role="group" aria-label="결제수단">
             <div className="space-reservation__payment-method space-reservation__payment-method--only">
-              <img alt="토스페이" className="space-reservation__payment-method-image" src={TOSS_PAY_IMAGE} />
+              <TossPaymentsMark />
             </div>
           </div>
         </section>
