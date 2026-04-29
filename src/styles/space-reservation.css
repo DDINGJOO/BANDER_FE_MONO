@@ -640,35 +640,12 @@
   background: #fffbee;
 }
 
-.space-reservation__toss-mark {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  color: #0064ff;
-  font-weight: 800;
-  letter-spacing: 0;
-  white-space: nowrap;
-}
-
-.space-reservation__toss-symbol {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 26px;
-  height: 26px;
-  border-radius: 999px;
-  background: #0064ff;
-  color: #fff;
-  font-size: 18px;
-  font-weight: 900;
-  line-height: 1;
-}
-
-.space-reservation__toss-word {
-  color: #0064ff;
-  font-size: 17px;
-  font-weight: 800;
-  line-height: 24px;
+.space-reservation__payment-method-image {
+  display: block;
+  width: 136px;
+  max-width: 100%;
+  height: auto;
+  object-fit: contain;
 }
 
 .space-reservation__payment-summary {
