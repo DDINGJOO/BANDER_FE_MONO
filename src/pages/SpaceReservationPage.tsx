@@ -135,6 +135,45 @@ function isReservationSlotInPast(date: string, label: string, nowMs = Date.now()
   return Number.isFinite(slotStart) && slotStart <= nowMs;
 }
 
+function parseCouponLabelAmount(label: string, subtotalWon: number) {
+  const normalized = label.replace(/,/g, '').trim();
+  const numeric = Number(normalized.replace(/[^\d.]/g, ''));
+
+  if (!Number.isFinite(numeric) || numeric <= 0) {
+    return 0;
+  }
+
+  if (normalized.includes('%')) {
+    return Math.floor(subtotalWon * numeric / 100);
+  }
+
+  return Math.floor(numeric);
+}
+
+function calculateCouponDiscount(coupon: CouponAvailableItemDto | null, subtotalWon: number) {
+  if (!coupon || subtotalWon <= 0) {
+    return 0;
+  }
+
+  if (coupon.minPurchaseWon != null && subtotalWon < coupon.minPurchaseWon) {
+    return 0;
+  }
+
+  let discountWon = 0;
+  if (coupon.discountType === 'FIXED' && typeof coupon.discountValue === 'number') {
+    discountWon = coupon.discountValue;
+  } else if (coupon.discountType === 'PERCENT' && typeof coupon.discountValue === 'number') {
+    discountWon = Math.floor(subtotalWon * coupon.discountValue / 100);
+    if (coupon.maxDiscountWon != null) {
+      discountWon = Math.min(discountWon, coupon.maxDiscountWon);
+    }
+  } else {
+    discountWon = parseCouponLabelAmount(coupon.discountLabel, subtotalWon);
+  }
+
+  return Math.max(0, Math.min(subtotalWon, discountWon));
+}
+
 export function SpaceReservationPage() {
   const navigate = useNavigate();
   const { openGuestGate } = useGuestGate();
@@ -329,7 +368,27 @@ export function SpaceReservationPage() {
     (sum, item) => sum + item.price * (selectedOptionCounts[item.key] ?? 0),
     0
   );
-  const totalPrice = basePrice + optionTotal;
+  const subtotalPrice = basePrice + optionTotal;
+  const mockSelectedCoupon = isMockMode()
+    ? COUPON_ITEMS.find((coupon) => coupon.id === selectedCouponId)
+    : undefined;
+  const selectedCoupon: CouponAvailableItemDto | null = availableCoupons.find((coupon) => coupon.id === selectedCouponId)
+    ?? (mockSelectedCoupon
+      ? {
+          id: mockSelectedCoupon.id,
+          title: mockSelectedCoupon.subtitle,
+          discountLabel: mockSelectedCoupon.valueMain,
+        }
+      : null);
+  const couponDiscount = calculateCouponDiscount(selectedCoupon, subtotalPrice);
+  const totalPrice = Math.max(0, subtotalPrice - couponDiscount);
+  const couponDiscountLabel = selectedCoupon
+    ? couponDiscount > 0
+      ? `- ${couponDiscount.toLocaleString()}원`
+      : selectedCoupon.minPurchaseWon != null && subtotalPrice < selectedCoupon.minPurchaseWon
+        ? `최소 ${selectedCoupon.minPurchaseWon.toLocaleString()}원 이상`
+        : '- 0원'
+    : '- 0원';
   const selectedTimeRange = (() => {
     if (selectedTimes.length === 0) {
       return '-';
@@ -359,7 +418,6 @@ export function SpaceReservationPage() {
     agreements.collection && agreements.thirdParty && agreements.paymentAgency;
   const canSubmitPayment = requiredAgreementsChecked && selectedTimes.length > 0 && (isMockMode() || Boolean(roomId));
   const modalRoot = typeof document !== 'undefined' ? document.body : null;
-  const selectedCoupon = availableCoupons.find((coupon) => coupon.id === selectedCouponId) ?? null;
   const couponCount = isMockMode() ? COUPON_ITEMS.length : availableCoupons.length;
 
   const setAllAgreements = (checked: boolean) => {
@@ -826,7 +884,7 @@ export function SpaceReservationPage() {
               </div>
               <div>
                 <span>쿠폰</span>
-                <strong>{selectedCoupon ? `${selectedCoupon.discountLabel} 적용 예정` : '- 0원'}</strong>
+                <strong>{couponDiscountLabel}</strong>
               </div>
             </div>
             <div className="space-reservation__payment-total">

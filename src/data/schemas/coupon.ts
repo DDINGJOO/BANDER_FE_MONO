@@ -7,6 +7,10 @@ export type CouponAvailableItemDto = {
   id: string;
   title: string;
   discountLabel: string;
+  discountType?: 'FIXED' | 'PERCENT';
+  discountValue?: number;
+  maxDiscountWon?: number | null;
+  minPurchaseWon?: number | null;
   validUntilLabel?: string;
   spaceSlug?: string;
 };
