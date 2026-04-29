@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { COUPON_ITEMS, COUPON_USAGE_ROOMS, type CouponDownloadItem } from '../../data/couponDownloadModal';
+import { COUPON_USAGE_ROOMS, type CouponDownloadItem } from '../../data/couponDownloadModal';
 import type { CouponAvailableItemDto } from '../../data/schemas/coupon';
 import { ChevronIcon } from '../shared/Icons';
 
@@ -80,7 +80,7 @@ export function CouponDownloadModal({
 }: CouponDownloadModalProps) {
   const [usageRoomsOpen, setUsageRoomsOpen] = useState(false);
   const modalRoot = typeof document !== 'undefined' ? document.body : null;
-  const couponItems = coupons ? coupons.map(toCouponViewItem) : COUPON_ITEMS;
+  const couponItems = coupons ? coupons.map(toCouponViewItem) : [];
   const modalTitle = title ?? `적용 가능 쿠폰 ${couponItems.length}`;
 
   useEffect(() => {

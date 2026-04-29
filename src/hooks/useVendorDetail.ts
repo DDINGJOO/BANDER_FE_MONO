@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { fetchVendorDetail, type VendorDetailDto } from '../api/spaces';
 import { isMockMode } from '../config/publicEnv';
-import { getVendorDetail as getMockVendorDetail, type VendorDetailModel } from '../data/vendorDetail';
+import { type VendorDetailModel } from '../data/vendorDetail';
 import type { VendorBasicInfoRow } from '../types/vendorBasicInfo';
 
 function mapBasicInfoRow(dto: VendorDetailDto['basicInfoRows'][number]): VendorBasicInfoRow {
@@ -90,7 +90,8 @@ export function useVendorDetail(slug: string | undefined) {
     }
 
     if (mock) {
-      setVendor(getMockVendorDetail(slug));
+      setVendor(null);
+      setError(null);
       setLoading(false);
       return;
     }

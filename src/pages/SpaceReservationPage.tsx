@@ -6,11 +6,10 @@ import { useGuestGate } from '../components/home/GuestGateProvider';
 import { CouponDownloadModal } from '../components/space/CouponDownloadModal';
 import { ChevronIcon } from '../components/shared/Icons';
 import { loadAuthSession } from '../data/authSession';
-import { COUPON_ITEMS } from '../data/couponDownloadModal';
 import type { CouponAvailableItemDto } from '../data/schemas/coupon';
-import { HOME_SPACE_CARDS } from '../data/home';
 import { useCouponDownloads } from '../hooks/useCouponDownloads';
 import { getAvailableCoupons } from '../api/coupons';
+import { fetchSpaceDetail } from '../api/spaces';
 import {
   getSpaceAvailability,
   createBooking,
@@ -71,6 +70,11 @@ const RESERVATION_OPTION_ITEMS = [
 ] as const;
 
 type PaymentResultState = 'failed' | 'success' | null;
+type ReservationSpaceSummary = {
+  address: string;
+  image: string;
+  title: string;
+};
 
 function formatReservationDate(dateParam: string | null) {
   if (!dateParam) {
@@ -109,6 +113,7 @@ export function SpaceReservationPage() {
   const [optionsOpen, setOptionsOpen] = useState(false);
   const [couponModalOpen, setCouponModalOpen] = useState(false);
   const [availableCoupons, setAvailableCoupons] = useState<CouponAvailableItemDto[]>([]);
+  const [spaceSummary, setSpaceSummary] = useState<ReservationSpaceSummary | null>(null);
   const [selectedCouponId, setSelectedCouponId] = useState<string | null>(null);
   const [couponLoading, setCouponLoading] = useState(false);
   const [couponError, setCouponError] = useState<string | null>(null);
@@ -184,6 +189,24 @@ export function SpaceReservationPage() {
 
   useEffect(() => {
     if (isMockMode()) return;
+    if (!slug) return;
+    fetchSpaceDetail(slug)
+      .then((detail) => {
+        const firstImage = detail.images
+          ?.slice()
+          .sort((a, b) => a.sortOrder - b.sortOrder)
+          .find((image) => image.imageUrl)?.imageUrl;
+        setSpaceSummary({
+          address: detail.address ?? detail.location ?? '',
+          image: firstImage ?? detail.galleryUrls[0] ?? '',
+          title: detail.title,
+        });
+      })
+      .catch(() => setSpaceSummary(null));
+  }, [slug]);
+
+  useEffect(() => {
+    if (isMockMode()) return;
     if (!roomId) return;
     getSpaceAvailability(roomId, dateParam)
       .then((res) => setAvailabilitySlots(res.slots))
@@ -239,12 +262,10 @@ export function SpaceReservationPage() {
     });
   }, [availabilitySlots]);
 
-  const spaceCard = useMemo(
-    () => HOME_SPACE_CARDS.find((item) => item.detailPath === `/spaces/${slug}`) ?? HOME_SPACE_CARDS[1],
-    [slug]
-  );
-
   const reservationDateLabel = formatReservationDate(dateParam);
+  const spaceTitle = spaceSummary?.title ?? '공간';
+  const spaceAddress = spaceSummary?.address ?? '';
+  const spaceImage = spaceSummary?.image ?? '';
   const linearSlots = timeColumns.flatMap((column) => column.slots);
   const selectedSlotDetails = linearSlots.filter((slot) => selectedTimes.includes(slot.label));
   const basePrice = selectedSlotDetails.reduce((sum, slot) => sum + slot.price, 0) || 10000;
@@ -283,7 +304,7 @@ export function SpaceReservationPage() {
   const canSubmitPayment = requiredAgreementsChecked && selectedTimes.length > 0;
   const modalRoot = typeof document !== 'undefined' ? document.body : null;
   const selectedCoupon = availableCoupons.find((coupon) => coupon.id === selectedCouponId) ?? null;
-  const couponCount = isMockMode() ? COUPON_ITEMS.length : availableCoupons.length;
+  const couponCount = availableCoupons.length;
 
   const setAllAgreements = (checked: boolean) => {
     setAgreements({
@@ -439,7 +460,7 @@ export function SpaceReservationPage() {
     await requestTossPayment({
       clientKey,
       orderId: booking.orderId,
-      orderName: spaceCard.title + ' 예약',
+      orderName: spaceTitle + ' 예약',
       amount: paidAmount,
       successUrl: `${window.location.origin}/payment/success`,
       failUrl: `${window.location.origin}/payment/fail`,
@@ -473,7 +494,7 @@ export function SpaceReservationPage() {
       void requestTossPayment({
         clientKey,
         orderId: data.orderId,
-        orderName: spaceCard.title + ' 예약',
+        orderName: spaceTitle + ' 예약',
         amount: data.amount,
         customerKey: data.customerKey,
         successUrl: `${window.location.origin}/payment/success`,
@@ -503,7 +524,7 @@ export function SpaceReservationPage() {
       setSagaPending(false);
       setPaymentResult('failed');
     }
-  }, [sagaPending, sagaState.status, sagaState.timedOut, sagaState.data, spaceCard.title]);
+  }, [sagaPending, sagaState.status, sagaState.timedOut, sagaState.data, spaceTitle]);
 
   const handleDownloadCoupon = async (couponId: string) => {
     if (!isAuthenticated) {
@@ -518,6 +539,25 @@ export function SpaceReservationPage() {
       setCouponError(error instanceof Error ? error.message : '쿠폰 다운로드에 실패했습니다.');
     }
   };
+
+  if (!spaceSummary) {
+    return (
+      <main className="space-reservation-page">
+        <HomeHeader authenticated={isAuthenticated} onGuestCta={() => navigate('/login')} variant="icon" />
+        <section className="space-reservation__shell">
+          <div className="space-reservation__header">
+            <button className="space-reservation__back" onClick={() => navigate(-1)} type="button" aria-label="뒤로">
+              <span className="space-reservation__back-icon">
+                <ChevronIcon />
+              </span>
+            </button>
+            <h1>예약하기</h1>
+          </div>
+          <p className="my-reservations__empty">준비중입니다</p>
+        </section>
+      </main>
+    );
+  }
 
   return (
     <main className="space-reservation-page">
@@ -535,10 +575,14 @@ export function SpaceReservationPage() {
 
         <div className="space-reservation__summary-card">
           <div className="space-reservation__summary-top">
-            <img alt="" className="space-reservation__summary-thumb" src={spaceCard.image} />
+            {spaceImage ? (
+              <img alt="" className="space-reservation__summary-thumb" src={spaceImage} />
+            ) : (
+              <span aria-hidden className="space-reservation__summary-thumb" />
+            )}
             <div>
-              <p className="space-reservation__summary-title">{spaceCard.title}</p>
-              <p className="space-reservation__summary-address">서울시 마포구 독막로9길 31 지하 1층</p>
+              <p className="space-reservation__summary-title">{spaceTitle}</p>
+              <p className="space-reservation__summary-address">{spaceAddress || '주소 정보 준비중'}</p>
             </div>
           </div>
           <div className="space-reservation__summary-grid">
@@ -895,7 +939,7 @@ export function SpaceReservationPage() {
         : null}
 
       <CouponDownloadModal
-        coupons={isMockMode() ? undefined : availableCoupons}
+        coupons={availableCoupons}
         downloadedCouponIds={downloadedCouponIds}
         errorMessage={couponError ?? downloadError}
         loading={couponLoading}
@@ -950,10 +994,10 @@ export function SpaceReservationPage() {
                     : '사유 : 결제 금액 부족'}
                 </p>
                 <div className="space-reservation__result-summary">
-                  <img alt="" src={spaceCard.image} />
+                  {spaceImage ? <img alt="" src={spaceImage} /> : null}
                   <div>
-                    <p>{spaceCard.title}</p>
-                    <span>서울시 마포구 독막로9길 31 지하 1층</span>
+                    <p>{spaceTitle}</p>
+                    <span>{spaceAddress || '주소 정보 준비중'}</span>
                   </div>
                 </div>
                 <div className="space-reservation__result-info">

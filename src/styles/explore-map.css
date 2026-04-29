@@ -95,6 +95,13 @@
   width: 65px;
 }
 
+.explore-map-card__thumb--empty {
+  background:
+    linear-gradient(135deg, rgba(255, 162, 12, 0.12), rgba(255, 162, 12, 0.02)),
+    #f2f4f7;
+  display: block;
+}
+
 .explore-map-card__main {
   display: flex;
   flex: 1;
@@ -285,6 +292,42 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.explore-map-page__empty {
+  align-items: center;
+  border: 1px solid #edf1f6;
+  border-radius: 16px;
+  background: #fafbfc;
+  box-sizing: border-box;
+  color: #6d7a87;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 148px;
+  padding: 24px 16px;
+  text-align: center;
+  width: 100%;
+}
+
+.explore-map-page__popular .explore-map-page__empty {
+  min-height: 116px;
+}
+
+.explore-map-page__empty-title {
+  color: #111217;
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 24px;
+  margin: 0;
+}
+
+.explore-map-page__empty-description {
+  color: #8b95a1;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 19px;
+  margin: 7px 0 0;
 }
 
 .explore-map-page__map-wrap {

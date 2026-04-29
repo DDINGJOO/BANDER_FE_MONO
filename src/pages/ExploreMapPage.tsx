@@ -4,14 +4,17 @@ import { HomeHeader } from '../components/home/HomeHeader';
 import { KakaoMapView } from '../components/map/KakaoMapView';
 import { HomeSpaceExplorer } from '../components/home/HomeSpaceExplorer';
 import { StarIcon } from '../components/shared/Icons';
-import { HEADER_SEARCH_KEYWORD_SUGGESTIONS } from '../config/searchSuggestions';
-import { loadAuthSession } from '../data/authSession';
 import {
-  EXPLORE_MAP_CENTER,
-  EXPLORE_MAP_LIST_ITEMS,
-  EXPLORE_MAP_MARKERS,
-  EXPLORE_MAP_POPULAR_VENDORS,
-} from '../data/exploreMap';
+  fetchExploreMapMarkers,
+  fetchExploreMapPopularVendors,
+  fetchExploreMapSpaces,
+} from '../api/exploreMap';
+import { isMockMode } from '../config/publicEnv';
+import { loadAuthSession } from '../data/authSession';
+import { exploreMapListItemFromDto } from '../data/adapters/exploreMapFromApi';
+import { EXPLORE_MAP_CENTER, type ExploreMapListItem, type ExploreMapPopularVendor } from '../data/exploreMap';
+import type { ExploreMapMarkerDto } from '../data/schemas/exploreMap';
+import { useSearchSuggestions } from '../hooks/useSearchSuggestions';
 
 function BookmarkGlyph({ filled }: { filled: boolean }) {
   return (
@@ -41,6 +44,32 @@ function RecenterIcon() {
   );
 }
 
+function ExplorePreparingState({ description }: { description?: string }) {
+  return (
+    <div className="explore-map-page__empty" role="status">
+      <p className="explore-map-page__empty-title">준비중입니다</p>
+      {description ? <p className="explore-map-page__empty-description">{description}</p> : null}
+    </div>
+  );
+}
+
+function mapMarkerFromDto(marker: ExploreMapMarkerDto) {
+  if (!Number.isFinite(marker.lat) || !Number.isFinite(marker.lng)) {
+    return null;
+  }
+
+  if (marker.lat === 0 && marker.lng === 0) {
+    return null;
+  }
+
+  return {
+    lat: marker.lat,
+    lng: marker.lng,
+    pinStyle: marker.availableRoomCount > 0 ? 'active' as const : 'default' as const,
+    title: marker.label,
+  };
+}
+
 export function ExploreMapPage() {
   const navigate = useNavigate();
   const isAuthenticated = Boolean(loadAuthSession());
@@ -49,17 +78,14 @@ export function ExploreMapPage() {
   const headerSearchRef = useRef<HTMLDivElement | null>(null);
   const [mapResetKey, setMapResetKey] = useState(0);
   const [mobileListOpen, setMobileListOpen] = useState(false);
-  const [savedByPath, setSavedByPath] = useState<Record<string, boolean>>(() => {
-    const initial: Record<string, boolean> = {};
-    for (const item of EXPLORE_MAP_LIST_ITEMS) {
-      initial[item.detailPath] = item.bookmarkSaved;
-    }
-    return initial;
-  });
+  const [listItems, setListItems] = useState<ExploreMapListItem[]>([]);
+  const [popularVendors, setPopularVendors] = useState<ExploreMapPopularVendor[]>([]);
+  const [markers, setMarkers] = useState<Array<{ lat: number; lng: number; pinStyle?: 'active' | 'default'; title?: string }>>([]);
+  const [loading, setLoading] = useState(!isMockMode());
+  const [loadError, setLoadError] = useState(false);
+  const [savedByPath, setSavedByPath] = useState<Record<string, boolean>>({});
 
-  const filteredSuggestions = HEADER_SEARCH_KEYWORD_SUGGESTIONS.filter((item) =>
-    item.toLowerCase().includes(headerSearchQuery.toLowerCase())
-  );
+  const { suggestions: filteredSuggestions } = useSearchSuggestions(headerSearchQuery);
 
   const handleSearchSubmit = (value: string) => {
     const normalizedValue = value.trim();
@@ -79,6 +105,84 @@ export function ExploreMapPage() {
     document.addEventListener('mousedown', handlePointerDown);
     return () => document.removeEventListener('mousedown', handlePointerDown);
   }, []);
+
+  useEffect(() => {
+    if (isMockMode()) {
+      setListItems([]);
+      setPopularVendors([]);
+      setMarkers([]);
+      setLoading(false);
+      setLoadError(false);
+      return;
+    }
+
+    let cancelled = false;
+    setLoading(true);
+    setLoadError(false);
+
+    Promise.allSettled([
+      fetchExploreMapMarkers(),
+      fetchExploreMapSpaces({ page: 0, size: 20 }),
+      fetchExploreMapPopularVendors({ size: 8 }),
+    ])
+      .then(([markerResult, spaceResult, vendorResult]) => {
+        if (cancelled) {
+          return;
+        }
+
+        if (markerResult.status === 'fulfilled') {
+          const nextMarkers: Array<{ lat: number; lng: number; pinStyle?: 'active' | 'default'; title?: string }> = [];
+          for (const marker of markerResult.value.markers) {
+            const mapped = mapMarkerFromDto(marker);
+            if (mapped) {
+              nextMarkers.push(mapped);
+            }
+          }
+          setMarkers(nextMarkers);
+        } else {
+          setMarkers([]);
+        }
+
+        if (spaceResult.status === 'fulfilled') {
+          setListItems(spaceResult.value.items.map(exploreMapListItemFromDto));
+        } else {
+          setListItems([]);
+        }
+
+        if (vendorResult.status === 'fulfilled') {
+          setPopularVendors(vendorResult.value.vendors);
+        } else {
+          setPopularVendors([]);
+        }
+
+        setLoadError(
+          markerResult.status === 'rejected' ||
+            spaceResult.status === 'rejected' ||
+            vendorResult.status === 'rejected'
+        );
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    setSavedByPath((current) => {
+      const next = { ...current };
+      for (const item of listItems) {
+        if (next[item.detailPath] === undefined) {
+          next[item.detailPath] = item.bookmarkSaved;
+        }
+      }
+      return next;
+    });
+  }, [listItems]);
 
   return (
     <main className="explore-map-page">
@@ -114,12 +218,12 @@ export function ExploreMapPage() {
           <button
             aria-controls="explore-map-visible-list"
             aria-expanded={mobileListOpen}
-            aria-label={`지도 안 합주실 ${EXPLORE_MAP_LIST_ITEMS.length}곳 ${mobileListOpen ? '접기' : '목록 보기'}`}
+            aria-label={`지도 안 합주실 ${listItems.length}곳 ${mobileListOpen ? '접기' : '목록 보기'}`}
             className="explore-map-page__mobile-list-toggle"
             onClick={() => setMobileListOpen((open) => !open)}
             type="button"
           >
-            <span>지도 안 합주실 {EXPLORE_MAP_LIST_ITEMS.length}곳</span>
+            <span>지도 안 합주실 {listItems.length}곳</span>
             <span aria-hidden>{mobileListOpen ? '접기' : '목록 보기'}</span>
           </button>
 
@@ -127,13 +231,23 @@ export function ExploreMapPage() {
             className={`explore-map-page__list${mobileListOpen ? ' explore-map-page__list--mobile-open' : ''}`}
             id="explore-map-visible-list"
           >
-            {EXPLORE_MAP_LIST_ITEMS.map((item) => {
+            {loading ? (
+              <ExplorePreparingState description="공간 데이터를 불러오는 중입니다." />
+            ) : listItems.length === 0 ? (
+              <ExplorePreparingState
+                description={loadError ? '공간 데이터를 불러오지 못했습니다.' : '공개된 공간이 등록되면 이곳에 표시됩니다.'}
+              />
+            ) : listItems.map((item) => {
               const saved = savedByPath[item.detailPath] ?? false;
               return (
                 <div className="explore-map-card" key={item.detailPath}>
                   <div className="explore-map-card__row">
                     <Link className="explore-map-card__link" to={item.detailPath}>
-                      <img alt="" className="explore-map-card__thumb" src={item.image} />
+                      {item.image ? (
+                        <img alt="" className="explore-map-card__thumb" src={item.image} />
+                      ) : (
+                        <span aria-hidden className="explore-map-card__thumb explore-map-card__thumb--empty" />
+                      )}
                       <div className="explore-map-card__stack">
                         <div className="explore-map-card__top">
                           <div className="explore-map-card__text">
@@ -184,9 +298,16 @@ export function ExploreMapPage() {
           </div>
 
           <section className="explore-map-page__popular">
-            <h2 className="explore-map-page__popular-title">서울 마포구 인기 합주실</h2>
-            <div className="explore-map-page__popular-scroll">
-              {EXPLORE_MAP_POPULAR_VENDORS.map((v) => (
+            <h2 className="explore-map-page__popular-title">인기 합주실</h2>
+            {loading ? (
+              <ExplorePreparingState description="인기 합주실 데이터를 불러오는 중입니다." />
+            ) : popularVendors.length === 0 ? (
+              <ExplorePreparingState
+                description={loadError ? '인기 합주실 데이터를 불러오지 못했습니다.' : '인기 합주실 데이터가 준비되면 표시됩니다.'}
+              />
+            ) : (
+              <div className="explore-map-page__popular-scroll">
+              {popularVendors.map((v) => (
                 <Link className="explore-map-page__popular-item" key={v.slug} to={`/vendors/${v.slug}`}>
                   <div className="explore-map-page__popular-ring">
                     <div
@@ -198,7 +319,8 @@ export function ExploreMapPage() {
                   <span className="explore-map-page__popular-label">{v.label}</span>
                 </Link>
               ))}
-            </div>
+              </div>
+            )}
           </section>
         </aside>
 
@@ -208,8 +330,8 @@ export function ExploreMapPage() {
             className="explore-map-page__map-frame"
             key={mapResetKey}
             level={5}
-            markers={EXPLORE_MAP_MARKERS}
-            title="지도: 서울 마포구 인근"
+            markers={markers}
+            title="지도 탐색"
           />
           <button
             aria-label="지도 위치 초기화"

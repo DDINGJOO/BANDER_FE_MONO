@@ -2,16 +2,15 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { HomeFooter } from '../components/home/HomeFooter';
 import { HomeHeader } from '../components/home/HomeHeader';
-import { HEADER_SEARCH_KEYWORD_SUGGESTIONS } from '../config/searchSuggestions';
 import { isMockMode } from '../config/publicEnv';
 import { loadAuthSession } from '../data/authSession';
 import {
-  APP_NOTIFICATIONS,
   filterNotifications,
   type AppNotification,
   type NotificationIconKind,
   type NotificationTabFilter,
 } from '../data/notifications';
+import { useSearchSuggestions } from '../hooks/useSearchSuggestions';
 import { fetchNotifications } from '../api/notifications';
 import { notificationsFromApiPage } from '../data/adapters/notificationsFromApi';
 import '../styles/notifications.css';
@@ -178,14 +177,16 @@ export function NotificationsPage() {
   const [headerSearchQuery, setHeaderSearchQuery] = useState('');
   const headerSearchRef = useRef<HTMLDivElement | null>(null);
   const [tab, setTab] = useState<NotificationTabFilter>('all');
-  const [items, setItems] = useState<readonly AppNotification[]>(
-    isMockMode() ? APP_NOTIFICATIONS : [],
-  );
+  const [items, setItems] = useState<readonly AppNotification[]>([]);
   const [loading, setLoading] = useState<boolean>(!isMockMode());
   const [loadError, setLoadError] = useState<Error | null>(null);
 
   useEffect(() => {
-    if (isMockMode()) return;
+    if (isMockMode()) {
+      setItems([]);
+      setLoading(false);
+      return;
+    }
     let cancelled = false;
     setLoading(true);
     setLoadError(null);
@@ -207,9 +208,7 @@ export function NotificationsPage() {
     };
   }, []);
 
-  const filteredSuggestions = HEADER_SEARCH_KEYWORD_SUGGESTIONS.filter((item) =>
-    item.toLowerCase().includes(headerSearchQuery.toLowerCase()),
-  );
+  const { suggestions: filteredSuggestions } = useSearchSuggestions(headerSearchQuery);
 
   const { todayItems, weekItems } = useMemo(() => {
     const filtered = filterNotifications(items, tab);
@@ -299,7 +298,7 @@ export function NotificationsPage() {
             <div className="notifications__empty-state" role="status">
               <NotificationsEmptyBell />
               <p className="notifications__empty-message">
-                아직 온 알림이 없습니다.
+                준비중입니다
               </p>
             </div>
           ) : (

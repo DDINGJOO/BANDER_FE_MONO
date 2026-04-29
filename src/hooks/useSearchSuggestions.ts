@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
 import { searchSuggestions } from '../api/search';
-import { HEADER_SEARCH_KEYWORD_SUGGESTIONS } from '../config/searchSuggestions';
 
 const DEBOUNCE_MS = 300;
 
@@ -21,11 +20,7 @@ export function useSearchSuggestions(query: string) {
       return;
     }
 
-    // Show local fallback immediately while waiting for debounce
-    const localMatches = HEADER_SEARCH_KEYWORD_SUGGESTIONS.filter((item) =>
-      item.toLowerCase().includes(trimmed.toLowerCase())
-    );
-    setSuggestions(localMatches);
+    setSuggestions([]);
 
     setLoading(true);
     timerRef.current = setTimeout(() => {
@@ -36,13 +31,12 @@ export function useSearchSuggestions(query: string) {
         .then((res) => {
           if (controller.signal.aborted) return;
           const texts = res.suggestions.map((s) => s.text);
-          setSuggestions(texts.length > 0 ? texts : localMatches);
+          setSuggestions(texts);
           setLoading(false);
         })
         .catch(() => {
           if (controller.signal.aborted) return;
-          // Fallback to local hardcoded suggestions on API failure
-          setSuggestions(localMatches);
+          setSuggestions([]);
           setLoading(false);
         });
     }, DEBOUNCE_MS);

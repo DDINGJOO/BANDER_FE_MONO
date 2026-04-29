@@ -139,7 +139,8 @@ export function MainPage({ previewAuthenticated = false }: { previewAuthenticate
   const visibleVendorCards = vendorCards.length > 0
     ? vendorCards
     : (popularVendors ?? []).map(vendorSearchItemToHomeCard);
-  const homeFeedErrorMessage = error ? '홈 데이터를 불러오지 못했습니다.' : null;
+  const homeFeedErrorMessage = error ? '데이터를 불러오지 못했습니다.' : null;
+  const preparingTitle = '준비중입니다';
 
   return (
     <main className="home-page">
@@ -204,8 +205,8 @@ export function MainPage({ previewAuthenticated = false }: { previewAuthenticate
           </div>
         ) : (
           <HomeEmptyState
-            description={homeFeedErrorMessage ? '잠시 후 다시 시도해 주세요.' : '커뮤니티 활동이 쌓이면 이곳에 표시됩니다.'}
-            title={homeFeedErrorMessage ?? '아직 HOT 게시물이 없습니다.'}
+            description={homeFeedErrorMessage ?? '커뮤니티 활동이 쌓이면 이곳에 표시됩니다.'}
+            title={preparingTitle}
           />
         )}
       </section>
@@ -220,8 +221,8 @@ export function MainPage({ previewAuthenticated = false }: { previewAuthenticate
         />
         {!loading && spacesForSections.length === 0 ? (
           <HomeEmptyState
-            description={filteredSpaces ? '필터를 조정하거나 다른 키워드로 다시 검색해 보세요.' : '공간 데이터가 등록되면 이 영역에 표시됩니다.'}
-            title={filteredSpaces ? '조건에 맞는 공간이 없습니다.' : homeFeedErrorMessage ?? '아직 추천 공간이 없습니다.'}
+            description={filteredSpaces ? '필터를 조정하거나 다른 키워드로 다시 검색해 보세요.' : homeFeedErrorMessage ?? '공간 데이터가 등록되면 이 영역에 표시됩니다.'}
+            title={preparingTitle}
           />
         ) : null}
       </section>
@@ -249,8 +250,8 @@ export function MainPage({ previewAuthenticated = false }: { previewAuthenticate
           </div>
         ) : (
           <HomeEmptyState
-            description="업체 데이터가 등록되면 이 영역에 표시됩니다."
-            title={homeFeedErrorMessage ?? '아직 인기 업체가 없습니다.'}
+            description={homeFeedErrorMessage ?? '업체 데이터가 등록되면 이 영역에 표시됩니다.'}
+            title={preparingTitle}
           />
         )}
       </section>
@@ -267,8 +268,8 @@ export function MainPage({ previewAuthenticated = false }: { previewAuthenticate
           </div>
         ) : (
           <HomeEmptyState
-            description="공간 데이터가 등록되면 이 영역에 표시됩니다."
-            title={homeFeedErrorMessage ?? '아직 인기 공간이 없습니다.'}
+            description={homeFeedErrorMessage ?? '공간 데이터가 등록되면 이 영역에 표시됩니다.'}
+            title={preparingTitle}
           />
         )}
       </section>
@@ -298,8 +299,8 @@ export function MainPage({ previewAuthenticated = false }: { previewAuthenticate
           </div>
         ) : (
           <HomeEmptyState
-            description="후기 데이터가 등록되면 이 영역에 표시됩니다."
-            title={homeFeedErrorMessage ?? '아직 등록된 후기가 없습니다.'}
+            description={homeFeedErrorMessage ?? '후기 데이터가 등록되면 이 영역에 표시됩니다.'}
+            title={preparingTitle}
           />
         )}
       </section>

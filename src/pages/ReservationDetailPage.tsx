@@ -8,12 +8,9 @@ import { ChevronIcon } from '../components/shared/Icons';
 import { HEADER_SEARCH_KEYWORD_SUGGESTIONS } from '../config/searchSuggestions';
 import { loadAuthSession } from '../data/authSession';
 import {
-  RESERVATION_DETAIL,
   RESERVATION_DETAIL_MAP_IMAGE,
   RESERVATION_REFUND_POLICY,
-  parseReservationDetailVariant,
   reservationDetailChatHref,
-  type ReservationDetailVariant,
 } from '../data/reservationDetail';
 import {
   RESERVATION_CANCEL_ALERT_DEFAULT,
@@ -121,26 +118,7 @@ export function ReservationDetailPage() {
 
   useEffect(() => {
     if (isMockMode()) {
-      const variant: ReservationDetailVariant = parseReservationDetailVariant(
-        searchParams.get('status'),
-      );
-      const mockDetail: BookingDetailResponse = {
-        bookingId: '1',
-        roomId: '1',
-        roomName: RESERVATION_DETAIL.spaceTitle,
-        studioName: '유스뮤직',
-        status: variant === 'pending' ? 'PENDING' : variant === 'completed' ? 'COMPLETED' : 'CONFIRMED',
-        startsAt: '2025-08-13T16:00:00',
-        endsAt: '2025-08-13T17:00:00',
-        totalPrice: 20000,
-        paymentMethod: RESERVATION_DETAIL.payment.method,
-        bookerName: RESERVATION_DETAIL.booker.name,
-        bookerPhone: RESERVATION_DETAIL.booker.phone,
-        bookerNote: null,
-        cancelReason: null,
-        createdAt: '2025-08-09T10:00:00',
-      };
-      setDetail(mockDetail);
+      setDetail(null);
       return;
     }
 
@@ -151,7 +129,36 @@ export function ReservationDetailPage() {
   }, [bookingId, searchParams]);
 
   if (!detail) {
-    return null;
+    return (
+      <main className="reservation-detail-page">
+        <HomeHeader
+          authenticated={isAuthenticated}
+          filteredSuggestions={filteredSuggestions}
+          onGuestCta={() => navigate('/login')}
+          onSearchChange={(value) => {
+            setHeaderSearchQuery(value);
+            setHeaderSearchOpen(Boolean(value.trim()));
+          }}
+          onSearchClear={() => {
+            setHeaderSearchQuery('');
+            setHeaderSearchOpen(false);
+          }}
+          onSearchFocus={() => setHeaderSearchOpen(Boolean(headerSearchQuery.trim()))}
+          onSearchSubmit={onHeaderSearchSubmit}
+          onSuggestionSelect={(value) => {
+            setHeaderSearchOpen(false);
+            onHeaderSearchSubmit(value);
+          }}
+          searchOpen={headerSearchOpen}
+          searchQuery={headerSearchQuery}
+          searchRef={headerSearchRef}
+        />
+        <div className="reservation-detail__shell">
+          <p className="my-reservations__empty">준비중입니다</p>
+        </div>
+        <HomeFooter />
+      </main>
+    );
   }
 
   const badge = badgeForStatus(detail.status);

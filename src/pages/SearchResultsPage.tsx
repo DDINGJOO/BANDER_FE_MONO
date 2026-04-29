@@ -5,7 +5,7 @@ import { HomeHeader } from '../components/home/HomeHeader';
 import { HomeSpaceExplorer, type SpaceFilterState } from '../components/home/HomeSpaceExplorer';
 import { ChevronIcon } from '../components/shared/Icons';
 import { useSearchSuggestions } from '../hooks/useSearchSuggestions';
-import { COMMUNITY_SORT_OPTIONS, COMMUNITY_FEED_ITEMS } from '../data/communityFeed';
+import { COMMUNITY_SORT_OPTIONS } from '../data/communityFeed';
 import { loadAuthSession } from '../data/authSession';
 import {
   searchRooms,
@@ -16,12 +16,6 @@ import {
   type PostSearchItem,
 } from '../api/search';
 import { isMockMode } from '../config/publicEnv';
-
-const MOCK_VENDOR_RESULTS = [
-  { name: '유스뮤직', slug: 'youth-music', spaces: '15개의 공간', tone: 'linear-gradient(135deg, #7f1315, #e26447)' },
-  { name: '방구석 뮤지션의 합주실', slug: 'banggu-musician', spaces: '15개의 공간', tone: 'linear-gradient(135deg, #6b4d24, #c5a071)' },
-  { name: '챗츠뮤직', slug: 'chats-music', spaces: '15개의 공간', tone: 'linear-gradient(135deg, #bcbcbc, #ececec)' },
-];
 
 type SearchTab = 'community' | 'space' | 'vendor';
 
@@ -80,10 +74,20 @@ function formatPostDateLabel(value: string): string {
   }).format(new Date(timestamp));
 }
 
+function SearchPreparingState({ description }: { description?: string }) {
+  return (
+    <div className="search-results__empty" role="status">
+      <p className="search-results__empty-title">준비중입니다</p>
+      {description ? <p className="search-results__empty-description">{description}</p> : null}
+    </div>
+  );
+}
+
 export function SearchResultsPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const isAuthenticated = Boolean(loadAuthSession());
+  const mockMode = isMockMode();
   const query = searchParams.get('q')?.trim() || '합주';
   const [activeTab, setActiveTab] = useState<SearchTab>('space');
   const [headerSearchOpen, setHeaderSearchOpen] = useState(false);
@@ -126,7 +130,15 @@ export function SearchResultsPage() {
   }, [activeTab]);
 
   useEffect(() => {
-    if (isMockMode()) return;
+    if (mockMode) {
+      setRooms([]);
+      setRoomsTotalCount(0);
+      setVendors([]);
+      setVendorsTotalCount(0);
+      setPosts([]);
+      setPostsTotalCount(0);
+      return;
+    }
 
     if (activeTab === 'space') {
       setRoomsLoading(true);
@@ -148,6 +160,10 @@ export function SearchResultsPage() {
           setRooms(res.rooms);
           setRoomsTotalCount(res.totalElements);
         })
+        .catch(() => {
+          setRooms([]);
+          setRoomsTotalCount(0);
+        })
         .finally(() => setRoomsLoading(false));
     }
 
@@ -157,6 +173,10 @@ export function SearchResultsPage() {
         .then((res) => {
           setVendors(res.items);
           setVendorsTotalCount(res.totalCount ?? null);
+        })
+        .catch(() => {
+          setVendors([]);
+          setVendorsTotalCount(0);
         })
         .finally(() => setVendorsLoading(false));
     }
@@ -168,10 +188,14 @@ export function SearchResultsPage() {
           setPosts(res.items);
           setPostsTotalCount(res.totalCount ?? null);
         })
+        .catch(() => {
+          setPosts([]);
+          setPostsTotalCount(0);
+        })
         .finally(() => setPostsLoading(false));
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [query, activeTab, sortBy, spaceFilterKey]);
+  }, [query, activeTab, sortBy, spaceFilterKey, mockMode]);
 
   useEffect(() => {
     const handlePointerDown = (event: MouseEvent) => {
@@ -203,23 +227,28 @@ export function SearchResultsPage() {
     navigate(`/search?q=${encodeURIComponent(normalizedValue)}`);
   };
 
-  const resultCountLabel = isMockMode()
-    ? activeTab === 'space'
-      ? '4개의 공간'
-      : activeTab === 'vendor'
-        ? '3개의 업체'
-        : COMMUNITY_FEED_ITEMS.length + '개의 글'
-    : activeTab === 'space'
-      ? roomsTotalCount !== null
-        ? `${roomsTotalCount}개의 공간`
-        : '공간'
-      : activeTab === 'vendor'
-        ? vendorsTotalCount !== null
-          ? `${vendorsTotalCount}개의 업체`
-          : '업체'
-        : postsTotalCount !== null
-          ? `${postsTotalCount}개의 게시글`
-          : '게시글';
+  const roomCards = roomsLoading ? [] : rooms.map((r) => ({
+    title: r.roomName,
+    subtitle: r.description || '',
+    studio: r.studioName,
+    location: r.roadAddress || '',
+    price: `${r.pricePerSlot.toLocaleString()}원`,
+    rating: '',
+    image: r.thumbnailUrl || '',
+    detailPath: `/spaces/${r.roomSlug || r.roomId}`,
+  }));
+
+  const resultCountLabel = activeTab === 'space'
+    ? roomsTotalCount !== null
+      ? `${roomsTotalCount}개의 공간`
+      : '공간'
+    : activeTab === 'vendor'
+      ? vendorsTotalCount !== null
+        ? `${vendorsTotalCount}개의 업체`
+        : '업체'
+      : postsTotalCount !== null
+        ? `${postsTotalCount}개의 게시글`
+        : '게시글';
 
   return (
     <main className="search-results-page">
@@ -307,46 +336,23 @@ export function SearchResultsPage() {
         </div>
 
         {activeTab === 'space' ? (
-          isMockMode() ? (
-            <HomeSpaceExplorer onFilterChange={handleFilterChange} resultLimit={20} variant="section" />
-          ) : (
+          <>
             <HomeSpaceExplorer
               onFilterChange={handleFilterChange}
               resultLimit={20}
-              spaces={roomsLoading ? [] : rooms.map((r) => ({
-                title: r.roomName,
-                subtitle: r.description || '',
-                studio: r.studioName,
-                location: r.roadAddress || '',
-                price: `${r.pricePerSlot.toLocaleString()}원`,
-                rating: '',
-                image: r.thumbnailUrl || '',
-                detailPath: `/spaces/${r.roomSlug || r.roomId}`,
-              }))}
+              spaces={roomCards}
               variant="section"
             />
-          )
+            {!roomsLoading && roomCards.length === 0 ? (
+              <SearchPreparingState description="공개된 공간 데이터가 등록되면 이곳에 표시됩니다." />
+            ) : null}
+          </>
         ) : null}
 
         {activeTab === 'vendor' ? (
           vendorsLoading ? (
             <div className="search-results__loading">로딩 중...</div>
-          ) : isMockMode() ? (
-            <div className="search-results__vendor-grid">
-              {MOCK_VENDOR_RESULTS.map((vendor) => (
-                <Link className="search-results__vendor-card search-results__vendor-card--link" key={vendor.slug} to={`/vendors/${vendor.slug}`}>
-                  <div
-                    className="search-results__vendor-avatar"
-                    style={{ background: vendor.tone }}
-                  />
-                  <div className="search-results__vendor-body">
-                    <h2 className="search-results__vendor-name">{vendor.name}</h2>
-                    <p className="search-results__vendor-meta">{vendor.spaces}</p>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          ) : (
+          ) : vendors.length > 0 ? (
             <div className="search-results__vendor-grid">
               {vendors.map((vendor) => (
                 <Link className="search-results__vendor-card search-results__vendor-card--link" key={vendor.id} to={`/vendors/${vendor.slug || vendor.id}`}>
@@ -361,26 +367,15 @@ export function SearchResultsPage() {
                 </Link>
               ))}
             </div>
+          ) : (
+            <SearchPreparingState description="공개된 업체 데이터가 등록되면 이곳에 표시됩니다." />
           )
         ) : null}
 
         {activeTab === 'community' ? (
           postsLoading ? (
             <div className="search-results__loading">로딩 중...</div>
-          ) : isMockMode() ? (
-            <div className="search-results__community-list">
-              {COMMUNITY_FEED_ITEMS.map((post, index) => (
-                <article className="search-results__community-card" key={index}>
-                  <div className="search-results__community-copy">
-                    <h2 className="search-results__community-title">{post.title}</h2>
-                    <div className="search-results__community-meta">
-                      <span>{post.category}</span>
-                    </div>
-                  </div>
-                </article>
-              ))}
-            </div>
-          ) : (
+          ) : posts.length > 0 ? (
             <div className="search-results__community-list">
               {posts.map((post) => (
                 <Link className="search-results__community-card search-results__community-card--link" key={post.id} to={`/community/post/${post.id}`}>
@@ -402,6 +397,8 @@ export function SearchResultsPage() {
                 </Link>
               ))}
             </div>
+          ) : (
+            <SearchPreparingState description="공개된 커뮤니티 데이터가 등록되면 이곳에 표시됩니다." />
           )
         ) : null}
       </section>

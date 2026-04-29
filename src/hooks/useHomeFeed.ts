@@ -1,12 +1,6 @@
 import { useEffect, useState, useMemo } from 'react';
 import { fetchHomeFeed } from '../api/home';
 import { isMockMode } from '../config/publicEnv';
-import {
-  HOME_CATEGORY_BUBBLES,
-  HOME_HOT_POSTS,
-  HOME_REVIEW_CARDS,
-  HOME_SPACE_CARDS,
-} from '../data/home';
 import { normalizeHomeFeedForUi } from '../data/adapters/homeFromApi';
 import type { HomeFeedResponseDto } from '../data/schemas/homeFeed';
 
@@ -18,6 +12,8 @@ export function useHomeFeed() {
 
   useEffect(() => {
     if (mock) {
+      setApiData(null);
+      setError(null);
       setLoading(false);
       return;
     }
@@ -43,13 +39,13 @@ export function useHomeFeed() {
   return useMemo(() => {
     if (mock) {
       return {
-        hotPosts: HOME_HOT_POSTS,
-        recommendedSpaces: HOME_SPACE_CARDS,
-        reviewCards: HOME_REVIEW_CARDS,
-        categoryBubbles: HOME_CATEGORY_BUBBLES,
+        hotPosts: [],
+        recommendedSpaces: [],
+        reviewCards: [],
+        categoryBubbles: [],
         vendorCards: [],
         loading: false,
-        error,
+        error: null,
       };
     }
 

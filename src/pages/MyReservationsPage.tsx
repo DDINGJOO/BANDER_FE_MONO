@@ -16,7 +16,7 @@ import {
   buildCancelLeadLines,
 } from '../data/reservationCancelModal';
 import type { ReservationCancelNoticeRow } from '../components/reservations/ReservationCancelModal';
-import { reservationsForTab, type MyReservation, type MyReservationTab } from '../data/myReservations';
+import { type MyReservationTab } from '../data/myReservations';
 import { getMyBookings, getRefundEstimate, type MyBookingItem } from '../api/bookings';
 import { isMockMode } from '../config/publicEnv';
 
@@ -221,25 +221,8 @@ export function MyReservationsPage() {
 
   useEffect(() => {
     if (isMockMode()) {
-      const mockItems = reservationsForTab(tab).map((r: MyReservation, index: number): CardItem => ({
-        bookingId: String(index),
-        status: r.status === 'confirmed' ? 'CONFIRMED'
-          : r.status === 'pending' ? 'PENDING'
-          : r.status === 'completed' ? 'COMPLETED'
-          : r.status === 'canceledUser' ? 'CANCELED_USER'
-          : 'CANCELED_VENDOR',
-        action: r.action === 'cancel' ? 'cancel'
-          : r.action === 'writeReview' ? 'writeReview'
-          : r.action === 'viewMyReview' ? 'viewMyReview'
-          : 'none',
-        thumbUrl: r.thumbUrl ?? '',
-        spaceTitle: r.spaceTitle,
-        vendorName: r.vendorName,
-        dateTimeLine: r.dateTimeLine ?? '',
-        durationLine: r.durationLine ?? '',
-        detailPath: r.detailPath,
-      }));
-      setBookings(mockItems);
+      setBookings([]);
+      setLoading(false);
       return;
     }
 
@@ -325,7 +308,7 @@ export function MyReservationsPage() {
           </div>
 
           {loading ? null : bookings.length === 0 ? (
-            <p className="my-reservations__empty">예약 내역이 없습니다.</p>
+            <p className="my-reservations__empty">준비중입니다</p>
           ) : (
             <div className="my-reservations__list">
               {bookings.map((item) => (

@@ -194,7 +194,8 @@ export function SpaceDetailPage() {
         <HomeHeader authenticated={isAuthenticated} onGuestCta={() => navigate('/login')} variant="icon" />
         <section className="space-detail__inner">
           <div style={{ textAlign: 'center', padding: '4rem 0' }}>
-            <p style={{ fontSize: '1.1rem', color: '#333', marginBottom: '1rem' }}>공간 정보를 불러올 수 없습니다.</p>
+            <p style={{ fontSize: '1.1rem', color: '#333', marginBottom: '0.4rem' }}>준비중입니다</p>
+            <p style={{ color: '#8b95a1', margin: '0 0 1rem' }}>공간 데이터가 등록되면 이곳에 표시됩니다.</p>
             <button onClick={() => navigate(-1)} style={{ minHeight: '44px', padding: '0.5rem 1.5rem', borderRadius: '8px', border: '1px solid #ccc', background: '#fff', cursor: 'pointer' }} type="button">뒤로 가기</button>
           </div>
         </section>
