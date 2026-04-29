@@ -8,6 +8,7 @@ import {
   getSyncHint,
   markAsRead,
   sendMessage,
+  updateChatCursor,
 } from '../api/chat';
 import { fetchVendorDetail, type VendorDetailDto } from '../api/spaces';
 import { HomeFooter } from '../components/home/HomeFooter';
@@ -73,6 +74,14 @@ const FALLBACK_PANEL: ChatVendorPanel = {
   stats: [],
 };
 
+function getLatestMessageId(messages: ChatMessageResponse[]): string | null {
+  if (messages.length === 0) return null;
+  return messages.reduce<string | null>((latest, message) => {
+    if (!latest) return message.messageId;
+    return BigInt(message.messageId) > BigInt(latest) ? message.messageId : latest;
+  }, null);
+}
+
 export function ChatPage() {
   const navigate = useNavigate();
   const { openGuestGate } = useGuestGate();
@@ -95,6 +104,7 @@ export function ChatPage() {
   const [vendorDetail, setVendorDetail] = useState<VendorDetailDto | null>(null);
   const [vendorDetailsMap, setVendorDetailsMap] = useState<Record<string, VendorDetailDto>>({});
   const messagesContainerRef = useRef<HTMLDivElement | null>(null);
+  const lastCursorUpdateRef = useRef<Record<string, string>>({});
 
   // 무한 스크롤 — 위로 스크롤 시 더 오래된 메시지 페이지네이션
   const [nextCursor, setNextCursor] = useState<string | null>(null);
@@ -316,9 +326,26 @@ export function ChatPage() {
     }
   }, [activeRoomId, rooms]);
 
-  // WebSocket: real-time message updates
-  useChatWebSocket(activeRoomId, (msg) => {
-    setMessages((prev) => [...prev, msg]);
+  // WebSocket: real-time message updates.
+  // PR-F: user queue 단일 구독으로 모든 방의 fanout 을 받아
+  //   - 활성 방 → setMessages append (messageId dedup)
+  //   - 비활성 방 → setAllRooms 의 unreadCount +1 (optimistic, badge 즉각 반영)
+  // 다음 visibility 'visible' 시 getMyChatRooms() 가 정확한 unreadCount 로 보정.
+  useChatWebSocket(isAuthenticated, (msg) => {
+    if (activeRoomId && String(msg.chatRoomId) === activeRoomId) {
+      setMessages((prev) => {
+        if (prev.some((m) => m.messageId === msg.messageId)) return prev;
+        return [...prev, msg];
+      });
+    } else {
+      setAllRooms((prev) =>
+        prev.map((r) =>
+          String(r.chatRoomId) === String(msg.chatRoomId)
+            ? { ...r, unreadCount: (r.unreadCount ?? 0) + 1 }
+            : r,
+        ),
+      );
+    }
   });
 
   // PR-D: 멀티 디바이스 gap fill — visibility 'visible' 시 sync-hint 호출,
@@ -361,9 +388,19 @@ export function ChatPage() {
     }
 
     const onVisible = () => {
-      if (document.visibilityState === 'visible' && !cancelled) {
-        void runGapFill(activeRoomId);
-      }
+      if (document.visibilityState !== 'visible' || cancelled) return;
+      // 활성 방 메시지 gap fill (PR-D)
+      void runGapFill(activeRoomId);
+      // PR-F: thread list 의 unreadCount 도 서버 truth 로 보정 — 다른 디바이스
+      // 에서 read 처리한 결과 + WS 도달 안 했던 메시지의 정확한 unread count 동기화.
+      getMyChatRooms()
+        .then((page) => {
+          if (cancelled) return;
+          setAllRooms(page.content);
+        })
+        .catch((err) => {
+          console.error('[ChatPage] visibility getMyChatRooms failed:', err);
+        });
     };
     document.addEventListener('visibilitychange', onVisible);
     return () => {
@@ -371,6 +408,19 @@ export function ChatPage() {
       document.removeEventListener('visibilitychange', onVisible);
     };
   }, [activeRoomId]);
+
+  useEffect(() => {
+    if (!activeRoomId) return;
+    const latestMessageId = getLatestMessageId(messages);
+    if (!latestMessageId) return;
+    if (lastCursorUpdateRef.current[activeRoomId] === latestMessageId) return;
+
+    lastCursorUpdateRef.current[activeRoomId] = latestMessageId;
+    updateChatCursor(activeRoomId, latestMessageId).catch((err) => {
+      delete lastCursorUpdateRef.current[activeRoomId];
+      console.error('[ChatPage] updateChatCursor failed:', err);
+    });
+  }, [activeRoomId, messages]);
 
   // 메시지 변경 시 scroll 위치 결정.
   // - prepend (오래된 메시지 페이지네이션) 시: 새로 추가된 만큼 scrollTop 보정 →
@@ -401,7 +451,9 @@ export function ChatPage() {
     if (!inputValue.trim() || !activeRoomId) return;
     try {
       const msg = await sendMessage(activeRoomId, { content: inputValue.trim() });
-      setMessages((prev) => [...prev, msg]);
+      setMessages((prev) =>
+        prev.some((message) => message.messageId === msg.messageId) ? prev : [...prev, msg],
+      );
       setInputValue('');
     } catch (err) {
       console.error('[ChatPage] sendMessage failed:', err);

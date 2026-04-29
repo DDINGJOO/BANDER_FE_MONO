@@ -1,16 +1,24 @@
 import { Client, IMessage } from '@stomp/stompjs';
 import { ChatMessageResponse } from '../api/chat';
+import { getOrCreateDeviceId } from './deviceId';
 
 type ChatMessageCallback = (message: ChatMessageResponse) => void;
 
 let stompClient: Client | null = null;
 const subscriptions: Map<string, { id: string; unsubscribe: () => void }> = new Map();
+const USER_CHAT_DESTINATION = '/user/queue/chat';
+
+// PR-F: user queue 한 채널이 사용자의 모든 방 fanout 을 운반.
+// chat-v2 백엔드의 Redis pub/sub user inbox → Spring user-destination resolver
+// 모델에 맞춤. 한 사용자당 1 구독만 유지 (USER_QUEUE_KEY).
+const USER_QUEUE_KEY = '__user_queue__';
 
 export function connectChat(): Client {
   if (stompClient?.connected) return stompClient;
 
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-  const wsUrl = `${protocol}//${window.location.host}/ws/chat`;
+  const deviceId = getOrCreateDeviceId();
+  const wsUrl = `${protocol}//${window.location.host}/ws/chat?deviceId=${encodeURIComponent(deviceId)}`;
 
   stompClient = new Client({
     brokerURL: wsUrl,
@@ -59,6 +67,47 @@ export function subscribeToRoom(roomId: string, callback: ChatMessageCallback): 
     if (subscriptions.has(roomId)) {
       subscriptions.get(roomId)!.unsubscribe();
       subscriptions.delete(roomId);
+    }
+  };
+}
+
+/**
+ * PR-F: 사용자별 inbox 구독 — `/user/queue/chat`. 모든 방의 메시지를 단일
+ * 채널에서 수신하고 호출자가 콜백 단계에서 활성/비활성 방 분기 처리.
+ */
+export function subscribeUserQueue(callback: ChatMessageCallback): () => void {
+  const client = connectChat();
+
+  if (subscriptions.has(USER_QUEUE_KEY)) {
+    subscriptions.get(USER_QUEUE_KEY)!.unsubscribe();
+    subscriptions.delete(USER_QUEUE_KEY);
+  }
+
+  const doSubscribe = () => {
+    const sub = client.subscribe(USER_CHAT_DESTINATION, (message: IMessage) => {
+      const parsed = JSON.parse(message.body) as ChatMessageResponse;
+      callback(parsed);
+    });
+    subscriptions.set(USER_QUEUE_KEY, {
+      id: sub.id,
+      unsubscribe: () => sub.unsubscribe(),
+    });
+  };
+
+  if (client.connected) {
+    doSubscribe();
+  } else {
+    const previousOnConnect = client.onConnect;
+    client.onConnect = (frame) => {
+      if (previousOnConnect) previousOnConnect(frame);
+      doSubscribe();
+    };
+  }
+
+  return () => {
+    if (subscriptions.has(USER_QUEUE_KEY)) {
+      subscriptions.get(USER_QUEUE_KEY)!.unsubscribe();
+      subscriptions.delete(USER_QUEUE_KEY);
     }
   };
 }
