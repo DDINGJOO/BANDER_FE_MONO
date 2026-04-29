@@ -447,12 +447,13 @@ export function SpaceReservationPage() {
       : null);
   const couponDiscount = calculateCouponDiscount(selectedCoupon, subtotalPrice);
   const totalPrice = Math.max(0, subtotalPrice - couponDiscount);
+  const couponMinPurchaseWarning = selectedCoupon?.minPurchaseWon != null && subtotalPrice < selectedCoupon.minPurchaseWon
+    ? `최소 주문 금액 ${selectedCoupon.minPurchaseWon.toLocaleString()}원 이상부터 사용할 수 있어요.`
+    : null;
   const couponDiscountLabel = selectedCoupon
     ? couponDiscount > 0
       ? `- ${couponDiscount.toLocaleString()}원`
-      : selectedCoupon.minPurchaseWon != null && subtotalPrice < selectedCoupon.minPurchaseWon
-        ? `최소 ${selectedCoupon.minPurchaseWon.toLocaleString()}원 이상`
-        : '- 0원'
+      : '- 0원'
     : '- 0원';
   const selectedTimeRange = (() => {
     if (selectedTimes.length === 0) {
@@ -1027,7 +1028,12 @@ export function SpaceReservationPage() {
               </div>
               <div>
                 <span>쿠폰</span>
-                <strong>{couponDiscountLabel}</strong>
+                <div className="space-reservation__payment-amount-stack">
+                  <strong>{couponDiscountLabel}</strong>
+                  {couponMinPurchaseWarning ? (
+                    <em className="space-reservation__payment-warning">{couponMinPurchaseWarning}</em>
+                  ) : null}
+                </div>
               </div>
             </div>
             <div className="space-reservation__payment-total">

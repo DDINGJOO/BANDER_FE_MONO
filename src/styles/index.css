@@ -32,6 +32,7 @@
 @import './notices.css';
 @import './support.css';
 @import './review-view-modal.css';
+@import './toast.css';
 
 .kakao-map__fallback {
   align-items: center;

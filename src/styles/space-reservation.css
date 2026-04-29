@@ -704,6 +704,24 @@
   border-bottom: 1px solid #cfd8e3;
 }
 
+.space-reservation__payment-amount-stack {
+  display: flex;
+  align-items: flex-end;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  text-align: right;
+}
+
+.space-reservation__payment-warning {
+  color: #e03131;
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 700;
+  line-height: 17px;
+  word-break: keep-all;
+}
+
 .space-reservation__payment-total {
   display: flex;
   align-items: center;
@@ -1252,6 +1270,14 @@
   font-size: 15px;
   font-weight: 500;
   line-height: 22px;
+}
+
+.space-reservation__coupon-min-purchase {
+  margin: -1px 0 0;
+  color: #e03131;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 17px;
 }
 
 .space-reservation__coupon-meta-note {

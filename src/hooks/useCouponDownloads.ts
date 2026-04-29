@@ -5,6 +5,7 @@ import { isMockMode } from '../config/publicEnv';
 import { loadAuthSession } from '../data/authSession';
 import { COUPON_ITEMS } from '../data/couponDownloadModal';
 import { OwnedCouponItemDto } from '../data/schemas/coupon';
+import { useToast } from '../components/ui/ToastProvider';
 
 const STORAGE_KEY = 'bander_fe_downloaded_coupon_ids';
 
@@ -29,6 +30,7 @@ export function useCouponDownloads() {
   const [ownedCoupons, setOwnedCoupons] = useState<OwnedCouponItemDto[]>([]);
   const [loadingOwnedCoupons, setLoadingOwnedCoupons] = useState(false);
   const [downloadError, setDownloadError] = useState<string | null>(null);
+  const { showToast } = useToast();
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(downloadedCouponIds));
@@ -58,21 +60,25 @@ export function useCouponDownloads() {
     setDownloadError(null);
     if (isMockMode()) {
       setDownloadedCouponIds((prev) => (prev.includes(id) ? prev : [...prev, id]));
+      showToast({ message: '쿠폰을 받았어요.', type: 'success' });
       return;
     }
     try {
       await claimCoupon(id);
       await refreshOwnedCoupons();
+      showToast({ message: '쿠폰을 받았어요.', type: 'success' });
     } catch (error) {
       if (error instanceof ApiError && error.code === 'COUPON-002') {
         await refreshOwnedCoupons();
+        showToast({ message: error.message || '이미 발급된 쿠폰입니다.', type: 'info' });
         return;
       }
       const message = error instanceof Error ? error.message : '쿠폰 다운로드에 실패했습니다.';
       setDownloadError(message);
+      showToast({ message, type: 'error' });
       throw error;
     }
-  }, [refreshOwnedCoupons]);
+  }, [refreshOwnedCoupons, showToast]);
 
   const allCouponsDownloaded = useMemo(
     () => COUPON_ITEMS.every((item) => downloadedCouponIds.includes(item.id)),

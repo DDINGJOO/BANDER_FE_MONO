@@ -58,6 +58,9 @@ function toCouponViewItem(coupon: CouponAvailableItemDto): CouponDownloadItem {
   return {
     id: coupon.id,
     metaNote: null,
+    minPurchaseLine: coupon.minPurchaseWon != null
+      ? `최소 주문 금액 ${coupon.minPurchaseWon.toLocaleString()}원`
+      : null,
     subtitle: coupon.title,
     terms: coupon.validUntilLabel ? [`기한 : ${coupon.validUntilLabel}까지`] : [],
     usageSummary: coupon.spaceSlug ? '사용가능 : 현재 선택한 룸' : null,
@@ -137,6 +140,9 @@ export function CouponDownloadModal({
                       <span className="space-reservation__coupon-value-main">{coupon.valueMain}</span>
                       <span className="space-reservation__coupon-value-suffix">할인</span>
                     </div>
+                    {coupon.minPurchaseLine ? (
+                      <p className="space-reservation__coupon-min-purchase">{coupon.minPurchaseLine}</p>
+                    ) : null}
                     {coupon.metaNote ? <p className="space-reservation__coupon-meta-note">{coupon.metaNote}</p> : null}
                   </div>
                   <div className="space-reservation__coupon-terms">
