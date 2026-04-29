@@ -24,7 +24,7 @@ jest.mock('../../api/community', () => {
 });
 
 jest.mock('../../api/chat', () => ({
-  createChatRoom: jest.fn(),
+  createPersonalChatRoom: jest.fn(),
 }));
 
 jest.mock('../../api/users', () => ({
@@ -33,7 +33,7 @@ jest.mock('../../api/users', () => ({
 
 const mockedFetchMyMiniFeed = jest.mocked(communityApi.fetchMyMiniFeed);
 const mockedFetchUserMiniFeed = jest.mocked(communityApi.fetchUserMiniFeed);
-const mockedCreateChatRoom = jest.mocked(chatApi.createChatRoom);
+const mockedCreateChatRoom = jest.mocked(chatApi.createPersonalChatRoom);
 const mockedGetPublicUserProfile = jest.mocked(usersApi.getPublicUserProfile);
 
 function renderPage(initialEntry = '/my-minifeed') {

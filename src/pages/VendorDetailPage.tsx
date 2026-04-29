@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { createChatRoom } from '../api/chat';
+import { createVendorChatRoom } from '../api/chat';
 import { HomeFooter } from '../components/home/HomeFooter';
 import { HomeHeader } from '../components/home/HomeHeader';
 import { useGuestGate } from '../components/home/GuestGateProvider';
 import { KakaoMapView } from '../components/map/KakaoMapView';
 import { BanderUsagePolicyModal } from '../components/space/BanderUsagePolicyModal';
-import { ChevronIcon, HeaderChatIcon, StarIcon } from '../components/shared/Icons';
+import { ChevronIcon, HeaderChatIcon, StarEmptyIcon, StarIcon } from '../components/shared/Icons';
 import { VendorBasicInfoSection } from '../components/vendor/VendorBasicInfoSection';
 import { loadAuthSession } from '../data/authSession';
 import { useVendorDetail } from '../hooks/useVendorDetail';
@@ -30,12 +30,7 @@ function VendorStarRow({ rating }: { rating: number }) {
       ) : null}
       {Array.from({ length: numEmpty }, (_, i) => (
         <span className="vendor-detail__star-empty" key={`e-${i}`} aria-hidden="true">
-          <svg className="home-meta__icon home-meta__icon--star" fill="none" viewBox="0 0 14 14">
-            <path
-              d="M7 1.65L8.64 4.98L12.32 5.52L9.66 8.1L10.28 11.75L7 10.03L3.72 11.75L4.34 8.1L1.68 5.52L5.36 4.98L7 1.65Z"
-              fill="#E8EBF0"
-            />
-          </svg>
+          <StarEmptyIcon />
         </span>
       ))}
       <span className="vendor-detail__star-score">{rating.toFixed(1)}</span>
@@ -116,7 +111,7 @@ export function VendorDetailPage() {
               }
               if (vendor.ownerUserId) {
                 try {
-                  const room = await createChatRoom({
+                  const room = await createVendorChatRoom({
                     targetUserId: vendor.ownerUserId,
                     vendorId: vendor.vendorId ?? undefined,
                     vendorSlug: vendor.slug ?? undefined,

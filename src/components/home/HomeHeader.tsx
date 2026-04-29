@@ -10,7 +10,6 @@ import { BrandMark } from '../shared/BrandMark';
 import {
   ChevronIcon,
   HeaderAlarmIcon,
-  HeaderCartIcon,
   HeaderChatIcon,
   HeaderWishlistIcon,
   SearchIcon,
@@ -333,9 +332,6 @@ export function HomeHeader(props: HomeHeaderProps) {
 
         {authenticated ? (
           <div className="home-header__auth-actions">
-            <button aria-label="장바구니" className="home-header__icon-button home-header__icon-button--cart" type="button">
-              <HeaderCartIcon />
-            </button>
             <button aria-label="찜 목록" className="home-header__icon-button" type="button">
               <HeaderWishlistIcon />
             </button>
@@ -345,7 +341,7 @@ export function HomeHeader(props: HomeHeaderProps) {
               className={`home-header__icon-button${chatPageActive ? ' home-header__icon-button--chat-on' : ''}`}
               to="/chat"
             >
-              <HeaderChatIcon />
+              <HeaderChatIcon active={chatPageActive} />
             </Link>
             <Link
               aria-label={
@@ -354,7 +350,7 @@ export function HomeHeader(props: HomeHeaderProps) {
               className="home-header__icon-button home-header__icon-button--alert"
               to="/notifications"
             >
-              <HeaderAlarmIcon />
+              <HeaderAlarmIcon hasUnread={unreadCount > 0} />
               {unreadCount > 0 ? (
                 <span aria-hidden="true" className="home-header__icon-badge">
                   {formatUnreadBadge(unreadCount)}

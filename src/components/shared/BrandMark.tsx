@@ -1,6 +1,8 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 
+const LOGO_SRC = `${process.env.PUBLIC_URL ?? ''}/logo.svg`;
+
 export function BrandMark({ compact = false }: { compact?: boolean }) {
   return (
     <Link
@@ -8,8 +10,7 @@ export function BrandMark({ compact = false }: { compact?: boolean }) {
       className={`brand-mark brand-mark--link ${compact ? 'brand-mark--compact' : ''}`}
       to="/"
     >
-      <span className="brand-mark__text">bander</span>
-      <span aria-hidden="true" className="brand-mark__dot" />
+      <img alt="bander" className="brand-mark__image" src={LOGO_SRC} />
     </Link>
   );
 }

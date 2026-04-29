@@ -9,7 +9,7 @@ import {
   type MiniFeedSort,
   type MiniFeedTab,
 } from '../api/community';
-import { createChatRoom } from '../api/chat';
+import { createPersonalChatRoom } from '../api/chat';
 import { ApiError } from '../api/client';
 import { getPublicUserProfile, type PublicUserProfile } from '../api/users';
 import { HomeFooter } from '../components/home/HomeFooter';
@@ -376,7 +376,7 @@ export function MyMiniFeedPage() {
     }
 
     try {
-      const room = await createChatRoom({ targetUserId: chatTargetUserId });
+      const room = await createPersonalChatRoom({ targetUserId: chatTargetUserId });
       navigate(`/chat?t=${encodeURIComponent(String(room.chatRoomId))}`);
     } catch (error) {
       setErrorMessage(getErrorMessage(error, '채팅방을 만들지 못했습니다.'));

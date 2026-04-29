@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { createChatRoom } from '../api/chat';
+import { createVendorChatRoom } from '../api/chat';
 import { getAvailableCoupons } from '../api/coupons';
 import { fetchVendorDetail } from '../api/spaces';
 import { getMyAccount } from '../api/users';
@@ -578,7 +578,7 @@ export function SpaceDetailPage() {
                         if (vendorSlug) {
                           try {
                             const vendorDto = await fetchVendorDetail(vendorSlug);
-                            const room = await createChatRoom({
+                            const room = await createVendorChatRoom({
                               targetUserId: vendorDto.ownerUserId,
                               vendorId: vendorDto.vendorId,
                               vendorSlug,

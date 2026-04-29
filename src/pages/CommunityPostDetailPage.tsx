@@ -35,94 +35,30 @@ import type {
   CommunityDetailCommentAction,
   CommunityDetailCommentThread,
 } from '../data/communityPostDetail';
+import { ReactComponent as LikeOutlineSvg } from '../assets/icons/mobile/mobile-like-24x24.svg';
+import { ReactComponent as LikeOnSvg } from '../assets/icons/mobile/mobile-like-on-24x24.svg';
+import { ReactComponent as CommentSvg } from '../assets/icons/mobile/mobile-comment-24x24.svg';
+import { ReactComponent as SendSvg } from '../assets/icons/mobile/mobile-send.svg';
+import { ReactComponent as SirenSvg } from '../assets/icons/mobile/mobile-siren.svg';
 
 function LikeGlyph24Outline() {
-  return (
-    <svg aria-hidden="true" fill="none" height="32" viewBox="0 0 32 32" width="32">
-      <path
-        d="M16 27.1 6.15 18.02C3.85 15.9 3.5 12.52 5.3 10.08c1.72-2.34 5.06-2.78 7.48-.98L16 11.5l3.22-2.4c2.42-1.8 5.76-1.36 7.48.98 1.8 2.44 1.45 5.82-.85 7.94L16 27.1Z"
-        strokeLinecap="round"
-        stroke="currentColor"
-        strokeLinejoin="round"
-        strokeWidth="2"
-      />
-    </svg>
-  );
+  return <LikeOutlineSvg aria-hidden="true" />;
 }
 
 function LikeGlyph24On() {
-  return (
-    <svg aria-hidden="true" fill="none" height="32" viewBox="0 0 32 32" width="32">
-      <path
-        className="community-post-detail__like-fill"
-        d="M16 27.1 6.15 18.02C3.85 15.9 3.5 12.52 5.3 10.08c1.72-2.34 5.06-2.78 7.48-.98L16 11.5l3.22-2.4c2.42-1.8 5.76-1.36 7.48.98 1.8 2.44 1.45 5.82-.85 7.94L16 27.1Z"
-      />
-      <path
-        d="M9.4 11.4c1.02-.72 2.34-.58 3.3.22"
-        stroke="#fff"
-        strokeLinecap="round"
-        strokeWidth="1.8"
-      />
-    </svg>
-  );
+  return <LikeOnSvg aria-hidden="true" className="community-post-detail__like-fill" />;
 }
 
 function CommentGlyph24() {
-  return (
-    <svg aria-hidden="true" fill="none" height="32" viewBox="0 0 32 32" width="32">
-      <path
-        d="M7.5 8.2h17c1.3 0 2.35 1.05 2.35 2.35v8.7c0 1.3-1.05 2.35-2.35 2.35h-7.08l-5.26 4.04c-.7.54-1.72.04-1.72-.84v-3.2H7.5a2.35 2.35 0 0 1-2.35-2.35v-8.7C5.15 9.25 6.2 8.2 7.5 8.2Z"
-        fill="currentColor"
-        opacity="0.1"
-      />
-      <path
-        d="M7.5 8.2h17c1.3 0 2.35 1.05 2.35 2.35v8.7c0 1.3-1.05 2.35-2.35 2.35h-7.08l-5.26 4.04c-.7.54-1.72.04-1.72-.84v-3.2H7.5a2.35 2.35 0 0 1-2.35-2.35v-8.7C5.15 9.25 6.2 8.2 7.5 8.2Z"
-        strokeLinecap="round"
-        stroke="currentColor"
-        strokeLinejoin="round"
-        strokeWidth="2"
-      />
-      <path d="M11.2 15.1h9.6M11.2 18.1h5.6" stroke="currentColor" strokeLinecap="round" strokeWidth="1.8" />
-    </svg>
-  );
+  return <CommentSvg aria-hidden="true" />;
 }
 
 function SendGlyph24() {
-  return (
-    <svg aria-hidden="true" fill="none" height="24" viewBox="0 0 24 24" width="24">
-      <path
-        d="M4.4 12.2 19.2 5.4c.5-.2.8.4.4.8l-6.3 12.4c-.2.4-.8.4-1-.1l-1.9-5.7-5.1-1.6c-.5-.1-.6-.8-.1-1z"
-        stroke="currentColor"
-        strokeLinejoin="round"
-        strokeWidth="1.3"
-      />
-    </svg>
-  );
+  return <SendSvg aria-hidden="true" />;
 }
 
 function SirenGlyph30() {
-  return (
-    <svg aria-hidden="true" fill="none" height="30" viewBox="0 0 30 30" width="30">
-      <path
-        d="M15 4v3M15 23v3M7.2 7.2l2.1 2.1M20.7 20.7l2.1 2.1M5 15h3M22 15h3M7.2 22.8l2.1-2.1M20.7 9.3l2.1-2.1"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeWidth="1.4"
-      />
-      <path
-        d="M11.5 15a3.5 3.5 0 0 0 7 0 3.5 3.5 0 0 0-7 0Z"
-        stroke="currentColor"
-        strokeLinejoin="round"
-        strokeWidth="1.4"
-      />
-      <path
-        d="M12 21h6l-.6 2.3a1 1 0 0 1-1 .7h-2.8a1 1 0 0 1-1-.7L12 21Z"
-        stroke="currentColor"
-        strokeLinejoin="round"
-        strokeWidth="1.3"
-      />
-    </svg>
-  );
+  return <SirenSvg aria-hidden="true" />;
 }
 
 function AuthorChevron16() {

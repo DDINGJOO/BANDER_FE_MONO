@@ -28,7 +28,11 @@
     "build": "react-scripts build",
     "test": "react-scripts test",
     "test:e2e": "playwright test",
-    "eject": "react-scripts eject"
+    "eject": "react-scripts eject",
+    "figma:sync": "node scripts/figma/sync.mjs",
+    "figma:find": "node scripts/figma/find.mjs",
+    "figma:inspect": "node scripts/figma/inspect.mjs",
+    "figma:catalog": "node scripts/figma/catalog.mjs"
   },
   "eslintConfig": {
     "extends": [

@@ -73,8 +73,20 @@ export type PageResponse<T> = {
   empty: boolean;
 };
 
+/** @deprecated use CreatePersonalChatRoomRequest / CreateVendorChatRoomRequest. */
 export type CreateChatRoomRequest = {
   targetUserId: string;
+  vendorId?: string;
+  vendorSlug?: string;
+};
+
+export type CreatePersonalChatRoomRequest = {
+  targetUserId: string;
+};
+
+export type CreateVendorChatRoomRequest = {
+  targetUserId: string;
+  /** vendorId / vendorSlug 둘 중 하나는 반드시 채워서 보내야 함 (백엔드 validation). */
   vendorId?: string;
   vendorSlug?: string;
 };
@@ -99,8 +111,22 @@ export type SendMessageRequest = {
 
 // --- Functions ---
 
+/** @deprecated path 단계에서 PERSONAL/VENDOR 의도가 모호.
+ *  createPersonalChatRoom / createVendorChatRoom 사용.
+ */
 export function createChatRoom(req: CreateChatRoomRequest) {
   return postJson<ChatRoomResponse>('/api/v1/chat/rooms', req);
+}
+
+export function createPersonalChatRoom(req: CreatePersonalChatRoomRequest) {
+  return postJson<ChatRoomResponse>('/api/v1/chat/rooms/personal', req);
+}
+
+export function createVendorChatRoom(req: CreateVendorChatRoomRequest) {
+  if (!req.vendorId && !req.vendorSlug) {
+    throw new Error('createVendorChatRoom: vendorId or vendorSlug required');
+  }
+  return postJson<ChatRoomResponse>('/api/v1/chat/rooms/vendor', req);
 }
 
 export function getMyChatRooms(params: { page?: number; size?: number; type?: ChatRoomType } = {}) {
