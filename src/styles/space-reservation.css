@@ -1456,6 +1456,15 @@
   line-height: 20px;
 }
 
+.space-reservation__result-error-code {
+  margin: -8px 0 16px;
+  color: #a8afb9;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 16px;
+  text-align: center;
+}
+
 .space-reservation__result-summary {
   display: flex;
   align-items: center;

@@ -23,6 +23,7 @@ import type { SpaceReservationFieldDto } from '../api/spaces';
 import { useSagaPolling } from '../hooks/useSagaPolling';
 import { isMockMode, getTossPaymentsClientKey } from '../config/publicEnv';
 import { requestTossPayment } from '../utils/tossPayments';
+import { DEFAULT_PAYMENT_FAILURE, normalizePaymentFailure, type PaymentFailureInfo } from '../utils/paymentFailure';
 import tossPaymentsLogo from '../assets/brand/toss-payments-logo.png';
 
 /** Figma 6225:45288 — 시간 선택 카드 캘린더 아이콘 */
@@ -72,6 +73,22 @@ const RESERVATION_OPTION_ITEMS = [
 ] as const;
 
 type PaymentResultState = 'failed' | 'success' | null;
+
+function buildPaymentRedirectUrl(path: '/payment/success' | '/payment/fail', params: {
+  date: string;
+  roomId: string | null;
+  slug?: string;
+}) {
+  const url = new URL(path, window.location.origin);
+  if (params.slug) {
+    url.searchParams.set('roomSlug', params.slug);
+  }
+  if (params.roomId) {
+    url.searchParams.set('roomId', params.roomId);
+  }
+  url.searchParams.set('date', params.date);
+  return url.toString();
+}
 
 function startOfLocalDay(date = new Date()) {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate());
@@ -207,6 +224,7 @@ export function SpaceReservationPage() {
   const [couponError, setCouponError] = useState<string | null>(null);
   const { downloadCoupon, downloadedCouponIds, downloadError } = useCouponDownloads();
   const [paymentResult, setPaymentResult] = useState<PaymentResultState>(null);
+  const [paymentFailure, setPaymentFailure] = useState<PaymentFailureInfo>(DEFAULT_PAYMENT_FAILURE);
   const [sagaId, setSagaId] = useState<string | null>(null);
   const [sagaPending, setSagaPending] = useState(false);
   // success 가 한번 set 되면 failed 로 덮어쓰기 거부 — 토스 SDK 의 redirect-induced
@@ -216,6 +234,10 @@ export function SpaceReservationPage() {
   const setPaymentResultSafe = useCallback((next: PaymentResultState) => {
     setPaymentResult((prev) => (prev === 'success' && next === 'failed' ? prev : next));
   }, []);
+  const showPaymentFailure = useCallback((error: unknown, fallback?: string) => {
+    setPaymentFailure(normalizePaymentFailure(error, fallback));
+    setPaymentResultSafe('failed');
+  }, [setPaymentResultSafe]);
   // 결과 모달 transition 정책 — 결제 응답이 도착해도 1초 동안 최종값 안정화 후 modal 표시.
   // 이 1초 안에 paymentResult 가 다른 값으로 바뀌면 timer 리셋 → 마지막 값만 사용자에게 노출.
   // success/failed/null 모두 동일 패턴이라 여러 microtask race (failed→success, success→failed)
@@ -253,6 +275,7 @@ export function SpaceReservationPage() {
   const detailRoomId =
     detail && 'id' in detail && typeof detail.id === 'string' ? detail.id : null;
   const roomId = roomIdParam ?? detailRoomId;
+  const roomDetailPath = slug ? `/spaces/${slug}` : '/';
   const reservationFields = useMemo(() => {
     const rawFields = ((detail as { reservationFields?: SpaceReservationFieldDto[] } | null)?.reservationFields ?? []);
     return rawFields
@@ -625,11 +648,11 @@ export function SpaceReservationPage() {
       }
 
       await proceedWithLegacyBooking(result.booking);
-    } catch {
+    } catch (error) {
       // saga lane 으로 갔다가 후처리 단계에서 throw 시 saga 는 이미 background 에서
       // 진행 중일 수 있음. saga COMPLETED 가 도착해 success 로 set 된 뒤 이 catch 가
       // failed 로 덮어쓰면 깜빡임 발생. setPaymentResultSafe 로 success-우선 guard 적용.
-      setPaymentResultSafe('failed');
+      showPaymentFailure(error, '예약을 생성하지 못했습니다. 입력한 예약 정보를 다시 확인해주세요.');
     }
   };
 
@@ -643,20 +666,26 @@ export function SpaceReservationPage() {
 
     const clientKey = getTossPaymentsClientKey();
     if (!clientKey || !booking.orderId) {
-      setPaymentResultSafe('failed');
+      showPaymentFailure({ code: 'PAYMENT_CONFIG_MISSING' });
       return;
     }
 
     sessionStorage.setItem('bander_pending_booking_id', booking.bookingId);
+    sessionStorage.setItem('bander_pending_room_slug', slug ?? '');
+    sessionStorage.setItem('bander_pending_room_id', roomId ?? '');
 
-    await requestTossPayment({
-      clientKey,
-      orderId: booking.orderId,
-      orderName: reservationSummary.title + ' 예약',
-      amount: paidAmount,
-      successUrl: `${window.location.origin}/payment/success`,
-      failUrl: `${window.location.origin}/payment/fail`,
-    });
+    try {
+      await requestTossPayment({
+        clientKey,
+        orderId: booking.orderId,
+        orderName: reservationSummary.title + ' 예약',
+        amount: paidAmount,
+        successUrl: buildPaymentRedirectUrl('/payment/success', { date: dateParam, roomId, slug }),
+        failUrl: buildPaymentRedirectUrl('/payment/fail', { date: dateParam, roomId, slug }),
+      });
+    } catch (error) {
+      showPaymentFailure(error);
+    }
   };
 
   const sagaState = useSagaPolling(sagaPending ? sagaId : null);
@@ -679,20 +708,22 @@ export function SpaceReservationPage() {
         // saga 가 이미 진행되어 server-side 에서 결제 완료된 후 polling 의 다음 tick
         // 에서 success 가 set 될 가능성. setPaymentResultSafe 로 깜빡임 방지.
         setSagaPending(false);
-        setPaymentResultSafe('failed');
+        showPaymentFailure({ code: 'PAYMENT_CONFIG_MISSING' });
         return;
       }
       if (data.bookingId) {
         sessionStorage.setItem('bander_pending_booking_id', data.bookingId);
       }
+      sessionStorage.setItem('bander_pending_room_slug', slug ?? '');
+      sessionStorage.setItem('bander_pending_room_id', roomId ?? '');
       void requestTossPayment({
         clientKey,
         orderId: data.orderId,
         orderName: reservationSummary.title + ' 예약',
         amount: data.amount,
         customerKey: data.customerKey,
-        successUrl: `${window.location.origin}/payment/success`,
-        failUrl: `${window.location.origin}/payment/fail`,
+        successUrl: buildPaymentRedirectUrl('/payment/success', { date: dateParam, roomId, slug }),
+        failUrl: buildPaymentRedirectUrl('/payment/fail', { date: dateParam, roomId, slug }),
       }).catch((err) => {
         // 토스 SDK reject 는 두 가지 흐름이 섞임:
         //   (1) 결제 완료 후 successUrl 로 redirect 직전 (server-side saga 가 곧
@@ -707,13 +738,13 @@ export function SpaceReservationPage() {
         // eslint-disable-next-line no-console
         console.warn('[toss] requestPayment rejected', err);
         setSagaPending(false);
-        setPaymentResultSafe('failed');
+        showPaymentFailure(err);
       });
     }
 
     if (sagaState.timedOut) {
       setSagaPending(false);
-      setPaymentResultSafe('failed');
+      showPaymentFailure({ code: 'PAYMENT_TIMEOUT' });
       return;
     }
     if (sagaState.status === 'COMPLETED') {
@@ -728,9 +759,9 @@ export function SpaceReservationPage() {
     }
     if (sagaState.status === 'FAILED') {
       setSagaPending(false);
-      setPaymentResultSafe('failed');
+      showPaymentFailure({ code: data?.errorCode ?? 'PROVIDER_ERROR' });
     }
-  }, [sagaPending, sagaState.status, sagaState.timedOut, sagaState.data, reservationSummary.title, setPaymentResultSafe]);
+  }, [dateParam, roomId, sagaPending, sagaState.status, sagaState.timedOut, sagaState.data, reservationSummary.title, showPaymentFailure, slug]);
 
   const handleDownloadCoupon = async (couponId: string) => {
     if (!isAuthenticated) {
@@ -1214,8 +1245,11 @@ export function SpaceReservationPage() {
                 <p className="space-reservation__result-desc">
                   {paymentResult === 'success'
                     ? '업체의 승인 후 공간 사용 가능합니다.'
-                    : '사유 : 결제 금액 부족'}
+                    : paymentFailure.message}
                 </p>
+                {paymentResult === 'failed' && paymentFailure.code ? (
+                  <p className="space-reservation__result-error-code">오류 코드: {paymentFailure.code}</p>
+                ) : null}
                 <div className="space-reservation__result-summary">
                   <img alt="" src={reservationSummary.image} />
                   <div>
@@ -1233,10 +1267,10 @@ export function SpaceReservationPage() {
                   <button onClick={() => navigate('/')} type="button">홈으로</button>
                   <button
                     className="space-reservation__result-primary"
-                    onClick={() => navigate(paymentResult === 'success' ? '/search?q=합주' : `/spaces/${slug}/reserve?date=${dateParam}${roomId ? `&roomId=${roomId}` : ''}`)}
+                    onClick={() => navigate(paymentResult === 'success' ? '/my-reservations' : roomDetailPath)}
                     type="button"
                   >
-                    {paymentResult === 'success' ? '예약현황 이동' : '다시 예약하기'}
+                    {paymentResult === 'success' ? '예약현황 이동' : '확인'}
                   </button>
                 </div>
               </div>

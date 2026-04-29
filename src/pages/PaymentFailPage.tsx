@@ -1,7 +1,10 @@
 import React from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { HomeHeader } from '../components/home/HomeHeader';
+import { ErrorIcon } from '../components/shared/Icons';
 import { loadAuthSession } from '../data/authSession';
+import { paymentFailureFromSearchParams, roomDetailPathFromPaymentContext } from '../utils/paymentFailure';
+import '../styles/payment-result.css';
 
 export function PaymentFailPage() {
   const navigate = useNavigate();
@@ -9,43 +12,35 @@ export function PaymentFailPage() {
   const authSession = loadAuthSession();
   const isAuthenticated = Boolean(authSession);
 
-  const errorCode = searchParams.get('code') ?? '';
-  const errorMessage = searchParams.get('message') ?? '결제가 취소되었거나 실패했습니다.';
+  const failure = paymentFailureFromSearchParams(searchParams);
+  const roomDetailPath = roomDetailPathFromPaymentContext(searchParams);
 
   return (
-    <main className="space-reservation-page">
+    <main className="payment-result">
       <HomeHeader authenticated={isAuthenticated} onGuestCta={() => navigate('/login')} variant="icon" />
-      <section className="space-reservation__shell" style={{ padding: '40px 20px', textAlign: 'center' }}>
-        <div style={{
-          width: 64, height: 64, borderRadius: '50%', background: '#ef4444',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          margin: '0 auto 16px', color: '#fff', fontSize: 32
-        }}>×</div>
-        <h2>결제 실패</h2>
-        <p style={{ color: '#888', marginTop: 8 }}>{errorMessage}</p>
-        {errorCode && (
-          <p style={{ color: '#aaa', fontSize: 12, marginTop: 4 }}>오류 코드: {errorCode}</p>
-        )}
-        <div style={{ display: 'flex', gap: 12, justifyContent: 'center', marginTop: 24 }}>
+      <section className="payment-result__shell">
+        <span aria-hidden="true" className="payment-result__icon payment-result__icon--error">
+          <ErrorIcon />
+        </span>
+        <h2 className="payment-result__title">결제 실패</h2>
+        <p className="payment-result__description">{failure.message}</p>
+        {failure.code ? (
+          <p className="payment-result__error-code">오류 코드: {failure.code}</p>
+        ) : null}
+        <div className="payment-result__actions">
           <button
+            className="payment-result__button payment-result__button--secondary"
             onClick={() => navigate('/')}
-            style={{
-              padding: '12px 24px', borderRadius: 8, border: '1px solid #ddd',
-              background: '#fff', cursor: 'pointer'
-            }}
             type="button"
           >
             홈으로
           </button>
           <button
-            onClick={() => navigate(-1)}
-            style={{
-              padding: '12px 24px', borderRadius: 8, border: 'none',
-              background: '#7c3aed', color: '#fff', cursor: 'pointer'
-            }}
+            className="payment-result__button payment-result__button--primary"
+            onClick={() => navigate(roomDetailPath)}
             type="button"
           >
-            다시 예약하기
+            확인
           </button>
         </div>
       </section>
