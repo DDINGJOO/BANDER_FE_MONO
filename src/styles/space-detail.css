@@ -233,6 +233,11 @@
   cursor: pointer;
 }
 
+.space-detail__calendar-month button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
 .space-detail__calendar-weekdays,
 .space-detail__calendar-grid {
   display: grid;
@@ -273,12 +278,15 @@
 }
 
 .space-detail__calendar-day:disabled {
+  color: #c4c9d4;
   cursor: default;
 }
 
 .space-detail__calendar-day--selected {
   border-radius: 10px;
-  background: #f8f9fc;
+  background: var(--color-black);
+  color: var(--color-white);
+  font-weight: 700;
 }
 
 .space-detail__calendar-day em {
@@ -302,6 +310,11 @@
   padding: 2px 6px;
   border-radius: 999px;
   background: var(--color-main-yellow);
+  color: var(--color-white);
+}
+
+.space-detail__calendar-day--selected em:not(.space-detail__calendar-day-note) {
+  background: rgb(255 255 255 / 18%);
   color: var(--color-white);
 }
 

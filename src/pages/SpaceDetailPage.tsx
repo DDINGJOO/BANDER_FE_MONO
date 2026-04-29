@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { createVendorChatRoom } from '../api/chat';
 import { getAvailableCoupons } from '../api/coupons';
@@ -22,49 +22,82 @@ import { isMockMode } from '../config/publicEnv';
 import type { CouponAvailableItemDto } from '../data/schemas/coupon';
 
 type DetailCalendarDay = {
+  date: Date;
   day: number;
-  highlight?: 'disabled' | 'today';
-  muted?: boolean;
+  disabled: boolean;
+  key: string;
+  muted: boolean;
+  selected: boolean;
+  today: boolean;
 };
 
 type SpaceDetailSubTab = 'basic' | 'detail' | 'reviews';
+type CalendarMonth = { month: number; year: number };
 
 /** `.space-detail__section-nav--sticky` top(79px) + 탭바(패딩·본문·보더) — 제목이 스티키 바로 아래 보이도록 */
 const SPACE_DETAIL_SECTION_SCROLL_TOP_OFFSET_PX = 130;
 
-const DETAIL_CALENDAR_DAYS: DetailCalendarDay[] = [
-  { day: 1, muted: true },
-  { day: 2, muted: true },
-  { day: 3, muted: true },
-  { day: 4, muted: true },
-  { day: 5, muted: true },
-  { day: 6, muted: true },
-  { day: 7, muted: true },
-  { day: 8, muted: true },
-  { day: 9, muted: true },
-  { day: 10, muted: true },
-  { day: 11, muted: true },
-  { day: 12, muted: true },
-  { day: 13, highlight: 'today' },
-  { day: 14 },
-  { day: 15, highlight: 'disabled' },
-  { day: 16 },
-  { day: 17 },
-  { day: 18 },
-  { day: 19 },
-  { day: 20 },
-  { day: 21 },
-  { day: 22 },
-  { day: 23 },
-  { day: 24 },
-  { day: 25 },
-  { day: 26 },
-  { day: 27 },
-  { day: 28 },
-  { day: 29 },
-  { day: 30 },
-  { day: 31 },
-];
+const DETAIL_CALENDAR_WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'] as const;
+
+function startOfLocalDay(date = new Date()) {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+}
+
+function toCalendarMonth(date: Date): CalendarMonth {
+  return { month: date.getMonth(), year: date.getFullYear() };
+}
+
+function addCalendarMonths(month: CalendarMonth, delta: number): CalendarMonth {
+  const next = new Date(month.year, month.month + delta, 1);
+  return toCalendarMonth(next);
+}
+
+function toLocalDateParam(date: Date) {
+  return [
+    date.getFullYear(),
+    String(date.getMonth() + 1).padStart(2, '0'),
+    String(date.getDate()).padStart(2, '0'),
+  ].join('-');
+}
+
+function parseLocalDateParam(value: string) {
+  const [year, month, day] = value.split('-').map(Number);
+  return new Date(year, month - 1, day);
+}
+
+function formatFullDateLabel(date: Date) {
+  return `${date.getFullYear()}년 ${date.getMonth() + 1}월 ${date.getDate()}일 (${DETAIL_CALENDAR_WEEKDAYS[date.getDay()]})`;
+}
+
+function formatShortDateLabel(date: Date) {
+  return `${String(date.getMonth() + 1).padStart(2, '0')}.${String(date.getDate()).padStart(2, '0')} (${DETAIL_CALENDAR_WEEKDAYS[date.getDay()]})`;
+}
+
+function buildDetailCalendarDays(
+  calendarMonth: CalendarMonth,
+  today: Date,
+  selectedDateKey: string,
+): DetailCalendarDay[] {
+  const firstDayOfMonth = new Date(calendarMonth.year, calendarMonth.month, 1);
+  const gridStart = new Date(calendarMonth.year, calendarMonth.month, 1 - firstDayOfMonth.getDay());
+  const todayKey = toLocalDateParam(today);
+
+  return Array.from({ length: 42 }, (_, index) => {
+    const date = new Date(gridStart);
+    date.setDate(gridStart.getDate() + index);
+    const key = toLocalDateParam(date);
+
+    return {
+      date,
+      day: date.getDate(),
+      disabled: date < today,
+      key,
+      muted: date.getMonth() !== calendarMonth.month,
+      selected: key === selectedDateKey,
+      today: key === todayKey,
+    };
+  });
+}
 
 function DetailPolicyBlock({ body, title, imageUrl }: { body: string; title: string; imageUrl?: string | null }) {
   const lines = body
@@ -105,8 +138,11 @@ export function SpaceDetailPage() {
   const [verifiedPhoneMasked, setVerifiedPhoneMasked] = useState('');
   const [phoneStatusLoading, setPhoneStatusLoading] = useState(false);
   const [phoneStatusError, setPhoneStatusError] = useState<string | null>(null);
+  const today = useMemo(() => startOfLocalDay(), []);
+  const todayKey = useMemo(() => toLocalDateParam(today), [today]);
+  const [calendarMonth, setCalendarMonth] = useState<CalendarMonth>(() => toCalendarMonth(today));
+  const [selectedBookingDateKey, setSelectedBookingDateKey] = useState(() => todayKey);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
-  const [selectedBookingDay, setSelectedBookingDay] = useState<number | null>(null);
   const [activeSubTab, setActiveSubTab] = useState<SpaceDetailSubTab>('basic');
   const [vendorOperatingOpen, setVendorOperatingOpen] = useState(false);
   const [summaryOperatingOpen, setSummaryOperatingOpen] = useState(false);
@@ -220,9 +256,38 @@ export function SpaceDetailPage() {
     window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
   };
 
-  const selectedBookingDateLabel = selectedBookingDay
-    ? `${new Date(2025, 7, selectedBookingDay).getFullYear()}년 8월 ${selectedBookingDay}일 (${['일', '월', '화', '수', '목', '금', '토'][new Date(2025, 7, selectedBookingDay).getDay()]})`
-    : '날짜를 선택해주세요';
+  const selectedBookingDate = useMemo(
+    () => parseLocalDateParam(selectedBookingDateKey),
+    [selectedBookingDateKey],
+  );
+  const calendarDays = useMemo(
+    () => buildDetailCalendarDays(calendarMonth, today, selectedBookingDateKey),
+    [calendarMonth, selectedBookingDateKey, today],
+  );
+  const canMoveCalendarPrev =
+    calendarMonth.year > today.getFullYear() ||
+    (calendarMonth.year === today.getFullYear() && calendarMonth.month > today.getMonth());
+  const detailRoomId =
+    detail && 'id' in detail && typeof detail.id === 'string' ? detail.id : null;
+  const selectedBookingDateLabel = formatFullDateLabel(selectedBookingDate);
+  const reserveParams = new URLSearchParams({ date: selectedBookingDateKey });
+  if (detailRoomId) {
+    reserveParams.set('roomId', detailRoomId);
+  }
+
+  const handleCalendarMonthChange = (delta: number) => {
+    setCalendarMonth((current) => addCalendarMonths(current, delta));
+  };
+
+  const handleCalendarDaySelect = (item: DetailCalendarDay) => {
+    if (item.disabled) {
+      return;
+    }
+    setSelectedBookingDateKey(item.key);
+    if (item.muted) {
+      setCalendarMonth(toCalendarMonth(item.date));
+    }
+  };
 
   if (loading) {
     return (
@@ -707,44 +772,50 @@ export function SpaceDetailPage() {
                 </div>
                 <div className="space-detail__booking-header">
                   <h2>날짜 선택</h2>
-                  <p className={selectedBookingDay ? 'space-detail__booking-date-value' : ''}>
+                  <p className="space-detail__booking-date-value">
                     {selectedBookingDateLabel}
                   </p>
                 </div>
                 <div className="space-detail__calendar-month">
-                  <button type="button">‹</button>
-                  <span>2025년 8월</span>
-                  <button type="button">›</button>
+                  <button
+                    aria-label="이전 달"
+                    disabled={!canMoveCalendarPrev}
+                    onClick={() => handleCalendarMonthChange(-1)}
+                    type="button"
+                  >
+                    ‹
+                  </button>
+                  <span>{calendarMonth.year}년 {calendarMonth.month + 1}월</span>
+                  <button
+                    aria-label="다음 달"
+                    onClick={() => handleCalendarMonthChange(1)}
+                    type="button"
+                  >
+                    ›
+                  </button>
                 </div>
                 <div className="space-detail__calendar-weekdays">
-                  {['일', '월', '화', '수', '목', '금', '토'].map((weekday) => (
+                  {DETAIL_CALENDAR_WEEKDAYS.map((weekday) => (
                     <span key={weekday}>{weekday}</span>
                   ))}
                 </div>
                 <div className="space-detail__calendar-grid">
-                  {DETAIL_CALENDAR_DAYS.map((item) => (
+                  {calendarDays.map((item) => (
                     <button
-                      className={`space-detail__calendar-day ${item.muted ? 'space-detail__calendar-day--muted' : ''} ${selectedBookingDay === item.day ? 'space-detail__calendar-day--selected' : ''}`}
-                      disabled={item.highlight === 'disabled' || item.muted}
-                      key={item.day}
-                      onClick={() => setSelectedBookingDay(item.day)}
+                      className={`space-detail__calendar-day ${item.muted ? 'space-detail__calendar-day--muted' : ''} ${item.selected ? 'space-detail__calendar-day--selected' : ''} ${item.today ? 'space-detail__calendar-day--today' : ''}`}
+                      disabled={item.disabled}
+                      key={item.key}
+                      onClick={() => handleCalendarDaySelect(item)}
                       type="button"
                     >
                       <span>{item.day}</span>
-                      {item.highlight === 'today' ? <em>오늘</em> : null}
-                      {item.highlight === 'disabled' ? <em className="space-detail__calendar-day-note">예약불가</em> : null}
+                      {item.today ? <em>오늘</em> : null}
                     </button>
                   ))}
                 </div>
                 <button
                   className="space-detail__calendar-submit"
-                  disabled={!selectedBookingDay}
-                  onClick={() =>
-                    selectedBookingDay &&
-                    navigate(
-                      `/spaces/${slug}/reserve?date=2025-08-${String(selectedBookingDay).padStart(2, '0')}${detail && 'roomId' in detail && detail.roomId ? `&roomId=${detail.roomId}` : ''}`
-                    )
-                  }
+                  onClick={() => navigate(`/spaces/${slug}/reserve?${reserveParams.toString()}`)}
                   type="button"
                 >
                   선택완료
@@ -752,7 +823,7 @@ export function SpaceDetailPage() {
               </>
             ) : (
               <div className="space-detail__verify-card">
-                <div className="space-detail__verify-date">08.13 (수)</div>
+                <div className="space-detail__verify-date">{formatShortDateLabel(today)}</div>
                 <div className="space-detail__verify-divider" />
                 <p className="space-detail__verify-copy">
                   예약을 하려면 최초 1회

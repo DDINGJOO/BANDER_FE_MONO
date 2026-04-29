@@ -10,6 +10,7 @@ import { COUPON_ITEMS } from '../data/couponDownloadModal';
 import type { CouponAvailableItemDto } from '../data/schemas/coupon';
 import { HOME_SPACE_CARDS } from '../data/home';
 import { useCouponDownloads } from '../hooks/useCouponDownloads';
+import { useSpaceDetail } from '../hooks/useSpaceDetail';
 import { getAvailableCoupons } from '../api/coupons';
 import {
   getSpaceAvailability,
@@ -72,15 +73,54 @@ const RESERVATION_OPTION_ITEMS = [
 
 type PaymentResultState = 'failed' | 'success' | null;
 
-function formatReservationDate(dateParam: string | null) {
+function startOfLocalDay(date = new Date()) {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+}
+
+function toLocalDateParam(date: Date) {
+  return [
+    date.getFullYear(),
+    String(date.getMonth() + 1).padStart(2, '0'),
+    String(date.getDate()).padStart(2, '0'),
+  ].join('-');
+}
+
+function parseLocalDateParam(dateParam: string | null) {
   if (!dateParam) {
-    return '25.08.20 (수)';
+    return null;
   }
 
-  const parsed = new Date(dateParam);
-  if (Number.isNaN(parsed.getTime())) {
-    return '25.08.20 (수)';
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateParam);
+  if (!match) {
+    return null;
   }
+
+  const [, year, month, day] = match;
+  const parsed = new Date(Number(year), Number(month) - 1, Number(day));
+  if (
+    parsed.getFullYear() !== Number(year) ||
+    parsed.getMonth() !== Number(month) - 1 ||
+    parsed.getDate() !== Number(day)
+  ) {
+    return null;
+  }
+
+  return parsed;
+}
+
+function normalizeReservationDateParam(dateParam: string | null) {
+  const today = startOfLocalDay();
+  const parsed = parseLocalDateParam(dateParam);
+
+  if (!parsed || parsed < today) {
+    return toLocalDateParam(today);
+  }
+
+  return toLocalDateParam(parsed);
+}
+
+function formatReservationDate(dateParam: string | null) {
+  const parsed = parseLocalDateParam(dateParam) ?? startOfLocalDay();
 
   const weekday = ['일', '월', '화', '수', '목', '금', '토'][parsed.getDay()];
   return `${String(parsed.getFullYear()).slice(2)}.${String(parsed.getMonth() + 1).padStart(2, '0')}.${String(parsed.getDate()).padStart(2, '0')} (${weekday})`;
@@ -94,6 +134,7 @@ export function SpaceReservationPage() {
   const navigate = useNavigate();
   const { openGuestGate } = useGuestGate();
   const { slug } = useParams();
+  const { detail } = useSpaceDetail(slug);
   const [searchParams] = useSearchParams();
   const authSession = loadAuthSession();
   const isAuthenticated = Boolean(authSession);
@@ -131,9 +172,11 @@ export function SpaceReservationPage() {
   const timelineScrollRef = useRef<HTMLDivElement | null>(null);
   const scrollDragStateRef = useRef({ active: false, scrollLeft: 0, startX: 0 });
 
-  const dateParam = searchParams.get('date') ?? '2025-08-20';
+  const dateParam = normalizeReservationDateParam(searchParams.get('date'));
   const roomIdParam = searchParams.get('roomId');
-  const roomId = roomIdParam ?? null;
+  const detailRoomId =
+    detail && 'id' in detail && typeof detail.id === 'string' ? detail.id : null;
+  const roomId = roomIdParam ?? detailRoomId;
 
   const updateTimelineNavState = () => {
     if (!timelineScrollRef.current) {
@@ -243,6 +286,14 @@ export function SpaceReservationPage() {
     () => HOME_SPACE_CARDS.find((item) => item.detailPath === `/spaces/${slug}`) ?? HOME_SPACE_CARDS[1],
     [slug]
   );
+  const reservationSummary = useMemo(() => {
+    const mock = isMockMode();
+    return {
+      address: detail?.address || detail?.location || (mock ? '서울시 마포구 독막로9길 31 지하 1층' : '주소 확인 중'),
+      image: detail?.gallery?.[0] ?? spaceCard.image,
+      title: detail?.title ?? (mock ? spaceCard.title : '공간 정보를 불러오는 중'),
+    };
+  }, [detail, spaceCard]);
 
   const reservationDateLabel = formatReservationDate(dateParam);
   const linearSlots = timeColumns.flatMap((column) => column.slots);
@@ -280,7 +331,7 @@ export function SpaceReservationPage() {
   );
   const requiredAgreementsChecked =
     agreements.collection && agreements.thirdParty && agreements.paymentAgency;
-  const canSubmitPayment = requiredAgreementsChecked && selectedTimes.length > 0;
+  const canSubmitPayment = requiredAgreementsChecked && selectedTimes.length > 0 && (isMockMode() || Boolean(roomId));
   const modalRoot = typeof document !== 'undefined' ? document.body : null;
   const selectedCoupon = availableCoupons.find((coupon) => coupon.id === selectedCouponId) ?? null;
   const couponCount = isMockMode() ? COUPON_ITEMS.length : availableCoupons.length;
@@ -439,7 +490,7 @@ export function SpaceReservationPage() {
     await requestTossPayment({
       clientKey,
       orderId: booking.orderId,
-      orderName: spaceCard.title + ' 예약',
+      orderName: reservationSummary.title + ' 예약',
       amount: paidAmount,
       successUrl: `${window.location.origin}/payment/success`,
       failUrl: `${window.location.origin}/payment/fail`,
@@ -473,7 +524,7 @@ export function SpaceReservationPage() {
       void requestTossPayment({
         clientKey,
         orderId: data.orderId,
-        orderName: spaceCard.title + ' 예약',
+        orderName: reservationSummary.title + ' 예약',
         amount: data.amount,
         customerKey: data.customerKey,
         successUrl: `${window.location.origin}/payment/success`,
@@ -503,7 +554,7 @@ export function SpaceReservationPage() {
       setSagaPending(false);
       setPaymentResult('failed');
     }
-  }, [sagaPending, sagaState.status, sagaState.timedOut, sagaState.data, spaceCard.title]);
+  }, [sagaPending, sagaState.status, sagaState.timedOut, sagaState.data, reservationSummary.title]);
 
   const handleDownloadCoupon = async (couponId: string) => {
     if (!isAuthenticated) {
@@ -535,10 +586,10 @@ export function SpaceReservationPage() {
 
         <div className="space-reservation__summary-card">
           <div className="space-reservation__summary-top">
-            <img alt="" className="space-reservation__summary-thumb" src={spaceCard.image} />
+            <img alt="" className="space-reservation__summary-thumb" src={reservationSummary.image} />
             <div>
-              <p className="space-reservation__summary-title">{spaceCard.title}</p>
-              <p className="space-reservation__summary-address">서울시 마포구 독막로9길 31 지하 1층</p>
+              <p className="space-reservation__summary-title">{reservationSummary.title}</p>
+              <p className="space-reservation__summary-address">{reservationSummary.address}</p>
             </div>
           </div>
           <div className="space-reservation__summary-grid">
@@ -950,10 +1001,10 @@ export function SpaceReservationPage() {
                     : '사유 : 결제 금액 부족'}
                 </p>
                 <div className="space-reservation__result-summary">
-                  <img alt="" src={spaceCard.image} />
+                  <img alt="" src={reservationSummary.image} />
                   <div>
-                    <p>{spaceCard.title}</p>
-                    <span>서울시 마포구 독막로9길 31 지하 1층</span>
+                    <p>{reservationSummary.title}</p>
+                    <span>{reservationSummary.address}</span>
                   </div>
                 </div>
                 <div className="space-reservation__result-info">
