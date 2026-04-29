@@ -812,10 +812,13 @@ export function SpaceReservationPage() {
         <section className="space-reservation__section">
           <h2>예약자 정보</h2>
           <div className="space-reservation__field-list">
-            <button className="space-reservation__select" onClick={() => setOptionsOpen(true)} type="button">
-              <span>{selectedOptionSummary || '상품 옵션 선택'}</span>
-              <ChevronIcon />
-            </button>
+            <div className="space-reservation__field space-reservation__field--select">
+              <span>상품 옵션 선택</span>
+              <button className="space-reservation__select" onClick={() => setOptionsOpen(true)} type="button">
+                <span>{selectedOptionSummary || '상품 옵션을 선택해주세요'}</span>
+                <ChevronIcon />
+              </button>
+            </div>
             <label className="space-reservation__field">
               <span>예약자 이름</span>
               <input defaultValue="김은수" type="text" />

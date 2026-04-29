@@ -534,7 +534,7 @@
   background: var(--color-white);
 }
 
-.space-reservation__field span {
+.space-reservation__field > span {
   color: var(--color-black);
   font-size: 13px;
   font-weight: 700;
