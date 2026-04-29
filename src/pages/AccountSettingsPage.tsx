@@ -10,6 +10,9 @@ import { ChangePasswordModal } from '../components/account/ChangePasswordModal';
 import { HomeFooter } from '../components/home/HomeFooter';
 import { HomeHeader } from '../components/home/HomeHeader';
 import { ChevronIcon } from '../components/shared/Icons';
+import { ReactComponent as SnsAppleBadge } from '../assets/icons/mobile/mobile-sns-apple.svg';
+import { ReactComponent as SnsGoogleBadge } from '../assets/icons/mobile/mobile-sns-google.svg';
+import { ReactComponent as SnsKakaoBadge } from '../assets/icons/mobile/mobile-sns-kakao.svg';
 import { HEADER_SEARCH_KEYWORD_SUGGESTIONS } from '../config/searchSuggestions';
 import { clearAuthSession, loadAuthSession } from '../data/authSession';
 import {
@@ -44,10 +47,6 @@ function LinkDoneCheck() {
     </svg>
   );
 }
-
-import { ReactComponent as SnsKakaoBadge } from '../assets/icons/mobile/mobile-sns-kakao.svg';
-import { ReactComponent as SnsGoogleBadge } from '../assets/icons/mobile/mobile-sns-google.svg';
-import { ReactComponent as SnsAppleBadge } from '../assets/icons/mobile/mobile-sns-apple.svg';
 
 function KakaoGlyph() {
   return <SnsKakaoBadge aria-hidden className="account-settings__sns-svg" />;

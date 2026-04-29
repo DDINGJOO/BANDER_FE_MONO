@@ -64,6 +64,16 @@ async function resizeImageIfLarge(file: File): Promise<File> {
 export const __TEST_ONLY__resizeImageIfLarge = resizeImageIfLarge;
 
 /**
+ * Prepare the exact file that will be sent to S3 before requesting a presigned
+ * upload URL. S3 PUT presigns can bind headers such as Content-Type and, on
+ * some backends, Content-Length. If the browser resizes after the grant was
+ * issued, the real PUT no longer matches the grant and S3 can return 403.
+ */
+export async function prepareImageForUpload(file: File): Promise<File> {
+  return resizeImageIfLarge(file);
+}
+
+/**
  * SHA-256 base64 digest of a File (browser-side, via Web Crypto).
  *
  * Kept as an exported helper for callers that explicitly want to send a
@@ -203,6 +213,9 @@ export async function commitMedia(
  *      the size-only verification path (logs `commit_checksum_skipped`),
  *      which is the documented fallback for browser uploads.
  *
+ * The caller must pass the same File used for the upload grant. If resizing is
+ * desired, call `prepareImageForUpload(file)` before requesting the grant.
+ *
  * Returns `{ mediaId, ownershipTicket }` ready to thread into apply request bodies.
  */
 export async function putAndCommit(input: {
@@ -212,7 +225,7 @@ export async function putAndCommit(input: {
   ownershipTicket?: string;
   file: File;
 }): Promise<{ mediaId: string; ownershipTicket: string }> {
-  const fileToUpload = await resizeImageIfLarge(input.file);
+  const fileToUpload = input.file;
 
   const headers = new Headers(input.uploadHeaders ?? {});
   if (!headers.has('Content-Type') && fileToUpload.type) {

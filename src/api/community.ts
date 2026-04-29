@@ -263,19 +263,20 @@ export async function uploadPostInlineImage(input: {
    */
   imageUrl: string;
 }> {
+  const { prepareImageForUpload, putAndCommit } = await import('./media');
+  const uploadFile = await prepareImageForUpload(input.file);
   const grant = await requestPostInlineImageUpload({
-    contentLength: input.file.size,
-    contentType: input.file.type,
-    fileName: input.file.name,
+    contentLength: uploadFile.size,
+    contentType: uploadFile.type,
+    fileName: uploadFile.name,
   });
 
-  const { putAndCommit } = await import('./media');
   await putAndCommit({
     mediaId: grant.mediaRef,
     uploadUrl: grant.uploadUrl,
     uploadHeaders: grant.uploadHeaders,
     ownershipTicket: grant.ownershipTicket,
-    file: input.file,
+    file: uploadFile,
   });
 
   return {

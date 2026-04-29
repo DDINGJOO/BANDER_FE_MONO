@@ -501,18 +501,19 @@ export function ProfileEditPage() {
 
                   // Upload new image if selected — grant → S3 PUT → commit (eager)
                   if (selectedFile) {
+                    const { prepareImageForUpload, putAndCommit } = await import('../api/media');
+                    const uploadFile = await prepareImageForUpload(selectedFile);
                     const grant = await requestProfileImageUploadForEdit(
-                      selectedFile.name,
-                      selectedFile.type,
-                      selectedFile.size,
+                      uploadFile.name,
+                      uploadFile.type,
+                      uploadFile.size,
                     );
-                    const { putAndCommit } = await import('../api/media');
                     await putAndCommit({
                       mediaId: grant.profileImageRef,
                       uploadUrl: grant.uploadUrl,
                       uploadHeaders: grant.uploadHeaders,
                       ownershipTicket: grant.ownershipTicket,
-                      file: selectedFile,
+                      file: uploadFile,
                     });
                     imageRef = grant.profileImageRef;
                     imageUrl = grant.publicUrl;

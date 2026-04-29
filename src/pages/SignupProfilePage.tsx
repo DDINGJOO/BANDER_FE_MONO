@@ -120,19 +120,20 @@ export function SignupProfilePage() {
 
     if (selectedImageFile) {
       try {
+        const { prepareImageForUpload, putAndCommit } = await import('../api/media');
+        const uploadFile = await prepareImageForUpload(selectedImageFile);
         const grant = await requestProfileImageUpload(
           draft.signupCompletionToken,
-          selectedImageFile.name,
-          selectedImageFile.type,
-          selectedImageFile.size,
+          uploadFile.name,
+          uploadFile.type,
+          uploadFile.size,
         );
-        const { putAndCommit } = await import('../api/media');
         await putAndCommit({
           mediaId: grant.profileImageRef,
           uploadUrl: grant.uploadUrl,
           uploadHeaders: grant.uploadHeaders,
           ownershipTicket: grant.ownershipTicket,
-          file: selectedImageFile,
+          file: uploadFile,
         });
         profileImageRef = grant.profileImageRef;
         profileImageOwnershipTicket = grant.ownershipTicket;
