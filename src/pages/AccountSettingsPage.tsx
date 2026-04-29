@@ -11,7 +11,7 @@ import { HomeFooter } from '../components/home/HomeFooter';
 import { HomeHeader } from '../components/home/HomeHeader';
 import { ChevronIcon } from '../components/shared/Icons';
 import { HEADER_SEARCH_KEYWORD_SUGGESTIONS } from '../config/searchSuggestions';
-import { clearAuthSession, loadAuthSession } from '../data/authSession';
+import { clearAuthSession, loadAuthSession, saveAuthSession } from '../data/authSession';
 import {
   resolveAccountSettingsEmail,
   type AccountLinkProvider,
@@ -135,6 +135,13 @@ export function AccountSettingsPage() {
         if (account.phoneVerified) {
           setVerifiedPhoneMasked(account.phoneMasked ?? '');
           setPhoneStep('verified');
+        }
+        const latestSession = loadAuthSession();
+        if (latestSession) {
+          saveAuthSession({
+            ...latestSession,
+            phoneVerified: account.phoneVerified,
+          });
         }
       })
       .catch(() => {
@@ -279,7 +286,7 @@ export function AccountSettingsPage() {
               </button>
             </section>
 
-            <section className="account-settings__section">
+            <section className="account-settings__section" id="phone-verification">
               <span className="account-settings__label">휴대폰 번호</span>
               {phoneStep === 'verified' ? (
                 <div className="account-settings__readonly">
@@ -346,6 +353,13 @@ export function AccountSettingsPage() {
                               await updatePhone(phone, result.verificationToken);
                               setVerifiedPhoneMasked(maskPhoneForDisplay(phone));
                               setPhoneStep('verified');
+                              const latestSession = loadAuthSession();
+                              if (latestSession) {
+                                saveAuthSession({
+                                  ...latestSession,
+                                  phoneVerified: true,
+                                });
+                              }
                             } else {
                               setPhoneError('인증번호가 올바르지 않습니다.');
                             }

@@ -439,6 +439,19 @@ beforeEach(() => {
         });
       }
 
+      if (url.endsWith('/api/v1/users/me/account') && method === 'GET') {
+        return apiSuccess({
+          createdAt: '2026-01-01T00:00:00.000Z',
+          email: 'bander@gmail.com',
+          nickname: '테스트유저',
+          phoneMasked: '010-****-9961',
+          phoneVerified: true,
+          profileImageRef: null,
+          status: 'ACTIVE',
+          userId: '101',
+        });
+      }
+
       if (url.includes('/api/v1/users/me/feed/posts') && method === 'GET') {
         const params = new URL(url, 'http://localhost').searchParams;
         const tab = params.get('tab') === 'commented' ? 'commented' : 'written';
@@ -799,6 +812,7 @@ test('switches search result tabs and opens the community sort menu', async () =
 });
 
 test('moves to the room detail page when clicking a space card', async () => {
+  seedAuthSession();
   renderAt('/search?q=합주');
 
   fireEvent.click(await screen.findByText('A룸 그랜드 피아노 대관'));
@@ -808,9 +822,8 @@ test('moves to the room detail page when clicking a space card', async () => {
   ).toBeInTheDocument();
   expect(screen.getAllByText('업비트스튜디오').length).toBeGreaterThanOrEqual(1);
   expect(screen.getByText('업체 정보')).toBeInTheDocument();
-  expect(screen.getByText(/휴대폰 본인인증이 필요해요/)).toBeInTheDocument();
-
-  fireEvent.click(screen.getByRole('button', { name: '본인인증 미완료' }));
+  expect(await screen.findByText('완료 (010-****-9961)')).toBeInTheDocument();
+  expect(screen.queryByText('테스트 보기')).not.toBeInTheDocument();
 
   expect(screen.getByText('날짜 선택')).toBeInTheDocument();
   fireEvent.click(screen.getByRole('button', { name: '20' }));

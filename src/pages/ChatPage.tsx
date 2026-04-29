@@ -9,6 +9,7 @@ import {
   markAsRead,
   sendMessage,
   updateChatCursor,
+  uploadChatImage,
 } from '../api/chat';
 import { fetchVendorDetail, type VendorDetailDto } from '../api/spaces';
 import { HomeFooter } from '../components/home/HomeFooter';

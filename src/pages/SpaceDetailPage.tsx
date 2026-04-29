@@ -3,14 +3,15 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { createChatRoom } from '../api/chat';
 import { getAvailableCoupons } from '../api/coupons';
 import { fetchVendorDetail } from '../api/spaces';
+import { getMyAccount } from '../api/users';
 import { HomeFooter } from '../components/home/HomeFooter';
 import { HomeHeader } from '../components/home/HomeHeader';
 import { useGuestGate } from '../components/home/GuestGateProvider';
 import { KakaoMapView } from '../components/map/KakaoMapView';
 import { BookmarkIcon, ChevronIcon, HeaderChatIcon, StarIcon } from '../components/shared/Icons';
-import { loadAuthSession } from '../data/authSession';
+import { loadAuthSession, saveAuthSession } from '../data/authSession';
 import { HomeSpaceCard } from '../components/home/HomeSpaceCard';
-import { ROOM_DETAIL_INFO_ROWS, ROOM_DETAIL_RECOMMENDATIONS } from '../data/spaceDetail';
+import { ROOM_DETAIL_RECOMMENDATIONS } from '../data/spaceDetail';
 import { SpaceSummaryFeatureIcon } from '../components/space/SpaceSummaryFeatureIcon';
 import { BanderUsagePolicyModal } from '../components/space/BanderUsagePolicyModal';
 import { CouponDownloadModal } from '../components/space/CouponDownloadModal';
@@ -101,6 +102,9 @@ export function SpaceDetailPage() {
   const authSession = loadAuthSession();
   const isAuthenticated = Boolean(authSession);
   const [phoneVerified, setPhoneVerified] = useState(authSession?.phoneVerified === true);
+  const [verifiedPhoneMasked, setVerifiedPhoneMasked] = useState('');
+  const [phoneStatusLoading, setPhoneStatusLoading] = useState(false);
+  const [phoneStatusError, setPhoneStatusError] = useState<string | null>(null);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [selectedBookingDay, setSelectedBookingDay] = useState<number | null>(null);
   const [activeSubTab, setActiveSubTab] = useState<SpaceDetailSubTab>('basic');
@@ -117,6 +121,50 @@ export function SpaceDetailPage() {
   const basicSectionRef = useRef<HTMLElement | null>(null);
   const detailSectionRef = useRef<HTMLElement | null>(null);
   const reviewsSectionRef = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    if (!isAuthenticated || isMockMode()) {
+      setPhoneVerified(false);
+      setVerifiedPhoneMasked('');
+      setPhoneStatusLoading(false);
+      setPhoneStatusError(null);
+      return;
+    }
+
+    let cancelled = false;
+    setPhoneStatusLoading(true);
+    setPhoneStatusError(null);
+
+    getMyAccount()
+      .then((account) => {
+        if (cancelled) return;
+        setPhoneVerified(account.phoneVerified);
+        setVerifiedPhoneMasked(account.phoneMasked ?? '');
+
+        const latestSession = loadAuthSession();
+        if (latestSession) {
+          saveAuthSession({
+            ...latestSession,
+            phoneVerified: account.phoneVerified,
+          });
+        }
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setPhoneStatusError('휴대폰 인증 상태를 불러오지 못했습니다.');
+        setPhoneVerified(false);
+        setVerifiedPhoneMasked('');
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setPhoneStatusLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isAuthenticated, authSession?.userId]);
 
   useEffect(() => {
     if (!slug || isMockMode()) {
@@ -619,18 +667,24 @@ export function SpaceDetailPage() {
 
           <div className="space-detail__booking-host">
           <aside className="space-detail__booking-card">
-            <div className="space-detail__test-toggle">
-              <span>테스트 보기</span>
-              <button
-                className="space-detail__test-toggle-button"
-                onClick={() => setPhoneVerified((current) => !current)}
-                type="button"
-              >
-                {phoneVerified ? '본인인증 완료' : '본인인증 미완료'}
-              </button>
-            </div>
-            {phoneVerified ? (
+            {phoneStatusLoading ? (
+              <div className="space-detail__verify-card">
+                <div className="space-detail__verify-date">인증 상태 확인</div>
+                <div className="space-detail__verify-divider" />
+                <p className="space-detail__verify-copy">
+                  휴대폰 본인인증 상태를
+                  <br />
+                  확인하고 있어요.
+                </p>
+              </div>
+            ) : phoneVerified ? (
               <>
+                <div className="space-detail__booking-pricing-bar">
+                  <span className="space-detail__booking-pricing-label">본인인증</span>
+                  <span className="space-detail__booking-pricing-value">
+                    {verifiedPhoneMasked ? `완료 (${verifiedPhoneMasked})` : '완료'}
+                  </span>
+                </div>
                 <div className="space-detail__booking-pricing-bar">
                   <span className="space-detail__booking-pricing-label">이용금액</span>
                   <span className="space-detail__booking-pricing-value">
@@ -692,6 +746,11 @@ export function SpaceDetailPage() {
                   <br />
                   휴대폰 본인인증이 필요해요.
                 </p>
+                {phoneStatusError ? (
+                  <p className="space-detail__verify-copy">
+                    {phoneStatusError}
+                  </p>
+                ) : null}
                 <button
                   className="space-detail__verify-button"
                   onClick={() => {
@@ -700,7 +759,7 @@ export function SpaceDetailPage() {
                       return;
                     }
 
-                    setPhoneVerified(true);
+                    navigate('/account/settings#phone-verification');
                   }}
                   type="button"
                 >
