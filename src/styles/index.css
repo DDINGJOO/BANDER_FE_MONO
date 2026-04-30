@@ -34,6 +34,15 @@
 @import './review-view-modal.css';
 @import './toast.css';
 
+html,
+body,
+#root {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+  overflow-x: clip;
+}
+
 .kakao-map__fallback {
   align-items: center;
   background: #f6f8fb;

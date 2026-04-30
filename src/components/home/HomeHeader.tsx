@@ -425,76 +425,141 @@ export function HomeHeader(props: HomeHeaderProps) {
               </button>
             </div>
 
-            <nav className="home-header__mobile-nav">
-              <Link
-                aria-current={communityPageActive ? 'page' : undefined}
-                onClick={() => setMobileMenuOpen(false)}
-                to="/community"
-              >
-                커뮤니티
-              </Link>
-              <Link onClick={() => setMobileMenuOpen(false)} to={authenticated ? '/search/map' : { hash: 'spaces', pathname: '/' }}>
-                탐색
-              </Link>
-              {authenticated ? (
-                <Link className="home-header__mobile-reservation" onClick={() => setMobileMenuOpen(false)} to="/my-reservations">
-                  <span>예약</span>
-                  {reservationBadgeCount > 0 ? (
-                    <span className="home-header__reservation-badge">{formatBadgeCount(reservationBadgeCount)}</span>
-                  ) : null}
-                </Link>
-              ) : (
-                <Link onClick={() => setMobileMenuOpen(false)} to={{ hash: 'reviews', pathname: '/' }}>
-                  후기
-                </Link>
-              )}
-            </nav>
+            {authenticated ? (
+              <section className="home-header__mobile-profile-card">
+                <div className="home-header__mobile-profile-top">
+                  {profileModel.profileImageUrl ? (
+                    <img
+                      alt=""
+                      aria-hidden="true"
+                      className="home-header__mobile-profile-avatar"
+                      src={profileModel.profileImageUrl}
+                    />
+                  ) : (
+                    <span aria-hidden="true" className="home-header__mobile-profile-avatar" />
+                  )}
+                  <div className="home-header__mobile-profile-copy">
+                    <p className="home-header__mobile-profile-kicker">오늘의 밴더</p>
+                    <p className="home-header__mobile-profile-name">{profileModel.displayName}</p>
+                    <p className="home-header__mobile-profile-email">{profileModel.email || '나의 음악 공간을 찾아보세요'}</p>
+                  </div>
+                  <Link
+                    aria-label="프로필 수정"
+                    className="home-header__mobile-profile-edit"
+                    onClick={() => setMobileMenuOpen(false)}
+                    to="/profile/edit"
+                  >
+                    수정
+                  </Link>
+                </div>
+                <div className="home-header__mobile-profile-stats">
+                  <Link onClick={() => setMobileMenuOpen(false)} to="/points">
+                    <span>포인트</span>
+                    <strong>{profileModel.pointsLabel}</strong>
+                  </Link>
+                  <Link onClick={() => setMobileMenuOpen(false)} to="/coupons">
+                    <span>쿠폰</span>
+                    <strong>{profileModel.couponCountLabel}</strong>
+                  </Link>
+                </div>
+              </section>
+            ) : (
+              <section className="home-header__mobile-profile-card home-header__mobile-profile-card--guest">
+                <div aria-hidden="true" className="home-header__mobile-guest-mark">b.</div>
+                <div className="home-header__mobile-profile-copy">
+                  <p className="home-header__mobile-profile-kicker">BANDER</p>
+                  <p className="home-header__mobile-profile-name">음악 공간을 더 쉽게</p>
+                  <p className="home-header__mobile-profile-email">예약, 채팅, 스크랩을 한 번에 관리해보세요.</p>
+                </div>
+                <button
+                  className="home-header__mobile-profile-login"
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    handleGuestCta();
+                  }}
+                  type="button"
+                >
+                  로그인/회원가입
+                </button>
+              </section>
+            )}
 
             {authenticated ? (
-              <div className="home-header__mobile-actions">
+              <div className="home-header__mobile-quick">
                 <Link onClick={() => setMobileMenuOpen(false)} to="/chat">
-                  채팅
+                  <HeaderChatIcon active={chatPageActive} />
+                  <span>채팅</span>
                 </Link>
                 <Link onClick={() => setMobileMenuOpen(false)} to="/notifications">
+                  <HeaderAlarmIcon hasUnread={unreadCount > 0} />
                   <span>알림</span>
                   {unreadCount > 0 ? (
                     <span className="home-header__mobile-badge">{formatUnreadBadge(unreadCount)}</span>
                   ) : null}
                 </Link>
-                <Link onClick={() => setMobileMenuOpen(false)} to="/profile/edit">
-                  프로필 수정
+                <Link onClick={() => setMobileMenuOpen(false)} to="/my-scraps">
+                  <HeaderWishlistIcon />
+                  <span>스크랩</span>
                 </Link>
-                <Link onClick={() => setMobileMenuOpen(false)} to="/account/settings">
-                  계정 설정
-                </Link>
-                <Link onClick={() => setMobileMenuOpen(false)} to="/payment-info">
-                  결제 정보
-                </Link>
-                <Link onClick={() => setMobileMenuOpen(false)} to="/points">
-                  포인트
-                </Link>
-                <button
-                  onClick={() => {
-                    setMobileMenuOpen(false);
-                    setLogoutOpen(true);
-                  }}
-                  type="button"
-                >
-                  로그아웃
-                </button>
               </div>
-            ) : (
-              <button
-                className="home-header__mobile-login"
-                onClick={() => {
-                  setMobileMenuOpen(false);
-                  handleGuestCta();
-                }}
-                type="button"
-              >
-                로그인/회원가입
-              </button>
-            )}
+            ) : null}
+
+            <div className="home-header__mobile-section">
+              <p className="home-header__mobile-section-label">메뉴</p>
+              <nav className="home-header__mobile-nav">
+                <Link
+                  aria-current={communityPageActive ? 'page' : undefined}
+                  onClick={() => setMobileMenuOpen(false)}
+                  to="/community"
+                >
+                  커뮤니티
+                </Link>
+                <Link onClick={() => setMobileMenuOpen(false)} to={authenticated ? '/search/map' : { hash: 'spaces', pathname: '/' }}>
+                  탐색
+                </Link>
+                {authenticated ? (
+                  <Link className="home-header__mobile-reservation" onClick={() => setMobileMenuOpen(false)} to="/my-reservations">
+                    <span>예약</span>
+                    {reservationBadgeCount > 0 ? (
+                      <span className="home-header__reservation-badge">{formatBadgeCount(reservationBadgeCount)}</span>
+                    ) : null}
+                  </Link>
+                ) : (
+                  <Link onClick={() => setMobileMenuOpen(false)} to={{ hash: 'reviews', pathname: '/' }}>
+                    후기
+                  </Link>
+                )}
+              </nav>
+            </div>
+
+            {authenticated ? (
+              <div className="home-header__mobile-section">
+                <p className="home-header__mobile-section-label">내 정보</p>
+                <div className="home-header__mobile-actions">
+                  <Link onClick={() => setMobileMenuOpen(false)} to="/profile/edit">
+                    프로필 수정
+                  </Link>
+                  <Link onClick={() => setMobileMenuOpen(false)} to="/account/settings">
+                    계정 설정
+                  </Link>
+                  <Link onClick={() => setMobileMenuOpen(false)} to="/payment-info">
+                    결제 정보
+                  </Link>
+                  <Link onClick={() => setMobileMenuOpen(false)} to="/support">
+                    고객센터
+                  </Link>
+                  <button
+                    onClick={() => {
+                      setMobileMenuOpen(false);
+                      setLogoutOpen(true);
+                    }}
+                    type="button"
+                  >
+                    로그아웃
+                  </button>
+                </div>
+              </div>
+            ) : null}
           </aside>
         </div>
       ) : null}

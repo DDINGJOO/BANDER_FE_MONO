@@ -1741,3 +1741,245 @@
 .space-detail__info-value--multiline {
   white-space: pre-line;
 }
+
+@media (max-width: 960px) {
+  .space-detail__inner {
+    width: min(1070px, calc(100% - 32px));
+    padding: 24px 0 96px;
+  }
+
+  .space-detail__layout {
+    grid-template-columns: 1fr;
+    gap: 28px;
+  }
+
+  .space-detail__main {
+    max-width: none;
+  }
+
+  .space-detail__booking-host {
+    width: 100%;
+  }
+
+  .space-detail__booking-card {
+    position: static;
+    top: auto;
+    width: 100%;
+  }
+
+  .space-detail__recommend-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .space-detail__inner {
+    width: min(1070px, calc(100% - 24px));
+    padding-top: 18px;
+  }
+
+  .space-detail__gallery {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto;
+    gap: 0;
+    min-height: 0;
+  }
+
+  .space-detail__hero-image-wrap {
+    grid-row: auto;
+    min-height: 0;
+    aspect-ratio: 4 / 3;
+    border-radius: 15px;
+  }
+
+  .space-detail__thumb-stack {
+    display: block;
+    grid-column: 1;
+    grid-row: auto;
+    min-height: 0;
+  }
+
+  .space-detail__thumb-grid {
+    display: none;
+  }
+
+  .space-detail__gallery-viewall {
+    right: 10px;
+    bottom: 10px;
+    left: auto;
+    max-width: calc(100% - 20px);
+    white-space: nowrap;
+  }
+
+  .space-detail__content {
+    margin-top: 22px;
+  }
+
+  .space-detail__summary-title-row,
+  .space-detail__meta-rating-price,
+  .space-detail__price-row,
+  .space-detail__section-title-wrap {
+    gap: 12px;
+  }
+
+  .space-detail__summary .space-detail__title,
+  .space-detail__title {
+    font-size: 22px;
+    line-height: 30px;
+  }
+
+  .space-detail__location-figma,
+  .space-detail__description--lead,
+  .space-detail__trust-banner,
+  .space-detail__info-value,
+  .space-detail__description,
+  .space-detail__policy-card p {
+    overflow-wrap: break-word;
+    word-break: keep-all;
+  }
+
+  .space-detail__meta-rating-price {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .space-detail__summary-price-teaser {
+    white-space: normal;
+  }
+
+  .space-detail__section-nav {
+    gap: 0;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .space-detail__section-nav::-webkit-scrollbar {
+    display: none;
+  }
+
+  .space-detail__section-tab {
+    flex: 0 0 auto;
+    min-width: 88px;
+    min-height: 42px;
+    padding: 0 12px;
+    text-align: center;
+  }
+
+  .space-detail__info-list {
+    padding: 16px;
+  }
+
+  .space-detail__info-row,
+  .space-detail__pricing-spec-row,
+  .space-detail__pricing-spec--figma-summary .space-detail__pricing-spec-row {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+
+  .space-detail__map {
+    min-height: 260px;
+  }
+
+  .space-detail__facility-chips {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .space-detail__facility-chip {
+    min-width: 0;
+    padding: 10px 8px 8px;
+  }
+
+  .space-detail__facility-chip-label {
+    white-space: normal;
+    word-break: keep-all;
+  }
+
+  .space-detail__vendor-top {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .space-detail__vendor-hours {
+    max-width: 100%;
+    text-align: left;
+  }
+
+  .space-detail__operating-week-row {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .space-detail__operating-week-hours {
+    flex-shrink: 1;
+  }
+
+  .space-detail__detail-benefit-strip {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .space-detail__detail-policy-block,
+  .space-detail__notice-card,
+  .space-detail__policy-card,
+  .space-detail__review-card {
+    padding: 16px;
+  }
+
+  .space-detail__review-photo-ph {
+    width: min(140px, 42vw);
+    height: min(140px, 42vw);
+  }
+
+  .space-detail__booking-card {
+    padding: 16px;
+  }
+
+  .space-detail__booking-pricing-bar,
+  .space-detail__booking-header {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .space-detail__calendar-weekdays,
+  .space-detail__calendar-grid {
+    gap: 4px;
+  }
+
+  .space-detail__calendar-day {
+    min-height: 44px;
+    font-size: 13px;
+  }
+
+  .space-detail__verify-divider {
+    margin-right: -16px;
+    margin-left: -16px;
+  }
+
+  .space-detail__recommend-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 420px) {
+  .space-detail__inner {
+    width: min(1070px, calc(100% - 20px));
+  }
+
+  .space-detail__facility-chips,
+  .space-detail__detail-benefit-strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .space-detail__calendar-day {
+    min-height: 40px;
+    padding-top: 8px;
+  }
+
+  .space-detail__calendar-day em {
+    bottom: 2px;
+    font-size: 8px;
+  }
+}
