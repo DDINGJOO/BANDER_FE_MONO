@@ -2724,8 +2724,10 @@ img.home-header__avatar::after {
   justify-content: space-between;
   gap: 40px;
   margin-top: 96px;
+  margin-bottom: 36px;
   padding: 54px 64px;
-  border-radius: 0;
+  border-radius: 15px;
+  overflow: hidden;
   background: linear-gradient(103deg, #ffe387 12%, #ffcc41 94%);
 }
 
@@ -2901,9 +2903,9 @@ img.home-header__avatar::after {
 .home-footer__support-number {
   margin: 0;
   max-width: 100%;
-  font-size: 15px;
+  font-size: 19.5px;
   font-weight: 500;
-  line-height: 22px;
+  line-height: 28.6px;
   overflow-wrap: anywhere;
   word-break: break-word;
 }
@@ -3075,6 +3077,11 @@ img.home-header__avatar::after {
     align-items: flex-start;
     min-width: 0;
     text-align: left;
+  }
+
+  .home-footer__support-number {
+    font-size: 15px;
+    line-height: 22px;
   }
 }
 
