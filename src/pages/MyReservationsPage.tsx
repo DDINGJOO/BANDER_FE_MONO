@@ -16,9 +16,8 @@ import {
   buildCancelLeadLines,
 } from '../data/reservationCancelModal';
 import type { ReservationCancelNoticeRow } from '../components/reservations/ReservationCancelModal';
-import { reservationsForTab, type MyReservation, type MyReservationTab } from '../data/myReservations';
-import { getMyBookings, getRefundEstimate, type MyBookingItem } from '../api/bookings';
-import { isMockMode } from '../config/publicEnv';
+import { type MyReservationTab } from '../data/myReservations';
+import { getMyBookings, getRefundEstimate, cancelBooking, type MyBookingItem } from '../api/bookings';
 
 const TAB_LABELS: Record<MyReservationTab, string> = {
   upcoming: '이용전',
@@ -131,7 +130,9 @@ function ReservationCard({
                 />
               ) : null}
               <div className="my-res-card__text">
-                <p className="my-res-card__space-title">{item.spaceTitle}</p>
+                {item.spaceTitle ? (
+                  <p className="my-res-card__space-title">{item.spaceTitle}</p>
+                ) : null}
                 <p className="my-res-card__vendor">{item.vendorName}</p>
               </div>
             </div>
@@ -172,7 +173,7 @@ function toCardItem(booking: MyBookingItem): CardItem {
     status: booking.status,
     action: bookingAction(booking.status),
     thumbUrl: '',
-    spaceTitle: booking.studioName,
+    spaceTitle: '',
     vendorName: booking.studioName,
     dateTimeLine,
     durationLine,
@@ -220,29 +221,6 @@ export function MyReservationsPage() {
   }, []);
 
   useEffect(() => {
-    if (isMockMode()) {
-      const mockItems = reservationsForTab(tab).map((r: MyReservation, index: number): CardItem => ({
-        bookingId: String(index),
-        status: r.status === 'confirmed' ? 'CONFIRMED'
-          : r.status === 'pending' ? 'PENDING'
-          : r.status === 'completed' ? 'COMPLETED'
-          : r.status === 'canceledUser' ? 'CANCELED_USER'
-          : 'CANCELED_VENDOR',
-        action: r.action === 'cancel' ? 'cancel'
-          : r.action === 'writeReview' ? 'writeReview'
-          : r.action === 'viewMyReview' ? 'viewMyReview'
-          : 'none',
-        thumbUrl: r.thumbUrl ?? '',
-        spaceTitle: r.spaceTitle,
-        vendorName: r.vendorName,
-        dateTimeLine: r.dateTimeLine ?? '',
-        durationLine: r.durationLine ?? '',
-        detailPath: r.detailPath,
-      }));
-      setBookings(mockItems);
-      return;
-    }
-
     setLoading(true);
     getMyBookings({ tab: TAB_API_MAP[tab], size: 20 })
       .then((page) => {
@@ -325,7 +303,10 @@ export function MyReservationsPage() {
           </div>
 
           {loading ? null : bookings.length === 0 ? (
-            <p className="my-reservations__empty">예약 내역이 없습니다.</p>
+            <div className="my-reservations__empty">
+              <p>예약 내역이 없습니다.</p>
+              <p className="my-reservations__empty-hint">이전 예약 내역은 고객센터로 문의해주세요.</p>
+            </div>
           ) : (
             <div className="my-reservations__list">
               {bookings.map((item) => (
@@ -341,25 +322,21 @@ export function MyReservationsPage() {
                     }
                     if (row.action === 'cancel') {
                       setSelectedBookingId(row.bookingId);
-                      if (!isMockMode()) {
-                        getRefundEstimate(row.bookingId)
-                          .then((est) => {
-                            if (!est.cancellable) {
-                              alert('취소 불가: 예약 시작 12시간 이내에는 취소할 수 없습니다.');
-                              return;
-                            }
-                            setCancelNoticeRows(buildCancelNoticeRows(est));
-                            setCancelLeadLines(buildCancelLeadLines(est));
-                            setCancelModalOpen(true);
-                          })
-                          .catch(() => {
-                            setCancelNoticeRows(RESERVATION_CANCEL_NOTICE_DEFAULT);
-                            setCancelLeadLines(RESERVATION_CANCEL_LEAD_LINES);
-                            setCancelModalOpen(true);
-                          });
-                      } else {
-                        setCancelModalOpen(true);
-                      }
+                      getRefundEstimate(row.bookingId)
+                        .then((est) => {
+                          if (!est.cancellable) {
+                            alert('취소 불가: 예약 시작 12시간 이내에는 취소할 수 없습니다.');
+                            return;
+                          }
+                          setCancelNoticeRows(buildCancelNoticeRows(est));
+                          setCancelLeadLines(buildCancelLeadLines(est));
+                          setCancelModalOpen(true);
+                        })
+                        .catch(() => {
+                          setCancelNoticeRows(RESERVATION_CANCEL_NOTICE_DEFAULT);
+                          setCancelLeadLines(RESERVATION_CANCEL_LEAD_LINES);
+                          setCancelModalOpen(true);
+                        });
                     }
                   }}
                 />
