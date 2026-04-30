@@ -2882,6 +2882,7 @@ img.home-header__avatar::after {
 
 .home-footer__support {
   display: flex;
+  align-self: flex-end;
   min-width: min(320px, 100%);
   max-width: 100%;
   flex-direction: column;
@@ -2900,9 +2901,9 @@ img.home-header__avatar::after {
 .home-footer__support-number {
   margin: 0;
   max-width: 100%;
-  font-size: clamp(24px, 6vw, 40px);
-  font-weight: 700;
-  line-height: 1.2;
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 22px;
   overflow-wrap: anywhere;
   word-break: break-word;
 }
@@ -3070,6 +3071,7 @@ img.home-header__avatar::after {
   }
 
   .home-footer__support {
+    align-self: flex-start;
     align-items: flex-start;
     min-width: 0;
     text-align: left;
