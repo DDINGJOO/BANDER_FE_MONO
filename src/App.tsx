@@ -1,5 +1,5 @@
-import React from 'react';
-import { Navigate, Route, Routes } from 'react-router-dom';
+import React, { useLayoutEffect } from 'react';
+import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import './styles/index.css';
 import { ForgotPasswordPage } from './pages/ForgotPasswordPage';
 import { ForgotPasswordResetPage } from './pages/ForgotPasswordResetPage';
@@ -43,10 +43,22 @@ import { PaymentFailPage } from './pages/PaymentFailPage';
 import { GuestGateProvider } from './components/home/GuestGateProvider';
 import { ToastProvider } from './components/ui/ToastProvider';
 
+function ScrollToTop() {
+  const { hash, pathname, search } = useLocation();
+
+  useLayoutEffect(() => {
+    if (hash) return;
+    window.scrollTo({ left: 0, top: 0, behavior: 'auto' });
+  }, [hash, pathname, search]);
+
+  return null;
+}
+
 function App() {
   return (
     <ToastProvider>
       <GuestGateProvider>
+        <ScrollToTop />
         <Routes>
           <Route element={<MainPage />} path="/" />
           <Route element={<MainPage previewAuthenticated />} path="/home-auth" />
