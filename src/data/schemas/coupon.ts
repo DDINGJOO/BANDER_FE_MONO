@@ -25,12 +25,26 @@ export type CouponClaimResponseDto = {
   ownedCouponId: string;
 };
 
+/** 쿠폰 사용 범위 (BE: ScopeType enum) */
+export type CouponScopeType = 'ALL' | 'ROOM_LIST';
+
 export type OwnedCouponItemDto = {
   id: string;
   couponId: string;
   title: string;
   discountLabel: string;
   expiresAt?: string;
+  /** 최소 주문금액 (PR #459) */
+  minPurchaseWon?: number | null;
+  /** 최대 적용금액 — PERCENT 쿠폰의 cap. nullable (PR #459) */
+  maxDiscountWon?: number | null;
+  /** 쿠폰 사용 범위 종류 (PR #459). 미지정 시 ALL 로 간주. */
+  scopeType?: CouponScopeType;
+  /**
+   * 사용 가능 공간명 스냅샷 (PR #459). scopeType=ALL 이면 null.
+   * 현재 BE 응답에 slug 는 포함되지 않으므로 표시 전용.
+   */
+  scopeRoomNames?: string[] | null;
 };
 
 /** GET /api/v1/users/me/coupons */

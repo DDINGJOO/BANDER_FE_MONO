@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { getMyCoupons } from '../api/coupons';
 import { HomeFooter } from '../components/home/HomeFooter';
 import { HomeHeader } from '../components/home/HomeHeader';
@@ -8,7 +8,7 @@ import { HEADER_SEARCH_KEYWORD_SUGGESTIONS } from '../config/searchSuggestions';
 import { isMockMode } from '../config/publicEnv';
 import { loadAuthSession } from '../data/authSession';
 import { MY_COUPONS, type CouponStatus, type MyCoupon } from '../data/myCoupons';
-import type { OwnedCouponItemDto } from '../data/schemas/coupon';
+import type { CouponScopeType, OwnedCouponItemDto } from '../data/schemas/coupon';
 
 const FILTER_OPTIONS: readonly { key: CouponStatus; label: string }[] = [
   { key: 'OWNED', label: '보유쿠폰' },
@@ -16,24 +16,88 @@ const FILTER_OPTIONS: readonly { key: CouponStatus; label: string }[] = [
   { key: 'EXPIRED', label: '기한만료' },
 ];
 
+/** 카드 펼치기 가능 여부 — ROOM_LIST + 보유 상태에서만 활성. */
+function canExpandCard(item: MyCoupon): boolean {
+  return item.status === 'OWNED' && item.scopeType === 'ROOM_LIST' && item.scopeRooms.length > 0;
+}
+
 function CouponCard({ item }: { item: MyCoupon }) {
+  const [expanded, setExpanded] = useState(false);
+  const expandable = canExpandCard(item);
+  const panelId = `coupon-card-scope-${item.id}`;
+
+  const onToggle = useCallback(() => {
+    setExpanded((prev) => !prev);
+  }, []);
+
   return (
     <article className="coupon-card" data-status={item.status}>
-      <div className="coupon-card__left">
-        <p className="coupon-card__label">{item.label}</p>
-        <div className="coupon-card__discount">
-          <span className="coupon-card__discount-value">{item.discountValue}</span>
-          <span className="coupon-card__discount-suffix">할인</span>
+      <div className="coupon-card__main">
+        <div className="coupon-card__left">
+          <p className="coupon-card__label">{item.label}</p>
+          <div className="coupon-card__discount">
+            <span className="coupon-card__discount-value">{item.discountValue}</span>
+            <span className="coupon-card__discount-suffix">할인</span>
+          </div>
+          {item.capLine ? <p className="coupon-card__cap">{item.capLine}</p> : null}
         </div>
-        {item.capLine ? <p className="coupon-card__cap">{item.capLine}</p> : null}
+        <div className="coupon-card__right">
+          {item.availableLine ? (
+            expandable ? (
+              <button
+                aria-controls={panelId}
+                aria-expanded={expanded}
+                className="coupon-card__expand-button"
+                onClick={onToggle}
+                type="button"
+              >
+                <span className="coupon-card__line coupon-card__line--available">
+                  {item.availableLine}
+                </span>
+                <span
+                  aria-hidden
+                  className={`coupon-card__expand-chevron${
+                    expanded ? ' coupon-card__expand-chevron--open' : ''
+                  }`}
+                >
+                  <ChevronIcon />
+                </span>
+              </button>
+            ) : (
+              <p className="coupon-card__line">{item.availableLine}</p>
+            )
+          ) : null}
+          <p className="coupon-card__line">{item.conditionLine}</p>
+          {item.capLineRight ? (
+            <p className="coupon-card__line coupon-card__cap-right">{item.capLineRight}</p>
+          ) : null}
+          <p className="coupon-card__line">{item.expiryLine}</p>
+        </div>
       </div>
-      <div className="coupon-card__right">
-        {item.availableLine ? (
-          <p className="coupon-card__line">{item.availableLine}</p>
-        ) : null}
-        <p className="coupon-card__line">{item.conditionLine}</p>
-        <p className="coupon-card__line">{item.expiryLine}</p>
-      </div>
+      {expandable && expanded ? (
+        <ul className="coupon-card__scope-list" id={panelId}>
+          {item.scopeRooms.map((room, index) => (
+            <li className="coupon-card__scope-item-wrapper" key={`${item.id}-${index}-${room.name}`}>
+              {room.slug ? (
+                <Link
+                  className="coupon-card__scope-item"
+                  to={`/spaces/${encodeURIComponent(room.slug)}`}
+                >
+                  {room.name}
+                </Link>
+              ) : (
+                <span
+                  aria-disabled="true"
+                  className="coupon-card__scope-item coupon-card__scope-item--disabled"
+                  title="삭제된 공간"
+                >
+                  {room.name} (삭제된 공간)
+                </span>
+              )}
+            </li>
+          ))}
+        </ul>
+      ) : null}
     </article>
   );
 }
@@ -49,6 +113,31 @@ function formatExpiryLine(expiresAt?: string): string {
   return `기한 : ${date.getFullYear()}.${String(date.getMonth() + 1).padStart(2, '0')}.${String(date.getDate()).padStart(2, '0')}까지`;
 }
 
+export function formatConditionLine(minPurchaseWon: number | null | undefined): string {
+  const min = typeof minPurchaseWon === 'number' && minPurchaseWon > 0 ? minPurchaseWon : 0;
+  return `조건 : ${min.toLocaleString('ko-KR')}원 이상 결제 시`;
+}
+
+export function formatCapLine(maxDiscountWon: number | null | undefined): string | undefined {
+  if (typeof maxDiscountWon !== 'number' || maxDiscountWon <= 0) {
+    return undefined;
+  }
+  return `최대 ${maxDiscountWon.toLocaleString('ko-KR')}원 할인`;
+}
+
+export function formatAvailableLine(
+  scopeType: CouponScopeType,
+  roomNames: string[],
+): string {
+  if (scopeType === 'ALL' || roomNames.length === 0) {
+    return '모든 공간에서 사용 가능';
+  }
+  if (roomNames.length === 1) {
+    return roomNames[0];
+  }
+  return `${roomNames[0]} 외 ${roomNames.length - 1}곳`;
+}
+
 function toCouponStatus(item: OwnedCouponItemDto): CouponStatus {
   if (!item.expiresAt) {
     return 'OWNED';
@@ -57,14 +146,23 @@ function toCouponStatus(item: OwnedCouponItemDto): CouponStatus {
   return Number.isFinite(date.getTime()) && date.getTime() < Date.now() ? 'EXPIRED' : 'OWNED';
 }
 
-function toMyCoupon(item: OwnedCouponItemDto): MyCoupon {
+export function toMyCoupon(item: OwnedCouponItemDto): MyCoupon {
+  const scopeType: CouponScopeType = item.scopeType ?? 'ALL';
+  const roomNames =
+    scopeType === 'ROOM_LIST' && Array.isArray(item.scopeRoomNames) ? item.scopeRoomNames : [];
+  // BE 미제공 → slug 는 항상 null (삭제된 공간 표기로 fallback).
+  const scopeRooms = roomNames.map((name) => ({ name, slug: null }));
   return {
     id: item.id,
     status: toCouponStatus(item),
     label: item.title,
     discountValue: item.discountLabel,
-    conditionLine: '조건 : 결제 화면에서 적용 가능',
+    availableLine: formatAvailableLine(scopeType, roomNames),
+    conditionLine: formatConditionLine(item.minPurchaseWon ?? null),
+    capLineRight: formatCapLine(item.maxDiscountWon ?? null),
     expiryLine: formatExpiryLine(item.expiresAt),
+    scopeType,
+    scopeRooms,
   };
 }
 
