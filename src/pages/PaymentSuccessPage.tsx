@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { confirmPayment } from '../api/bookings';
+import { confirmPayment, confirmSagaPayment, getSagaStatus } from '../api/bookings';
 import { HomeHeader } from '../components/home/HomeHeader';
 import { ErrorIcon, SuccessIcon } from '../components/shared/Icons';
 import { loadAuthSession } from '../data/authSession';
@@ -39,6 +39,7 @@ export function PaymentSuccessPage() {
       setResultState('success');
       sessionStorage.setItem('bander_last_payment_success_order_id', orderId);
       sessionStorage.removeItem('bander_pending_booking_id');
+      sessionStorage.removeItem('bander_pending_saga_id');
     };
     const showError = (message: string) => {
       setErrorMessage(message);
@@ -53,14 +54,39 @@ export function PaymentSuccessPage() {
     }
 
     const bookingId = sessionStorage.getItem('bander_pending_booking_id');
-    if (!bookingId || !paymentKey || !orderId || !amount) {
+    const sagaId = sessionStorage.getItem('bander_pending_saga_id');
+    if ((!bookingId && !sagaId) || !paymentKey || !orderId || !amount) {
       window.setTimeout(() => showError('결제 정보가 올바르지 않습니다.'), 1000);
       return;
     }
 
+    const waitForSagaCompletion = async (id: string): Promise<{ ok: true } | { ok: false; failure: PaymentFailureInfo }> => {
+      for (let attempt = 0; attempt < 30; attempt += 1) {
+        await delay(attempt === 0 ? 500 : 1000);
+        const status = await getSagaStatus(id);
+        if (status.status === 'COMPLETED') {
+          return { ok: true };
+        }
+        if (status.status === 'FAILED' || status.status === 'COMPENSATING') {
+          return {
+            ok: false,
+            failure: normalizePaymentFailure({ code: status.errorCode ?? 'PROVIDER_ERROR' }, '예약 확정에 실패했습니다.'),
+          };
+        }
+      }
+      return {
+        ok: false,
+        failure: normalizePaymentFailure({ code: 'PAYMENT_TIMEOUT' }, '예약 확정이 지연되고 있습니다.'),
+      };
+    };
+
     const confirmOnce = async (): Promise<{ ok: true } | { ok: false; failure: PaymentFailureInfo }> => {
       try {
-        await confirmPayment(bookingId, { paymentKey, orderId, amount });
+        if (sagaId) {
+          await confirmSagaPayment(sagaId, { paymentKey, orderId, amount });
+          return await waitForSagaCompletion(sagaId);
+        }
+        await confirmPayment(bookingId as string, { paymentKey, orderId, amount });
         return { ok: true };
       } catch (err) {
         const failure = normalizePaymentFailure(err, '결제 확인에 실패했습니다.');

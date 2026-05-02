@@ -176,14 +176,14 @@ function addDaysToLocalDateParam(dateParam: string, days: number) {
 function slotLabelToIso(date: string, label: string): string {
   const minutes = parseTimeLabelMinutes(label);
   if (minutes == null) {
-    return `${date}T${label}:00`;
+    return `${date}T${label}:00+09:00`;
   }
 
   const dayOffset = Math.floor(minutes / (24 * 60));
   const normalizedMinutes = minutes % (24 * 60);
   const normalizedLabel = formatTimeLabel(normalizedMinutes);
   const normalizedDate = dayOffset > 0 ? addDaysToLocalDateParam(date, dayOffset) : date;
-  return `${normalizedDate}T${normalizedLabel}:00`;
+  return `${normalizedDate}T${normalizedLabel}:00+09:00`;
 }
 
 function isReservationSlotInPast(date: string, label: string, nowMs = Date.now()) {
@@ -818,12 +818,14 @@ export function SpaceReservationPage() {
         startsAt,
         endsAt,
         couponId: selectedCouponId ?? undefined,
+        totalPrice: subtotalPrice,
         reservationAnswers: buildReservationAnswerPayload(),
       });
 
       if (result.kind === 'saga') {
         // canary path: orchestrator returned 202 + sagaId. Polling handles the rest.
         tossLaunchedRef.current = false;
+        sessionStorage.setItem('bander_pending_saga_id', result.saga.sagaId);
         setSagaId(result.saga.sagaId);
         setSagaPending(true);
         return;
@@ -853,6 +855,7 @@ export function SpaceReservationPage() {
     }
 
     sessionStorage.setItem('bander_pending_booking_id', booking.bookingId);
+    sessionStorage.removeItem('bander_pending_saga_id');
     sessionStorage.setItem('bander_pending_room_slug', slug ?? '');
     sessionStorage.setItem('bander_pending_room_id', roomId ?? '');
 
@@ -878,9 +881,13 @@ export function SpaceReservationPage() {
     // PR-2.8a: when the saga polling response first exposes orderId + amount,
     // launch the Toss SDK once. Polling continues until COMPLETED.
     const data = sagaState.data;
+    if (data?.bookingId) {
+      sessionStorage.setItem('bander_pending_booking_id', data.bookingId);
+    }
     if (
       !tossLaunchedRef.current &&
       data?.orderId &&
+      data?.paymentId &&
       typeof data.amount === 'number' &&
       data.amount > 0
     ) {
@@ -892,9 +899,6 @@ export function SpaceReservationPage() {
         setSagaPending(false);
         showPaymentFailure({ code: 'PAYMENT_CONFIG_MISSING' });
         return;
-      }
-      if (data.bookingId) {
-        sessionStorage.setItem('bander_pending_booking_id', data.bookingId);
       }
       sessionStorage.setItem('bander_pending_room_slug', slug ?? '');
       sessionStorage.setItem('bander_pending_room_id', roomId ?? '');
@@ -934,6 +938,7 @@ export function SpaceReservationPage() {
       if (data?.bookingId) {
         sessionStorage.setItem('bander_pending_booking_id', data.bookingId);
       }
+      sessionStorage.removeItem('bander_pending_saga_id');
       // orchestrator path completes payment server-side via PaymentService;
       // surface success directly without driving toss-payments client SDK.
       setPaymentResult('success');
