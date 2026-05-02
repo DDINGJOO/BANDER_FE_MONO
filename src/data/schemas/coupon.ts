@@ -42,9 +42,13 @@ export type OwnedCouponItemDto = {
   scopeType?: CouponScopeType;
   /**
    * 사용 가능 공간명 스냅샷 (PR #459). scopeType=ALL 이면 null.
-   * 현재 BE 응답에 slug 는 포함되지 않으므로 표시 전용.
    */
   scopeRoomNames?: string[] | null;
+  /**
+   * 사용 가능 공간 slug 스냅샷 (BE PR #460). scopeRoomNames 와 같은 인덱스로 매칭.
+   * 삭제된 공간이면 해당 인덱스가 null. scopeType=ALL 이면 null.
+   */
+  scopeRoomSlugs?: (string | null)[] | null;
 };
 
 /** GET /api/v1/users/me/coupons */

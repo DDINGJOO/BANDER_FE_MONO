@@ -150,8 +150,13 @@ export function toMyCoupon(item: OwnedCouponItemDto): MyCoupon {
   const scopeType: CouponScopeType = item.scopeType ?? 'ALL';
   const roomNames =
     scopeType === 'ROOM_LIST' && Array.isArray(item.scopeRoomNames) ? item.scopeRoomNames : [];
-  // BE 미제공 → slug 는 항상 null (삭제된 공간 표기로 fallback).
-  const scopeRooms = roomNames.map((name) => ({ name, slug: null }));
+  const roomSlugs = Array.isArray(item.scopeRoomSlugs) ? item.scopeRoomSlugs : null;
+  // BE PR #460: scopeRoomNames 와 scopeRoomSlugs 는 같은 인덱스로 매칭 보장.
+  // slug 가 null 이면 삭제된 공간 (비활성 표기).
+  const scopeRooms = roomNames.map((name, i) => ({
+    name,
+    slug: roomSlugs?.[i] ?? null,
+  }));
   return {
     id: item.id,
     status: toCouponStatus(item),

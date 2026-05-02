@@ -106,18 +106,45 @@ describe('toMyCoupon', () => {
     expect(result.availableLine).toBe('모든 공간에서 사용 가능');
   });
 
-  test('ROOM_LIST + scopeRoomNames 매핑 (slug 는 항상 null)', () => {
+  test('ROOM_LIST + scopeRoomNames + scopeRoomSlugs zip (BE PR #460)', () => {
+    const result = toMyCoupon({
+      ...baseDto,
+      scopeType: 'ROOM_LIST',
+      scopeRoomNames: ['A룸', 'B룸'],
+      scopeRoomSlugs: ['a-room', 'b-room'],
+    });
+    expect(result.scopeType).toBe('ROOM_LIST');
+    expect(result.scopeRooms).toEqual([
+      { name: 'A룸', slug: 'a-room' },
+      { name: 'B룸', slug: 'b-room' },
+    ]);
+    expect(result.availableLine).toBe('A룸 외 1곳');
+  });
+
+  test('ROOM_LIST + scopeRoomSlugs 의 null 인덱스는 삭제된 공간 (비활성)', () => {
+    const result = toMyCoupon({
+      ...baseDto,
+      scopeType: 'ROOM_LIST',
+      scopeRoomNames: ['A룸', 'B룸 (삭제됨)', 'C룸'],
+      scopeRoomSlugs: ['a-room', null, 'c-room'],
+    });
+    expect(result.scopeRooms).toEqual([
+      { name: 'A룸', slug: 'a-room' },
+      { name: 'B룸 (삭제됨)', slug: null },
+      { name: 'C룸', slug: 'c-room' },
+    ]);
+  });
+
+  test('scopeRoomSlugs 누락(legacy 응답) 시 모두 null 로 fallback', () => {
     const result = toMyCoupon({
       ...baseDto,
       scopeType: 'ROOM_LIST',
       scopeRoomNames: ['A룸', 'B룸'],
     });
-    expect(result.scopeType).toBe('ROOM_LIST');
     expect(result.scopeRooms).toEqual([
       { name: 'A룸', slug: null },
       { name: 'B룸', slug: null },
     ]);
-    expect(result.availableLine).toBe('A룸 외 1곳');
   });
 
   test('maxDiscountWon null 이면 capLineRight 미렌더', () => {
