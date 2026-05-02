@@ -17,11 +17,19 @@ export function homeHotPostCardFromDto(row: HomeHotPostDto) {
     author: row.author,
     category: row.category,
     comments: row.comments,
-    image: row.thumbnailUrl ?? '',
+    image: hotPostThumbnail(row.thumbnailUrl),
     likes: row.likes,
     title: row.title,
     detailPath: row.detailPath,
   };
+}
+
+function hotPostThumbnail(value: string | null) {
+  const url = value?.trim() ?? '';
+  if (url.startsWith('https://picsum.photos/') || url.startsWith('https://fastly.picsum.photos/')) {
+    return '';
+  }
+  return url;
 }
 
 /** HOME_SPACE_CARDS 행 */

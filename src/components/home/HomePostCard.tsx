@@ -33,7 +33,11 @@ export function HomePostCard(props: HomePostCardProps) {
           <p className="home-post-card__category">{props.category}</p>
           <p className="home-post-card__title">{props.title}</p>
         </div>
-        {props.image ? <img alt="" className="home-post-card__thumb" src={props.image} /> : null}
+        {props.image ? (
+          <img alt="" className="home-post-card__thumb" src={props.image} />
+        ) : (
+          <div aria-hidden="true" className="home-post-card__thumb home-post-card__thumb--placeholder" />
+        )}
       </div>
       <div className="home-post-card__footer">
         <span className="home-post-card__author">{props.author}</span>

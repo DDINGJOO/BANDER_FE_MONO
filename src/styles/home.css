@@ -1927,6 +1927,11 @@ img.home-header__avatar::after {
   flex: 0 0 auto;
 }
 
+.home-post-card__thumb--placeholder {
+  background: #f1f3f5;
+  border: 1px solid #e3e6ea;
+}
+
 .home-post-card__footer {
   display: flex;
   align-items: center;

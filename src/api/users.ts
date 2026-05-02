@@ -81,7 +81,9 @@ export type UserMeSummary = {
 };
 
 export function getMySummary() {
-  return getJson<UserMeSummary>('/api/v1/users/me/summary');
+  return getJson<UserMeSummary>('/api/v1/users/me/summary', {
+    preserveAuthOnUnauthorized: true,
+  });
 }
 
 export function updateMyProfile(req: UpdateProfileRequest) {

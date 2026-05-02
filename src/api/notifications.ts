@@ -12,7 +12,9 @@ export function fetchNotifications(_page = 0, size = 20) {
 }
 
 export function fetchUnreadNotificationCount() {
-  return getJson<UnreadCountDto>('/api/v1/notifications/unread-count');
+  return getJson<UnreadCountDto>('/api/v1/notifications/unread-count', {
+    preserveAuthOnUnauthorized: true,
+  });
 }
 
 export function markNotificationRead(notificationId: string) {
