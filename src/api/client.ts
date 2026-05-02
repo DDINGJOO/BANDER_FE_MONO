@@ -38,6 +38,17 @@ export class ApiError extends Error {
   }
 }
 
+function shouldClearAuthOnUnauthorized(payload: ApiResponse<unknown> | null, preserveAuthOnUnauthorized: boolean) {
+  if (preserveAuthOnUnauthorized) {
+    return false;
+  }
+
+  // GW-AUTH-002 means a downstream service rejected the gateway user context.
+  // Clearing the browser session here turns an infra/header mismatch into a
+  // forced logout, while the session cookie may still be valid.
+  return payload?.error?.code !== 'GW-AUTH-002';
+}
+
 function buildHeaders(init?: RequestInit) {
   const headers = new Headers(init?.headers ?? {});
   if (!headers.has('Content-Type')) {
@@ -67,7 +78,7 @@ export async function requestJson<T>(path: string, init?: JsonRequestInit): Prom
     payload = null;
   }
 
-  if (response.status === 401 && !preserveAuthOnUnauthorized) {
+  if (response.status === 401 && shouldClearAuthOnUnauthorized(payload, preserveAuthOnUnauthorized)) {
     clearAuthSession();
   }
 
@@ -95,17 +106,18 @@ export async function requestVoid(path: string, init?: RequestInit): Promise<voi
     throw new ApiError('네트워크 오류가 발생했습니다. 잠시 후 다시 시도해주세요.', 0);
   }
 
-  if (response.status === 401) {
+  let payload: ApiResponse<unknown> | null = null;
+  try {
+    payload = (await response.json()) as ApiResponse<unknown>;
+  } catch {
+    payload = null;
+  }
+
+  if (response.status === 401 && shouldClearAuthOnUnauthorized(payload, false)) {
     clearAuthSession();
   }
 
   if (!response.ok) {
-    let payload: ApiResponse<unknown> | null = null;
-    try {
-      payload = (await response.json()) as ApiResponse<unknown>;
-    } catch {
-      payload = null;
-    }
     throw new ApiError(
       payload?.error?.message ?? '요청 처리에 실패했습니다.',
       response.status,

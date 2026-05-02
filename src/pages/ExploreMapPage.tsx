@@ -118,7 +118,7 @@ export function ExploreMapPage() {
   const navigate = useNavigate();
   const isAuthenticated = Boolean(loadAuthSession());
   const [headerSearchOpen, setHeaderSearchOpen] = useState(false);
-  const [headerSearchQuery, setHeaderSearchQuery] = useState('합주');
+  const [headerSearchQuery, setHeaderSearchQuery] = useState('');
   const headerSearchRef = useRef<HTMLDivElement | null>(null);
   const [mapResetKey, setMapResetKey] = useState(0);
   const [mobileListOpen, setMobileListOpen] = useState(false);

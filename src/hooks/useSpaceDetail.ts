@@ -173,7 +173,8 @@ export function useSpaceDetail(slug: string | undefined) {
         if (studioId && roomId) {
           try {
             const reviewData = await getJson<ReviewApiResponse>(
-              `/api/v1/spaces/${encodeURIComponent(studioId)}/reviews?roomId=${encodeURIComponent(roomId)}`
+              `/api/v1/spaces/${encodeURIComponent(studioId)}/reviews?roomId=${encodeURIComponent(roomId)}`,
+              { preserveAuthOnUnauthorized: true }
             );
             if (!cancelled && reviewData?.items) {
               setReviews(reviewData.items.map((r) => ({

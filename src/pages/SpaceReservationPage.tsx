@@ -24,6 +24,7 @@ import { useSagaPolling } from '../hooks/useSagaPolling';
 import { isMockMode, getTossPaymentsClientKey } from '../config/publicEnv';
 import { requestTossPayment } from '../utils/tossPayments';
 import { DEFAULT_PAYMENT_FAILURE, normalizePaymentFailure, type PaymentFailureInfo } from '../utils/paymentFailure';
+import { formatReservationUnitNote, getReservationSlotMinutes } from '../utils/reservationSlotUnit';
 import tossPaymentsLogo from '../assets/brand/toss-payments-logo.png';
 
 /** Figma 6225:45288 — 시간 선택 카드 캘린더 아이콘 */
@@ -73,6 +74,22 @@ const RESERVATION_OPTION_ITEMS = [
 ] as const;
 
 type PaymentResultState = 'failed' | 'success' | null;
+type AvailabilityStatus = 'idle' | 'loading' | 'loaded' | 'failed';
+
+type ReservationTimelineSlot = {
+  available: boolean;
+  endLabel: string;
+  endMinutes: number;
+  label: string;
+  price: number;
+  startMinutes: number;
+};
+
+type ReservationTimelineColumn = {
+  hour: number;
+  minuteLabels: string[];
+  slots: ReservationTimelineSlot[];
+};
 
 function buildPaymentRedirectUrl(path: '/payment/success' | '/payment/fail', params: {
   date: string;
@@ -150,13 +167,102 @@ function formatReservationDate(dateParam: string | null) {
   return `${String(parsed.getFullYear()).slice(2)}.${String(parsed.getMonth() + 1).padStart(2, '0')}.${String(parsed.getDate()).padStart(2, '0')} (${weekday})`;
 }
 
+function addDaysToLocalDateParam(dateParam: string, days: number) {
+  const date = parseLocalDateParam(dateParam) ?? startOfLocalDay();
+  date.setDate(date.getDate() + days);
+  return toLocalDateParam(date);
+}
+
 function slotLabelToIso(date: string, label: string): string {
-  return `${date}T${label}:00`;
+  const minutes = parseTimeLabelMinutes(label);
+  if (minutes == null) {
+    return `${date}T${label}:00`;
+  }
+
+  const dayOffset = Math.floor(minutes / (24 * 60));
+  const normalizedMinutes = minutes % (24 * 60);
+  const normalizedLabel = formatTimeLabel(normalizedMinutes);
+  const normalizedDate = dayOffset > 0 ? addDaysToLocalDateParam(date, dayOffset) : date;
+  return `${normalizedDate}T${normalizedLabel}:00`;
 }
 
 function isReservationSlotInPast(date: string, label: string, nowMs = Date.now()) {
   const slotStart = new Date(slotLabelToIso(date, label)).getTime();
   return Number.isFinite(slotStart) && slotStart <= nowMs;
+}
+
+function normalizeApiTimeLabel(value: string) {
+  return value.slice(0, 5);
+}
+
+function parseTimeLabelMinutes(label: string | null | undefined) {
+  const match = /^(\d{1,2}):(\d{2})$/.exec((label ?? '').trim());
+  if (!match) {
+    return null;
+  }
+
+  const hour = Number(match[1]);
+  const minute = Number(match[2]);
+  if (!Number.isInteger(hour) || !Number.isInteger(minute) || minute < 0 || minute >= 60) {
+    return null;
+  }
+  if (hour === 24 && minute === 0) {
+    return 24 * 60;
+  }
+  if (hour < 0 || hour >= 24) {
+    return null;
+  }
+
+  return hour * 60 + minute;
+}
+
+function formatTimeLabel(totalMinutes: number) {
+  const minutesInDay = 24 * 60;
+  if (totalMinutes === minutesInDay) {
+    return '24:00';
+  }
+
+  const normalized = ((totalMinutes % minutesInDay) + minutesInDay) % minutesInDay;
+  const hour = Math.floor(normalized / 60);
+  const minute = normalized % 60;
+  return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+}
+
+function getApiSlotRange(slot: SpaceAvailabilitySlot) {
+  const startLabel = normalizeApiTimeLabel(slot.startTime);
+  const endLabel = normalizeApiTimeLabel(slot.endTime);
+  const startMinutes = parseTimeLabelMinutes(startLabel);
+  let endMinutes = parseTimeLabelMinutes(endLabel);
+
+  if (startMinutes == null || endMinutes == null) {
+    return null;
+  }
+  if (endMinutes <= startMinutes) {
+    endMinutes += 24 * 60;
+  }
+
+  return {
+    endLabel: formatTimeLabel(endMinutes),
+    endMinutes,
+    startLabel,
+    startMinutes,
+  };
+}
+
+function inferAvailabilitySlotMinutes(slots: SpaceAvailabilitySlot[]) {
+  for (const slot of slots) {
+    const range = getApiSlotRange(slot);
+    if (range && range.endMinutes > range.startMinutes) {
+      return range.endMinutes - range.startMinutes;
+    }
+  }
+
+  return null;
+}
+
+function parseWonLabel(label: string | null | undefined) {
+  const digits = (label ?? '').replace(/[^\d]/g, '');
+  return digits ? Number(digits) : null;
 }
 
 function parseCouponLabelAmount(label: string, subtotalWon: number) {
@@ -267,6 +373,7 @@ export function SpaceReservationPage() {
     piano: 0,
   });
   const [availabilitySlots, setAvailabilitySlots] = useState<SpaceAvailabilitySlot[]>([]);
+  const [availabilityStatus, setAvailabilityStatus] = useState<AvailabilityStatus>('idle');
   const [reservationAnswers, setReservationAnswers] = useState<Record<string, string>>({});
   const timelineScrollRef = useRef<HTMLDivElement | null>(null);
   const scrollDragStateRef = useRef({ active: false, scrollLeft: 0, startX: 0 });
@@ -276,6 +383,12 @@ export function SpaceReservationPage() {
   const detailRoomId =
     detail && 'id' in detail && typeof detail.id === 'string' ? detail.id : null;
   const roomId = roomIdParam ?? detailRoomId;
+  const detailReservationUnit = detail as {
+    basePrice?: number | null;
+    priceLabel?: string | null;
+    priceSuffix?: string | null;
+    priceUnit?: string | null;
+  } | null;
   const roomDetailPath = slug ? `/spaces/${slug}` : '/';
   const reservationFields = useMemo(() => {
     const rawFields = ((detail as { reservationFields?: SpaceReservationFieldDto[] } | null)?.reservationFields ?? []);
@@ -351,11 +464,34 @@ export function SpaceReservationPage() {
   }, []);
 
   useEffect(() => {
-    if (isMockMode()) return;
-    if (!roomId) return;
+    if (isMockMode()) {
+      setAvailabilityStatus('loaded');
+      setAvailabilitySlots([]);
+      return;
+    }
+    if (!roomId) {
+      setAvailabilityStatus('idle');
+      setAvailabilitySlots([]);
+      return;
+    }
+    let cancelled = false;
+    setAvailabilityStatus('loading');
     getSpaceAvailability(roomId, dateParam)
-      .then((res) => setAvailabilitySlots(res.slots))
-      .catch(() => setAvailabilitySlots([]));
+      .then((res) => {
+        if (!cancelled) {
+          setAvailabilitySlots(res.slots);
+          setAvailabilityStatus('loaded');
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setAvailabilitySlots([]);
+          setAvailabilityStatus('failed');
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [roomId, dateParam]);
 
   useEffect(() => {
@@ -378,34 +514,85 @@ export function SpaceReservationPage() {
     return () => controller.abort();
   }, [slug]);
 
-  const timeColumns = useMemo(() => {
+  const inferredAvailabilitySlotMinutes = useMemo(
+    () => inferAvailabilitySlotMinutes(availabilitySlots),
+    [availabilitySlots]
+  );
+  const slotUnitMinutes = inferredAvailabilitySlotMinutes
+    ?? getReservationSlotMinutes(detailReservationUnit?.priceUnit, detailReservationUnit?.priceSuffix);
+  const reservationUnitNote = formatReservationUnitNote(slotUnitMinutes);
+  const apiSlotByStart = useMemo(() => {
+    const map = new Map<string, { endLabel: string; endMinutes: number; slot: SpaceAvailabilitySlot; startMinutes: number }>();
+    availabilitySlots.forEach((slot) => {
+      const range = getApiSlotRange(slot);
+      if (range) {
+        map.set(range.startLabel, {
+          endLabel: range.endLabel,
+          endMinutes: range.endMinutes,
+          slot,
+          startMinutes: range.startMinutes,
+        });
+      }
+    });
+    return map;
+  }, [availabilitySlots]);
+  const fallbackSlotPrice = detailReservationUnit?.basePrice
+    ?? parseWonLabel(detailReservationUnit?.priceLabel)
+    ?? (slotUnitMinutes >= 60 ? 10000 : 5000);
+  const timeColumns = useMemo<ReservationTimelineColumn[]>(() => {
+    const hasAuthoritativeAvailability = !isMockMode() && Boolean(roomId) && availabilityStatus === 'loaded';
+    const canUseFallbackAvailability = isMockMode() || !roomId;
+    const minutesPerSlot = Math.max(1, Math.min(60, slotUnitMinutes));
+    const labelsPerHour = Array.from(
+      { length: Math.ceil(60 / minutesPerSlot) },
+      (_, index) => index * minutesPerSlot
+    ).filter((minute) => minute < 60);
+
     return Array.from({ length: 24 }, (_, hour) => {
-      const firstLabel = `${String(hour).padStart(2, '0')}:00`;
-      const secondLabel = `${String(hour).padStart(2, '0')}:30`;
-
-      const findSlot = (label: string) =>
-        availabilitySlots.find((s) => s.startTime.slice(0, 5) === label);
-
-      const buildSlot = (label: string, apiSlot: SpaceAvailabilitySlot | undefined, fallbackAvailable: boolean) => {
+      const slots = labelsPerHour.map((minute): ReservationTimelineSlot => {
+        const startMinutes = hour * 60 + minute;
+        const label = formatTimeLabel(startMinutes);
+        const apiSlotInfo = apiSlotByStart.get(label);
+        const endMinutes = apiSlotInfo?.endMinutes ?? startMinutes + minutesPerSlot;
         const past = isReservationSlotInPast(dateParam, label, currentTimeMs);
+        const fallbackAvailable = !(hour < 6 || hour === 17 || label === '18:30');
+        const available = !past && (
+          hasAuthoritativeAvailability
+            ? Boolean(apiSlotInfo?.slot.bookable)
+            : canUseFallbackAvailability && fallbackAvailable
+        );
+
         return {
-          available: !past && (apiSlot ? apiSlot.bookable : fallbackAvailable),
+          available,
+          endLabel: apiSlotInfo?.endLabel ?? formatTimeLabel(endMinutes),
+          endMinutes,
           label,
-          price: apiSlot ? apiSlot.priceWon : (hour >= 18 ? 8000 : 5000),
+          price: apiSlotInfo?.slot.priceWon ?? fallbackSlotPrice,
+          startMinutes,
         };
-      };
+      });
 
       return {
         hour,
-        slots: [
-          buildSlot(firstLabel, findSlot(firstLabel), !(hour < 6 || hour === 17)),
-          buildSlot(secondLabel, findSlot(secondLabel), !(hour < 6 || (hour === 18 && secondLabel === '18:30'))),
-        ],
+        minuteLabels: labelsPerHour.map((minute) => String(minute).padStart(2, '0')),
+        slots,
       };
     });
-  }, [availabilitySlots, currentTimeMs, dateParam]);
+  }, [
+    apiSlotByStart,
+    availabilityStatus,
+    currentTimeMs,
+    dateParam,
+    fallbackSlotPrice,
+    roomId,
+    slotUnitMinutes,
+  ]);
 
   const linearSlots = useMemo(() => timeColumns.flatMap((column) => column.slots), [timeColumns]);
+  const linearSlotIndexByLabel = useMemo(
+    () => new Map(linearSlots.map((slot, index) => [slot.label, index])),
+    [linearSlots]
+  );
 
   useEffect(() => {
     setSelectedTimes((current) =>
@@ -427,8 +614,10 @@ export function SpaceReservationPage() {
   }, [detail, spaceCard]);
 
   const reservationDateLabel = formatReservationDate(dateParam);
-  const selectedSlotDetails = linearSlots.filter((slot) => selectedTimes.includes(slot.label));
-  const basePrice = selectedSlotDetails.reduce((sum, slot) => sum + slot.price, 0) || 10000;
+  const selectedSlotDetails = linearSlots
+    .filter((slot) => selectedTimes.includes(slot.label))
+    .sort((a, b) => a.startMinutes - b.startMinutes);
+  const basePrice = selectedSlotDetails.reduce((sum, slot) => sum + slot.price, 0) || fallbackSlotPrice;
   const optionTotal = RESERVATION_OPTION_ITEMS.reduce(
     (sum, item) => sum + item.price * (selectedOptionCounts[item.key] ?? 0),
     0
@@ -456,21 +645,16 @@ export function SpaceReservationPage() {
       : '- 0원'
     : '- 0원';
   const selectedTimeRange = (() => {
-    if (selectedTimes.length === 0) {
+    if (selectedSlotDetails.length === 0) {
       return '-';
     }
 
-    const sorted = [...selectedTimes].sort();
-    const start = sorted[0];
-    const last = sorted[sorted.length - 1];
-    const [hour, minute] = last.split(':').map(Number);
-    const nextMinute = minute + 30;
-    const endHour = nextMinute >= 60 ? hour + 1 : hour;
-    const endMinute = nextMinute >= 60 ? 0 : nextMinute;
-    const totalMinutes = selectedTimes.length * 30;
+    const first = selectedSlotDetails[0];
+    const last = selectedSlotDetails[selectedSlotDetails.length - 1];
+    const totalMinutes = last.endMinutes - first.startMinutes;
     const totalHours = totalMinutes / 60;
 
-    return `${start} ~ ${String(endHour).padStart(2, '0')}:${String(endMinute).padStart(2, '0')} (총 ${totalHours}시간)`;
+    return `${first.label} ~ ${last.endLabel} (총 ${totalHours}시간)`;
   })();
   const selectedOptionSummary = RESERVATION_OPTION_ITEMS.filter(
     (item) => selectedOptionCounts[item.key] > 0
@@ -612,25 +796,21 @@ export function SpaceReservationPage() {
   };
 
   const handlePaymentSubmit = async () => {
-    if (!canSubmitPayment || selectedTimes.length === 0) return;
+    if (!canSubmitPayment || selectedSlotDetails.length === 0) return;
 
     if (isMockMode()) {
       setPaymentResult('success');
       return;
     }
 
-    const sorted = [...selectedTimes].sort();
-    if (sorted.some((label) => isReservationSlotInPast(dateParam, label))) {
+    if (selectedSlotDetails.some((slot) => isReservationSlotInPast(dateParam, slot.label))) {
       setSelectedTimes((current) => current.filter((label) => !isReservationSlotInPast(dateParam, label)));
       return;
     }
-    const startsAt = slotLabelToIso(dateParam, sorted[0]);
-    const last = sorted[sorted.length - 1];
-    const [hour, minute] = last.split(':').map(Number);
-    const nextMinute = minute + 30;
-    const endHour = nextMinute >= 60 ? hour + 1 : hour;
-    const endMinute = nextMinute >= 60 ? 0 : nextMinute;
-    const endsAt = slotLabelToIso(dateParam, `${String(endHour).padStart(2, '0')}:${String(endMinute).padStart(2, '0')}`);
+    const firstSlot = selectedSlotDetails[0];
+    const lastSlot = selectedSlotDetails[selectedSlotDetails.length - 1];
+    const startsAt = slotLabelToIso(dateParam, firstSlot.label);
+    const endsAt = slotLabelToIso(dateParam, lastSlot.endLabel);
 
     try {
       const result = await createBooking({
@@ -835,7 +1015,7 @@ export function SpaceReservationPage() {
               {selectedTimeRange}
             </button>
           </div>
-          <p className="space-reservation__timeline-lead">최소 30분 단위로 선택</p>
+          <p className="space-reservation__timeline-lead">{reservationUnitNote}</p>
           <div className="space-reservation__timeline">
             <button
               aria-label="이전 시간대로 이동"
@@ -859,10 +1039,13 @@ export function SpaceReservationPage() {
                   <div className="space-reservation__timeline-hour">
                     {String(column.hour).padStart(2, '0')}:00
                   </div>
-                  <div className="space-reservation__timeline-slots">
+                  <div
+                    className="space-reservation__timeline-slots"
+                    style={{ gridTemplateColumns: `repeat(${column.slots.length}, minmax(0, 1fr))` }}
+                  >
                     {column.slots.map((slot, slotIndex) => {
                       const selected = selectedTimes.includes(slot.label);
-                      const slotLinearIndex = column.hour * 2 + slotIndex;
+                      const slotLinearIndex = linearSlotIndexByLabel.get(slot.label) ?? slotIndex;
 
                       return (
                         <button
@@ -878,9 +1061,13 @@ export function SpaceReservationPage() {
                       );
                     })}
                   </div>
-                  <div className="space-reservation__timeline-minutes">
-                    <span>00</span>
-                    <span>30</span>
+                  <div
+                    className="space-reservation__timeline-minutes"
+                    style={{ gridTemplateColumns: `repeat(${column.minuteLabels.length}, minmax(0, 1fr))` }}
+                  >
+                    {column.minuteLabels.map((minuteLabel) => (
+                      <span key={`${column.hour}-${minuteLabel}`}>{minuteLabel}</span>
+                    ))}
                   </div>
                 </div>
               ))}

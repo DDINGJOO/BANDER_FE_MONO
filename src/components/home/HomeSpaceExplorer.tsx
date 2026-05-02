@@ -13,7 +13,7 @@ import {
 type ExplorerPanel = 'date' | 'keyword' | 'people' | 'region' | 'space' | null;
 type ExplorerVariant = 'hero' | 'map' | 'section';
 
-type DateDraft = {
+export type SpaceDateFilterState = {
   day: number;
   endHour: number;
   month: number;
@@ -21,11 +21,14 @@ type DateDraft = {
   year: number;
 };
 
+type DateDraft = SpaceDateFilterState;
+
 type CalendarCell = {
   day: number;
   key: string;
   month: number;
   outside: boolean;
+  today: boolean;
   year: number;
 };
 
@@ -43,13 +46,16 @@ type SpaceCardData = {
 export type SpaceFilterState = {
   category?: string;
   capacity?: number;
+  date?: SpaceDateFilterState;
   parking?: boolean;
   regions?: string[];
+  reservable?: boolean;
   keywords?: string[];
 };
 
 type HomeSpaceExplorerProps = {
   headerContent?: React.ReactNode;
+  initialFilters?: SpaceFilterState;
   onFilterChange?: (filters: SpaceFilterState) => void;
   resultLimit?: number;
   spaces?: SpaceCardData[];
@@ -72,6 +78,10 @@ function buildCalendarGrid(viewYear: number, viewMonth: number): CalendarCell[] 
   const firstOfMonth = new Date(viewYear, viewMonth - 1, 1);
   const startOffset = firstOfMonth.getDay();
   const cursor = new Date(viewYear, viewMonth - 1, 1 - startOffset);
+  const today = new Date();
+  const todayYear = today.getFullYear();
+  const todayMonth = today.getMonth() + 1;
+  const todayDay = today.getDate();
   for (let i = 0; i < 42; i++) {
     const y = cursor.getFullYear();
     const m = cursor.getMonth() + 1;
@@ -81,6 +91,7 @@ function buildCalendarGrid(viewYear: number, viewMonth: number): CalendarCell[] 
       key: `cal-${y}-${m}-${d}-${i}`,
       month: m,
       outside: m !== viewMonth || y !== viewYear,
+      today: y === todayYear && m === todayMonth && d === todayDay,
       year: y,
     });
     cursor.setDate(cursor.getDate() + 1);
@@ -116,8 +127,58 @@ function summarizeSelection(values: string[], emptyLabel: string) {
   return `${values[0]} 외 ${values.length - 1}`;
 }
 
+const DAY_OF_WEEK_PARAMS = [
+  'SUNDAY',
+  'MONDAY',
+  'TUESDAY',
+  'WEDNESDAY',
+  'THURSDAY',
+  'FRIDAY',
+  'SATURDAY',
+] as const;
+
+function formatDateParam(date: DateDraft) {
+  return [
+    String(date.year).padStart(4, '0'),
+    String(date.month).padStart(2, '0'),
+    String(date.day).padStart(2, '0'),
+  ].join('-');
+}
+
+function getDayOfWeekParam(date: DateDraft) {
+  return DAY_OF_WEEK_PARAMS[new Date(date.year, date.month - 1, date.day).getDay()];
+}
+
+function appendSpaceFilterSearchParams(search: URLSearchParams, filters: SpaceFilterState) {
+  if (filters.category) {
+    search.set('category', filters.category);
+  }
+  if (filters.capacity) {
+    search.set('capacity', String(filters.capacity));
+  }
+  if (filters.parking) {
+    search.set('parking', 'true');
+  }
+  if (filters.reservable) {
+    search.set('reservable', 'true');
+  }
+  filters.regions?.filter(Boolean).forEach((region) => {
+    search.append('regions', region);
+  });
+  filters.keywords?.map((keyword) => keyword.replace(/^#/, '')).filter(Boolean).forEach((keyword) => {
+    search.append('keywords', keyword);
+  });
+  if (filters.date) {
+    search.set('date', formatDateParam(filters.date));
+    search.set('dayOfWeek', getDayOfWeekParam(filters.date));
+    search.set('startHour', String(filters.date.startHour));
+    search.set('endHour', String(filters.date.endHour));
+  }
+}
+
 export function HomeSpaceExplorer({
   headerContent,
+  initialFilters,
   onFilterChange,
   resultLimit,
   spaces = [],
@@ -131,28 +192,32 @@ export function HomeSpaceExplorer({
   const explorerRef = useRef<HTMLDivElement | null>(null);
   const [openPanel, setOpenPanel] = useState<ExplorerPanel>(null);
   const [heroSearchQuery, setHeroSearchQuery] = useState('');
-  const [reservableOnly, setReservableOnly] = useState(false);
-  const [parkingOnly, setParkingOnly] = useState(false);
+  const [reservableOnly, setReservableOnly] = useState(initialFilters?.reservable === true);
+  const [parkingOnly, setParkingOnly] = useState(initialFilters?.parking === true);
 
-  const [appliedRegionSelections, setAppliedRegionSelections] = useState<string[]>([]);
-  const [draftRegionSelections, setDraftRegionSelections] = useState<string[]>([]);
+  const [appliedRegionSelections, setAppliedRegionSelections] = useState<string[]>(() => initialFilters?.regions ?? []);
+  const [draftRegionSelections, setDraftRegionSelections] = useState<string[]>(() => initialFilters?.regions ?? []);
   const [leftProvince, setLeftProvince] = useState<string | null>(null);
   const [rightProvince, setRightProvince] = useState<string | null>(null);
 
-  const [appliedSpaceSelections, setAppliedSpaceSelections] = useState<string[]>([]);
-  const [draftSpaceSelections, setDraftSpaceSelections] = useState<string[]>([]);
+  const [appliedSpaceSelections, setAppliedSpaceSelections] = useState<string[]>(() =>
+    initialFilters?.category ? [initialFilters.category] : []
+  );
+  const [draftSpaceSelections, setDraftSpaceSelections] = useState<string[]>(() =>
+    initialFilters?.category ? [initialFilters.category] : []
+  );
 
-  const [appliedKeywordSelections, setAppliedKeywordSelections] = useState<string[]>([]);
-  const [draftKeywordSelections, setDraftKeywordSelections] = useState<string[]>([]);
+  const [appliedKeywordSelections, setAppliedKeywordSelections] = useState<string[]>(() => initialFilters?.keywords ?? []);
+  const [draftKeywordSelections, setDraftKeywordSelections] = useState<string[]>(() => initialFilters?.keywords ?? []);
 
-  const [appliedPeopleCount, setAppliedPeopleCount] = useState(0);
-  const [draftPeopleCount, setDraftPeopleCount] = useState(0);
+  const [appliedPeopleCount, setAppliedPeopleCount] = useState(initialFilters?.capacity ?? 0);
+  const [draftPeopleCount, setDraftPeopleCount] = useState(initialFilters?.capacity ?? 0);
 
-  const [appliedDate, setAppliedDate] = useState<DateDraft | null>(null);
-  const [draftDate, setDraftDate] = useState<DateDraft>(() => createTodayDateDraft());
+  const [appliedDate, setAppliedDate] = useState<DateDraft | null>(() => initialFilters?.date ?? null);
+  const [draftDate, setDraftDate] = useState<DateDraft>(() => initialFilters?.date ?? createTodayDateDraft());
   const [calendarView, setCalendarView] = useState(() => {
-    const t = new Date();
-    return { month: t.getMonth() + 1, year: t.getFullYear() };
+    const d = initialFilters?.date ?? createTodayDateDraft();
+    return { month: d.month, year: d.year };
   });
 
   useEffect(() => {
@@ -176,7 +241,9 @@ export function HomeSpaceExplorer({
     const next: SpaceFilterState = {
       category: appliedSpaceSelections.length === 1 ? appliedSpaceSelections[0] : undefined,
       capacity: appliedPeopleCount > 0 ? appliedPeopleCount : undefined,
+      date: appliedDate ?? undefined,
       parking: parkingOnly || undefined,
+      reservable: reservableOnly || undefined,
       regions: appliedRegionSelections.length > 0 ? appliedRegionSelections : undefined,
       keywords: appliedKeywordSelections.length > 0 ? appliedKeywordSelections : undefined,
     };
@@ -184,7 +251,7 @@ export function HomeSpaceExplorer({
     if (key === prevFilterRef.current) return;
     prevFilterRef.current = key;
     onFilterChange(next);
-  }, [appliedSpaceSelections, appliedPeopleCount, parkingOnly, appliedRegionSelections, appliedKeywordSelections, onFilterChange]);
+  }, [appliedSpaceSelections, appliedPeopleCount, appliedDate, parkingOnly, reservableOnly, appliedRegionSelections, appliedKeywordSelections, onFilterChange]);
 
   const openRegionPanel = () => {
     if (openPanel === 'region') {
@@ -242,14 +309,32 @@ export function HomeSpaceExplorer({
 
   const submitHeroSearch = useCallback(() => {
     const trimmed = heroSearchQuery.trim();
-    const fromKeywords = appliedKeywordSelections
-      .map((keyword) => keyword.replace(/^#/, ''))
-      .filter(Boolean)
-      .join(' ')
-      .trim();
-    const q = trimmed || fromKeywords || '합주';
-    navigate(`/search?q=${encodeURIComponent(q)}`);
-  }, [appliedKeywordSelections, heroSearchQuery, navigate]);
+    const search = new URLSearchParams();
+    if (trimmed) {
+      search.set('q', trimmed);
+    }
+    appendSpaceFilterSearchParams(search, {
+      category: appliedSpaceSelections.length === 1 ? appliedSpaceSelections[0] : undefined,
+      capacity: appliedPeopleCount > 0 ? appliedPeopleCount : undefined,
+      date: appliedDate ?? undefined,
+      parking: parkingOnly || undefined,
+      reservable: reservableOnly || undefined,
+      regions: appliedRegionSelections.length > 0 ? appliedRegionSelections : undefined,
+      keywords: appliedKeywordSelections.length > 0 ? appliedKeywordSelections : undefined,
+    });
+    const queryString = search.toString();
+    navigate(queryString ? `/search?${queryString}` : '/search');
+  }, [
+    appliedDate,
+    appliedKeywordSelections,
+    appliedPeopleCount,
+    appliedRegionSelections,
+    appliedSpaceSelections,
+    heroSearchQuery,
+    navigate,
+    parkingOnly,
+    reservableOnly,
+  ]);
 
   const handleDateRangeChange = (nextValue: number[]) => {
     const [startHour, endHour] = nextValue;
@@ -507,7 +592,7 @@ export function HomeSpaceExplorer({
               draftDate.day === cell.day;
             return (
               <button
-                className={`home-explorer-date__cell ${cell.outside ? 'home-explorer-date__cell--outside' : ''} ${selected ? 'home-explorer-date__cell--selected' : ''}`}
+                className={`home-explorer-date__cell ${cell.outside ? 'home-explorer-date__cell--outside' : ''} ${cell.today ? 'home-explorer-date__cell--today' : ''} ${selected ? 'home-explorer-date__cell--selected' : ''}`}
                 key={cell.key}
                 onClick={() => {
                   setDraftDate((current) => ({
@@ -862,6 +947,31 @@ export function HomeSpaceExplorer({
           </div>
 
           <div className="home-search__filter-wrap">
+            {hasActiveSpace ? (
+              <div className="home-search__filter-control">
+                <button className="home-search__filter home-search__filter--split" onClick={openSpacePanel} type="button">
+                  <span>{spaceButtonLabel}</span>
+                  <ChevronIcon />
+                </button>
+                <button
+                  aria-label="공간 필터 초기화"
+                  className="home-search__filter-clear"
+                  onClick={clearSpaceFilter}
+                  type="button"
+                >
+                  ×
+                </button>
+              </div>
+            ) : (
+              <button className="home-search__filter" onClick={openSpacePanel} type="button">
+                <span>{spaceButtonLabel}</span>
+                <ChevronIcon />
+              </button>
+            )}
+            {openPanel === 'space' ? spacePanel : null}
+          </div>
+
+          <div className="home-search__filter-wrap">
             {hasActiveDate ? (
               <div className="home-search__filter-control">
                 <button className="home-search__filter home-search__filter--split" onClick={openDatePanel} type="button">
@@ -941,6 +1051,14 @@ export function HomeSpaceExplorer({
           </div>
 
           <button
+            className={`home-search__filter ${reservableOnly ? 'home-search__filter--active' : ''}`}
+            onClick={() => setReservableOnly((current) => !current)}
+            type="button"
+          >
+            예약가능
+          </button>
+
+          <button
             className={`home-search__filter ${parkingOnly ? 'home-search__filter--active' : ''}`}
             onClick={() => setParkingOnly((current) => !current)}
             type="button"
@@ -976,28 +1094,6 @@ export function HomeSpaceExplorer({
                 </button>
               ) : null}
             </span>
-          </div>
-
-          <div className="home-search__field-wrap">
-            <button
-              className={`home-search__field ${openPanel === 'date' || appliedDate ? 'home-search__field--active' : ''}`}
-              onClick={openDatePanel}
-              type="button"
-            >
-              <span>{dateButtonLabel}</span>
-              <ChevronIcon />
-            </button>
-          </div>
-
-          <div className="home-search__field-wrap">
-            <button
-              className={`home-search__field ${openPanel === 'people' || appliedPeopleCount > 0 ? 'home-search__field--active' : ''}`}
-              onClick={openPeoplePanel}
-              type="button"
-            >
-              <span>{peopleButtonLabel}</span>
-              <ChevronIcon />
-            </button>
           </div>
 
           <button

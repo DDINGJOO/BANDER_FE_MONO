@@ -120,6 +120,8 @@ export type SpaceDetailDto = {
   slug: string;
   title: string;
   category: string | null;
+  basePrice?: number | null;
+  priceUnit?: string | null;
   studioName: string;
   vendorSlug: string | null;
   location: string | null;

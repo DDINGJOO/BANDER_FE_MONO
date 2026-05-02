@@ -17,7 +17,7 @@ import {
 } from '../data/reservationCancelModal';
 import type { ReservationCancelNoticeRow } from '../components/reservations/ReservationCancelModal';
 import { type MyReservationTab } from '../data/myReservations';
-import { getMyBookings, getRefundEstimate, cancelBooking, type MyBookingItem } from '../api/bookings';
+import { getMyBookings, getRefundEstimate, type MyBookingItem } from '../api/bookings';
 
 const TAB_LABELS: Record<MyReservationTab, string> = {
   upcoming: '이용전',

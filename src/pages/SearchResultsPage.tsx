@@ -1,8 +1,12 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { HomeFooter } from '../components/home/HomeFooter';
 import { HomeHeader } from '../components/home/HomeHeader';
-import { HomeSpaceExplorer, type SpaceFilterState } from '../components/home/HomeSpaceExplorer';
+import {
+  HomeSpaceExplorer,
+  type SpaceDateFilterState,
+  type SpaceFilterState,
+} from '../components/home/HomeSpaceExplorer';
 import { ChevronIcon } from '../components/shared/Icons';
 import { useSearchSuggestions } from '../hooks/useSearchSuggestions';
 import { COMMUNITY_SORT_OPTIONS, COMMUNITY_FEED_ITEMS } from '../data/communityFeed';
@@ -80,11 +84,161 @@ function formatPostDateLabel(value: string): string {
   }).format(new Date(timestamp));
 }
 
+const DAY_OF_WEEK_PARAMS = [
+  'SUNDAY',
+  'MONDAY',
+  'TUESDAY',
+  'WEDNESDAY',
+  'THURSDAY',
+  'FRIDAY',
+  'SATURDAY',
+] as const;
+
+function dedupe(values: string[]) {
+  return Array.from(new Set(values.map((value) => value.trim()).filter(Boolean)));
+}
+
+function parsePositiveIntParam(searchParams: URLSearchParams, key: string) {
+  const value = searchParams.get(key);
+  if (!value) return undefined;
+
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : undefined;
+}
+
+function parseHourParam(searchParams: URLSearchParams, key: string, fallback: number) {
+  const value = searchParams.get(key);
+  if (!value) return fallback;
+
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed >= 0 && parsed <= 24 ? parsed : fallback;
+}
+
+function parseBooleanParam(searchParams: URLSearchParams, key: string) {
+  const value = searchParams.get(key);
+  return value === 'true' || value === '1' ? true : undefined;
+}
+
+function parseDateFilter(searchParams: URLSearchParams): SpaceDateFilterState | undefined {
+  const value = searchParams.get('date');
+  const match = value?.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return undefined;
+
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const date = new Date(year, month - 1, day);
+  if (date.getFullYear() !== year || date.getMonth() + 1 !== month || date.getDate() !== day) {
+    return undefined;
+  }
+
+  const startHour = parseHourParam(searchParams, 'startHour', 0);
+  const endHour = parseHourParam(searchParams, 'endHour', 24);
+  if (startHour >= endHour) {
+    return undefined;
+  }
+
+  return { day, endHour, month, startHour, year };
+}
+
+function keywordParamToFilterValue(value: string) {
+  const trimmed = value.trim();
+  if (!trimmed) return '';
+  return trimmed.startsWith('#') ? trimmed : `#${trimmed}`;
+}
+
+function parseSpaceFilters(searchParams: URLSearchParams): SpaceFilterState {
+  const regions = dedupe([
+    ...searchParams.getAll('regions'),
+    ...searchParams.getAll('region'),
+  ]);
+  const keywords = dedupe(searchParams.getAll('keywords').map(keywordParamToFilterValue));
+  const category = searchParams.get('category')?.trim() || undefined;
+
+  return {
+    category,
+    capacity: parsePositiveIntParam(searchParams, 'capacity'),
+    date: parseDateFilter(searchParams),
+    parking: parseBooleanParam(searchParams, 'parking'),
+    regions: regions.length ? regions : undefined,
+    reservable: parseBooleanParam(searchParams, 'reservable'),
+    keywords: keywords.length ? keywords : undefined,
+  };
+}
+
+function formatDateParam(date: SpaceDateFilterState) {
+  return [
+    String(date.year).padStart(4, '0'),
+    String(date.month).padStart(2, '0'),
+    String(date.day).padStart(2, '0'),
+  ].join('-');
+}
+
+function getDayOfWeekParam(date: SpaceDateFilterState) {
+  return DAY_OF_WEEK_PARAMS[new Date(date.year, date.month - 1, date.day).getDay()];
+}
+
+function appendSpaceFilterSearchParams(search: URLSearchParams, filters: SpaceFilterState) {
+  if (filters.category) {
+    search.set('category', filters.category);
+  }
+  if (filters.capacity) {
+    search.set('capacity', String(filters.capacity));
+  }
+  if (filters.parking) {
+    search.set('parking', 'true');
+  }
+  if (filters.reservable) {
+    search.set('reservable', 'true');
+  }
+  filters.regions?.filter(Boolean).forEach((region) => {
+    search.append('regions', region);
+  });
+  filters.keywords?.map((keyword) => keyword.replace(/^#/, '')).filter(Boolean).forEach((keyword) => {
+    search.append('keywords', keyword);
+  });
+  if (filters.date) {
+    search.set('date', formatDateParam(filters.date));
+    search.set('dayOfWeek', getDayOfWeekParam(filters.date));
+    search.set('startHour', String(filters.date.startHour));
+    search.set('endHour', String(filters.date.endHour));
+  }
+}
+
+function buildSearchPath(query: string, filters: SpaceFilterState) {
+  const search = new URLSearchParams();
+  const trimmed = query.trim();
+  if (trimmed) {
+    search.set('q', trimmed);
+  }
+  appendSpaceFilterSearchParams(search, filters);
+  const queryString = search.toString();
+  return queryString ? `/search?${queryString}` : '/search';
+}
+
+function hasSpaceSearchFilters(filters: SpaceFilterState) {
+  return Boolean(
+    filters.category ||
+    filters.capacity ||
+    filters.date ||
+    filters.parking ||
+    filters.regions?.length ||
+    filters.reservable ||
+    filters.keywords?.length
+  );
+}
+
 export function SearchResultsPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const searchParamString = searchParams.toString();
   const isAuthenticated = Boolean(loadAuthSession());
-  const query = searchParams.get('q')?.trim() || '합주';
+  const query = searchParams.get('q')?.trim() ?? '';
+  const initialSpaceFilters = useMemo(
+    () => parseSpaceFilters(new URLSearchParams(searchParamString)),
+    [searchParamString]
+  );
+  const initialSpaceFilterKey = useMemo(() => JSON.stringify(initialSpaceFilters), [initialSpaceFilters]);
   const [activeTab, setActiveTab] = useState<SearchTab>('space');
   const [headerSearchOpen, setHeaderSearchOpen] = useState(false);
   const [headerSearchQuery, setHeaderSearchQuery] = useState(query);
@@ -105,7 +259,7 @@ export function SearchResultsPage() {
   const [postsLoading, setPostsLoading] = useState(false);
   const [postsTotalCount, setPostsTotalCount] = useState<number | null>(null);
 
-  const spaceFiltersRef = useRef<SpaceFilterState>({});
+  const spaceFiltersRef = useRef<SpaceFilterState>(initialSpaceFilters);
   const [spaceFilterKey, setSpaceFilterKey] = useState(0);
 
   const handleFilterChange = useCallback((filters: SpaceFilterState) => {
@@ -115,6 +269,13 @@ export function SearchResultsPage() {
     spaceFiltersRef.current = filters;
     setSpaceFilterKey((k) => k + 1);
   }, []);
+
+  useEffect(() => {
+    const prev = JSON.stringify(spaceFiltersRef.current);
+    if (prev === initialSpaceFilterKey) return;
+    spaceFiltersRef.current = initialSpaceFilters;
+    setSpaceFilterKey((k) => k + 1);
+  }, [initialSpaceFilterKey, initialSpaceFilters]);
 
   useEffect(() => {
     setHeaderSearchQuery(query);
@@ -131,16 +292,18 @@ export function SearchResultsPage() {
     if (activeTab === 'space') {
       setRoomsLoading(true);
       const sf = spaceFiltersRef.current;
-      const cleanKeywords = sf.keywords?.map((k) => k.replace(/^#/, '')) ?? [];
-      const filterQuery = cleanKeywords.length
-        ? [query, ...cleanKeywords].filter(Boolean).join(' ')
-        : query;
+      const cleanKeywords = sf.keywords?.map((k) => k.replace(/^#/, '')).filter(Boolean) ?? [];
       searchRooms({
-        q: filterQuery,
+        q: query || undefined,
         category: sf.category,
         region: sf.regions?.length ? sf.regions[0] : undefined,
+        regions: sf.regions,
+        keywords: cleanKeywords.length ? cleanKeywords : undefined,
         capacity: sf.capacity,
         parking: sf.parking,
+        dayOfWeek: sf.date ? getDayOfWeekParam(sf.date) : undefined,
+        startHour: sf.date?.startHour,
+        endHour: sf.date?.endHour,
         sort: sortBy,
         size: 20,
       })
@@ -153,7 +316,7 @@ export function SearchResultsPage() {
 
     if (activeTab === 'vendor') {
       setVendorsLoading(true);
-      searchVendors({ q: query, sort: sortBy, size: 20 })
+      searchVendors({ q: query || undefined, sort: sortBy, size: 20 })
         .then((res) => {
           setVendors(res.items);
           setVendorsTotalCount(res.totalCount ?? null);
@@ -163,7 +326,7 @@ export function SearchResultsPage() {
 
     if (activeTab === 'community') {
       setPostsLoading(true);
-      searchPosts({ q: query, size: 20 })
+      searchPosts({ q: query || undefined, size: 20 })
         .then((res) => {
           setPosts(res.items);
           setPostsTotalCount(res.totalCount ?? null);
@@ -196,12 +359,15 @@ export function SearchResultsPage() {
 
   const handleSearchSubmit = (value: string) => {
     const normalizedValue = value.trim();
-    if (!normalizedValue) {
-      return;
-    }
 
-    navigate(`/search?q=${encodeURIComponent(normalizedValue)}`);
+    navigate(buildSearchPath(normalizedValue, spaceFiltersRef.current));
   };
+
+  const searchTitle = query
+    ? `'${query}' 검색 결과`
+    : hasSpaceSearchFilters(spaceFiltersRef.current)
+      ? '조건 검색 결과'
+      : '전체 검색 결과';
 
   const resultCountLabel = isMockMode()
     ? activeTab === 'space'
@@ -247,7 +413,7 @@ export function SearchResultsPage() {
       />
 
       <section className="search-results__inner">
-        <h1 className="search-results__title">'{query}' 검색 결과</h1>
+        <h1 className="search-results__title">{searchTitle}</h1>
 
         <div className="search-results__tabs">
           <button
@@ -308,9 +474,17 @@ export function SearchResultsPage() {
 
         {activeTab === 'space' ? (
           isMockMode() ? (
-            <HomeSpaceExplorer onFilterChange={handleFilterChange} resultLimit={20} variant="section" />
+            <HomeSpaceExplorer
+              initialFilters={initialSpaceFilters}
+              key={initialSpaceFilterKey}
+              onFilterChange={handleFilterChange}
+              resultLimit={20}
+              variant="section"
+            />
           ) : (
             <HomeSpaceExplorer
+              initialFilters={initialSpaceFilters}
+              key={initialSpaceFilterKey}
               onFilterChange={handleFilterChange}
               resultLimit={20}
               spaces={roomsLoading ? [] : rooms.map((r) => ({

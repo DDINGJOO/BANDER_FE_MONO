@@ -3,7 +3,7 @@ export const HOME_HOT_POSTS = [
     author: 'happytree12',
     category: '궁금해요',
     comments: 15,
-    image: 'https://www.figma.com/api/mcp/asset/ff9758a5-4985-49d8-9172-c00c660ed4c8',
+    image: 'https://images.unsplash.com/photo-1516280440614-37939bbacd81?auto=format&fit=crop&w=900&q=80',
     likes: 212,
     title: '보컬용 이펙터 어떤게 제일 좋나요? 추천해주세요!',
   },
@@ -11,7 +11,7 @@ export const HOME_HOT_POSTS = [
     author: '연습집중중',
     category: '궁금해요',
     comments: 13,
-    image: 'https://www.figma.com/api/mcp/asset/b9e8fbb2-18fb-4a7f-b282-6507f59a4e28',
+    image: 'https://images.unsplash.com/photo-1516280440614-37939bbacd81?auto=format&fit=crop&w=900&q=80',
     likes: 117,
     title: '보컬 연습하기 좋은 연습실 추천해주세요! 🎤',
   },
@@ -19,7 +19,7 @@ export const HOME_HOT_POSTS = [
     author: 'neowmeow',
     category: '공간리뷰',
     comments: 10,
-    image: 'https://www.figma.com/api/mcp/asset/41caf368-47d0-4187-ae0a-744ff7632d69',
+    image: 'https://images.unsplash.com/photo-1511379938547-c1f69419868d?auto=format&fit=crop&w=900&q=80',
     likes: 110,
     title: '홍대 합주실 다녀온 후기 - 가성비 만족 👍',
   },
@@ -27,7 +27,7 @@ export const HOME_HOT_POSTS = [
     author: 'BandSoul33',
     category: '공간리뷰',
     comments: 31,
-    image: 'https://www.figma.com/api/mcp/asset/a09f7850-c7db-4c86-8903-c016fb208214',
+    image: 'https://images.unsplash.com/photo-1519892300165-cb5542fb47c7?auto=format&fit=crop&w=900&q=80',
     likes: 109,
     title: '방음 괜찮은 보컬 연습실 찾는 분들 참고하세요',
   },
@@ -36,7 +36,7 @@ export const HOME_HOT_POSTS = [
 export const HOME_SPACE_CARDS = [
   {
     detailPath: '/spaces/yeongchang-upright-room',
-    image: 'https://www.figma.com/api/mcp/asset/dbac413c-ce1b-4204-8349-58d93f3e31cb',
+    image: 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?auto=format&fit=crop&w=1200&q=80',
     location: '서울 마포구 동교동',
     price: '15,000원',
     rating: '4.9',
@@ -46,7 +46,7 @@ export const HOME_SPACE_CARDS = [
   },
   {
     detailPath: '/spaces/a-room-grand-piano-rental',
-    image: 'https://www.figma.com/api/mcp/asset/faf24acb-5b97-4dc9-b496-b8cfd2bf7e18',
+    image: 'https://images.unsplash.com/photo-1520523839897-bd0b52f945a0?auto=format&fit=crop&w=1200&q=80',
     location: '서울 마포구 서교동',
     price: '10,000원',
     rating: '5.0',
@@ -56,7 +56,7 @@ export const HOME_SPACE_CARDS = [
   },
   {
     detailPath: '/spaces/jazz-ensemble-room',
-    image: 'https://www.figma.com/api/mcp/asset/af67d13c-fbe7-4493-b2d3-4eb610f26c41',
+    image: 'https://images.unsplash.com/photo-1511379938547-c1f69419868d?auto=format&fit=crop&w=1200&q=80',
     location: '서울 마포구 동교동',
     price: '13,000원',
     rating: '4.5',
@@ -66,7 +66,7 @@ export const HOME_SPACE_CARDS = [
   },
   {
     detailPath: '/spaces/yamaha-u3-room',
-    image: 'https://www.figma.com/api/mcp/asset/c1c89983-892a-473c-893f-8018ed149c33',
+    image: 'https://images.unsplash.com/photo-1519892300165-cb5542fb47c7?auto=format&fit=crop&w=1200&q=80',
     location: '서울 마포구 신수동',
     price: '14,000원',
     rating: '4.4',
@@ -76,7 +76,7 @@ export const HOME_SPACE_CARDS = [
   },
   {
     detailPath: '/spaces/room-black',
-    image: 'https://www.figma.com/api/mcp/asset/c003f7b2-6b79-4df6-88f2-ce06a65691be',
+    image: 'https://images.unsplash.com/photo-1507838153414-b4b713384a76?auto=format&fit=crop&w=1200&q=80',
     location: '서울 마포구 연남동',
     price: '10,000원',
     rating: '4.5',
@@ -86,7 +86,7 @@ export const HOME_SPACE_CARDS = [
   },
   {
     detailPath: '/spaces/jazz-big-room',
-    image: 'https://www.figma.com/api/mcp/asset/c74a7024-1f71-4321-8fa6-330d5df89437',
+    image: 'https://images.unsplash.com/photo-1487180144351-b8472da7d491?auto=format&fit=crop&w=1200&q=80',
     location: '서울 마포구 연남동',
     price: '18,000원',
     rating: '4.9',
@@ -96,7 +96,7 @@ export const HOME_SPACE_CARDS = [
   },
   {
     detailPath: '/spaces/room-b-u1',
-    image: 'https://www.figma.com/api/mcp/asset/34569b09-a2a7-4e61-8869-29c0db88dc25',
+    image: 'https://images.unsplash.com/photo-1508780709619-79562169bc64?auto=format&fit=crop&w=1200&q=80',
     location: '서울 마포구 망원동',
     price: '14,000원',
     rating: '4.6',
@@ -106,7 +106,7 @@ export const HOME_SPACE_CARDS = [
   },
   {
     detailPath: '/spaces/upright-room-2',
-    image: 'https://www.figma.com/api/mcp/asset/890bf1d4-4704-428f-8db7-e76f9adf6a27',
+    image: 'https://images.unsplash.com/photo-1526142684086-7ebd69df27a5?auto=format&fit=crop&w=1200&q=80',
     location: '서울 마포구 염리동',
     price: '12,000원',
     rating: '4.8',
@@ -132,7 +132,7 @@ export const HOME_REVIEW_CARDS = [
   {
     author: 'mellowkeys',
     date: '2025.02.12',
-    image: 'https://www.figma.com/api/mcp/asset/faf24acb-5b97-4dc9-b496-b8cfd2bf7e18',
+    image: 'https://images.unsplash.com/photo-1520523839897-bd0b52f945a0?auto=format&fit=crop&w=900&q=80',
     rating: '4.8',
     spaceName: '엔젤 업라이트 피아노 연습실',
     text: '피아노 상태가 좋아서 연습 집중도가 높았습니다. 예약도 빠르고 입실 절차가 깔끔했어요.',
@@ -140,7 +140,7 @@ export const HOME_REVIEW_CARDS = [
   {
     author: 'mixlab',
     date: '2025.02.08',
-    image: 'https://www.figma.com/api/mcp/asset/dbac413c-ce1b-4204-8349-58d93f3e31cb',
+    image: 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?auto=format&fit=crop&w=900&q=80',
     rating: '5.0',
     spaceName: 'A룸 그랜드 피아노 대관',
     text: '장비 구성이 명확해서 합주 리허설용으로 좋았습니다. 다음에도 같은 공간으로 재예약할 예정입니다.',
@@ -148,7 +148,7 @@ export const HOME_REVIEW_CARDS = [
   {
     author: 'vocalroom',
     date: '2025.02.03',
-    image: 'https://www.figma.com/api/mcp/asset/c1c89983-892a-473c-893f-8018ed149c33',
+    image: 'https://images.unsplash.com/photo-1519892300165-cb5542fb47c7?auto=format&fit=crop&w=900&q=80',
     rating: '4.6',
     spaceName: '재즈 합주실',
     text: '방음이 안정적이고 조명이 편안해서 보컬 녹음 연습용으로 적합했습니다.',
@@ -156,7 +156,7 @@ export const HOME_REVIEW_CARDS = [
   {
     author: 'bandercrew',
     date: '2025.01.28',
-    image: 'https://www.figma.com/api/mcp/asset/890bf1d4-4704-428f-8db7-e76f9adf6a27',
+    image: 'https://images.unsplash.com/photo-1508780709619-79562169bc64?auto=format&fit=crop&w=900&q=80',
     rating: '4.9',
     spaceName: 'Room Black',
     text: '게스트로 둘러보기에도 정보가 명확해서 공간 비교가 쉬웠습니다. 첫 예약 진입 장벽이 낮았어요.',

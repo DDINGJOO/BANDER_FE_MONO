@@ -19,7 +19,7 @@ spec:
     spec:
       containers:
         - name: nginx
-          image: bander/client-fe:onprem-20260430-010323-fe
+          image: bander/client-fe:onprem-20260502-165236-fe
           imagePullPolicy: Never
           ports:
             - containerPort: 80

@@ -21,6 +21,7 @@ import { useCouponDownloads } from '../hooks/useCouponDownloads';
 import { useSpaceDetail } from '../hooks/useSpaceDetail';
 import { buildChatHref } from '../lib/chatRoutes';
 import { isMockMode } from '../config/publicEnv';
+import { formatReservationUnitNote, getReservationSlotMinutes } from '../utils/reservationSlotUnit';
 import type { CouponAvailableItemDto } from '../data/schemas/coupon';
 
 type DetailCalendarDay = {
@@ -287,6 +288,18 @@ export function SpaceDetailPage() {
     (calendarMonth.year === today.getFullYear() && calendarMonth.month > today.getMonth());
   const detailRoomId =
     detail && 'id' in detail && typeof detail.id === 'string' ? detail.id : null;
+  const detailReservationUnit = detail as {
+    priceSuffix?: string | null;
+    priceTeaserSuffix?: string | null;
+    priceUnit?: string | null;
+  } | null;
+  const reservationUnitNote = formatReservationUnitNote(
+    getReservationSlotMinutes(
+      detailReservationUnit?.priceUnit,
+      detailReservationUnit?.priceTeaserSuffix,
+      detailReservationUnit?.priceSuffix
+    )
+  );
   const selectedBookingDateLabel = formatFullDateLabel(selectedBookingDate);
   const reserveParams = new URLSearchParams({ date: selectedBookingDateKey });
   if (detailRoomId) {
@@ -426,7 +439,7 @@ export function SpaceDetailPage() {
                   >
                     <div className="space-detail__pricing-spec-row">
                       <span className="space-detail__pricing-spec-label">이용시간</span>
-                      <span className="space-detail__pricing-spec-value">최소 30분 단위로 선택</span>
+                      <span className="space-detail__pricing-spec-value">{reservationUnitNote}</span>
                     </div>
                     <div className="space-detail__pricing-spec-row">
                       <span className="space-detail__pricing-spec-label" id="space-detail-hours-label">
@@ -898,7 +911,7 @@ export function SpaceDetailPage() {
 
         <section className="space-detail__section space-detail__section--recommend">
           <div className="space-detail__section-title-wrap">
-            <h2>유사하다면 다른 방</h2>
+            <h2>유사한 방도 있어요</h2>
           </div>
           <div className="space-detail__recommend-grid">
             {ROOM_DETAIL_RECOMMENDATIONS.map((space) => (

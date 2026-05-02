@@ -65,10 +65,15 @@ type RoomSearchParams = {
   q?: string;
   category?: string;
   region?: string;
+  regions?: string[];
+  keywords?: string[];
   minPrice?: number;
   maxPrice?: number;
   capacity?: number;
   parking?: boolean;
+  dayOfWeek?: string;
+  startHour?: number;
+  endHour?: number;
   sort?: string;
   page?: number;
   size?: number;
@@ -87,10 +92,24 @@ type PostSearchParams = {
   size?: number;
 };
 
-function buildQuery(params: Record<string, string | number | boolean | undefined>): string {
-  const entries = Object.entries(params).filter(([, v]) => v !== undefined && v !== '');
-  if (entries.length === 0) return '';
-  return '?' + entries.map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(String(v))}`).join('&');
+function buildQuery(params: Record<string, string | number | boolean | string[] | undefined>): string {
+  const search = new URLSearchParams();
+
+  Object.entries(params).forEach(([key, value]) => {
+    if (value === undefined || value === '') {
+      return;
+    }
+
+    if (Array.isArray(value)) {
+      value.filter(Boolean).forEach((item) => search.append(key, item));
+      return;
+    }
+
+    search.set(key, String(value));
+  });
+
+  const query = search.toString();
+  return query ? `?${query}` : '';
 }
 
 export function searchRooms(params: RoomSearchParams) {

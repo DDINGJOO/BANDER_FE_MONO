@@ -6,7 +6,11 @@ import { HomeHeader } from '../components/home/HomeHeader';
 import { HomePostCard } from '../components/home/HomePostCard';
 import { HomeReviewCard } from '../components/home/HomeReviewCard';
 import { HomeSpaceCard } from '../components/home/HomeSpaceCard';
-import { HomeSpaceExplorer, type SpaceFilterState } from '../components/home/HomeSpaceExplorer';
+import {
+  HomeSpaceExplorer,
+  type SpaceDateFilterState,
+  type SpaceFilterState,
+} from '../components/home/HomeSpaceExplorer';
 import { loadAuthSession } from '../data/authSession';
 import { useHomeFeed } from '../hooks/useHomeFeed';
 import { searchRooms, searchVendors, type RoomSearchItem, type VendorSearchItem } from '../api/search';
@@ -38,6 +42,20 @@ function vendorSearchItemToHomeCard(vendor: VendorSearchItem) {
   };
 }
 
+const DAY_OF_WEEK_PARAMS = [
+  'SUNDAY',
+  'MONDAY',
+  'TUESDAY',
+  'WEDNESDAY',
+  'THURSDAY',
+  'FRIDAY',
+  'SATURDAY',
+] as const;
+
+function getDayOfWeekParam(date: SpaceDateFilterState) {
+  return DAY_OF_WEEK_PARAMS[new Date(date.year, date.month - 1, date.day).getDay()];
+}
+
 function HomeEmptyState({ description, title }: { description?: string; title: string }) {
   return (
     <div className="home-empty-state" role="status">
@@ -65,7 +83,14 @@ export function MainPage({ previewAuthenticated = false }: { previewAuthenticate
     const next = JSON.stringify(filters);
     if (prev === next) return;
     mainFilterRef.current = filters;
-    const hasAny = filters.category || filters.capacity || filters.parking || filters.regions?.length || filters.keywords?.length;
+    const hasAny =
+      filters.category ||
+      filters.capacity ||
+      filters.date ||
+      filters.parking ||
+      filters.regions?.length ||
+      filters.reservable ||
+      filters.keywords?.length;
     if (!hasAny) {
       setFilteredSpaces(null);
       return;
@@ -88,14 +113,17 @@ export function MainPage({ previewAuthenticated = false }: { previewAuthenticate
   useEffect(() => {
     if (mainFilterKey === 0 || isMockMode()) return;
     const sf = mainFilterRef.current;
-    const cleanKeywords = sf.keywords?.map((k) => k.replace(/^#/, '')) ?? [];
-    const q = cleanKeywords.length ? cleanKeywords.join(' ') : '';
+    const cleanKeywords = sf.keywords?.map((k) => k.replace(/^#/, '')).filter(Boolean) ?? [];
     searchRooms({
-      q: q || undefined,
       category: sf.category,
       region: sf.regions?.length ? sf.regions[0] : undefined,
+      regions: sf.regions,
+      keywords: cleanKeywords.length ? cleanKeywords : undefined,
       capacity: sf.capacity,
       parking: sf.parking,
+      dayOfWeek: sf.date ? getDayOfWeekParam(sf.date) : undefined,
+      startHour: sf.date?.startHour,
+      endHour: sf.date?.endHour,
       size: 20,
     }).then((res) => setFilteredSpaces(res.rooms)).catch(() => {});
   }, [mainFilterKey]);

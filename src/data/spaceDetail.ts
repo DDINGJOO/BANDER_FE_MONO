@@ -78,11 +78,11 @@ export const ROOM_DETAIL_DATA = {
   description:
     '{{STUDIO}}의 그랜드 피아노를 보유한 룸입니다. 최고 사양의 그랜드 피아노와 완벽한 방음, 쾌적한 실내에서 연습과 합주를 즐겨 주세요!',
   gallery: [
-    'https://www.figma.com/api/mcp/asset/faf24acb-5b97-4dc9-b496-b8cfd2bf7e18',
-    'https://www.figma.com/api/mcp/asset/dbac413c-ce1b-4204-8349-58d93f3e31cb',
-    'https://www.figma.com/api/mcp/asset/c1c89983-892a-473c-893f-8018ed149c33',
-    'https://www.figma.com/api/mcp/asset/890bf1d4-4704-428f-8db7-e76f9adf6a27',
-    'https://www.figma.com/api/mcp/asset/34569b09-a2a7-4e61-8869-29c0db88dc25',
+    'https://images.unsplash.com/photo-1520523839897-bd0b52f945a0?auto=format&fit=crop&w=1200&q=80',
+    'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?auto=format&fit=crop&w=1200&q=80',
+    'https://images.unsplash.com/photo-1519892300165-cb5542fb47c7?auto=format&fit=crop&w=1200&q=80',
+    'https://images.unsplash.com/photo-1507838153414-b4b713384a76?auto=format&fit=crop&w=1200&q=80',
+    'https://images.unsplash.com/photo-1508780709619-79562169bc64?auto=format&fit=crop&w=1200&q=80',
   ],
   location: '서울 마포구 서교동',
   mapLocation: { lat: 37.55678, lng: 126.92492 },
