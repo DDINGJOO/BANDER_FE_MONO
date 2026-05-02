@@ -70,6 +70,20 @@ function formatPrice(price: number) {
   return `${price.toLocaleString()}원`;
 }
 
+function formatPhone(phone: string | null | undefined) {
+  const raw = phone?.trim();
+  if (!raw) return '(연락처 미등록)';
+
+  const digits = raw.replace(/[^\d]/g, '');
+  if (digits.length === 11) {
+    return `${digits.slice(0, 3)}-${digits.slice(3, 7)}-${digits.slice(7)}`;
+  }
+  if (digits.length === 10) {
+    return `${digits.slice(0, 3)}-${digits.slice(3, 6)}-${digits.slice(6)}`;
+  }
+  return raw;
+}
+
 function badgeForStatus(status: string) {
   if (status === 'PENDING') {
     return { className: 'res-detail__badge res-detail__badge--muted', text: '승인대기' };
@@ -128,9 +142,14 @@ export function ReservationDetailPage() {
 
   const badge = badgeForStatus(detail.status);
   const isCompleted = detail.status === 'COMPLETED';
+  const studioAddress = detail.studioAddress?.trim() || '주소 정보 없음';
+  const reservationAnswers = (detail.reservationAnswers ?? [])
+    .filter((answer) => answer.value?.trim())
+    .slice()
+    .sort((a, b) => a.sortOrder - b.sortOrder);
 
   const onCopyAddress = () => {
-    void navigator.clipboard.writeText('서울시 마포구 독막로9길 31 지하 1층');
+    void navigator.clipboard.writeText(studioAddress);
   };
 
   const startFormatted = formatDateTime(detail.startsAt);
@@ -192,6 +211,7 @@ export function ReservationDetailPage() {
               <div className="res-detail__hero-text">
                 <p className="res-detail__space-title">{detail.roomName}</p>
                 <p className="res-detail__address-line">{detail.studioName}</p>
+                <p className="res-detail__address-line">{studioAddress}</p>
               </div>
             </div>
             <button
@@ -231,6 +251,12 @@ export function ReservationDetailPage() {
                   <span className="res-detail__row-value">{detail.bookerNote}</span>
                 </div>
               ) : null}
+              {reservationAnswers.map((answer) => (
+                <div className="res-detail__row" key={`${answer.fieldId}-${answer.sortOrder}`}>
+                  <span className="res-detail__row-label">{answer.title}</span>
+                  <span className="res-detail__row-value">{answer.value}</span>
+                </div>
+              ))}
             </div>
           </div>
 
@@ -242,7 +268,7 @@ export function ReservationDetailPage() {
               </div>
             </div>
             <div className="res-detail__address-copy">
-              <p>서울시 마포구 독막로9길 31 지하 1층</p>
+              <p>{studioAddress}</p>
               <button
                 type="button"
                 className="res-detail__copy-btn"
@@ -271,7 +297,7 @@ export function ReservationDetailPage() {
                   </div>
                   <div className="res-detail__row">
                     <span className="res-detail__row-label">연락처</span>
-                    <span className="res-detail__row-value">{detail.bookerPhone || '(연락처 미등록)'}</span>
+                    <span className="res-detail__row-value">{formatPhone(detail.bookerPhone)}</span>
                   </div>
                 </div>
               </div>

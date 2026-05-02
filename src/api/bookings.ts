@@ -46,6 +46,8 @@ export type BookingDetailResponse = {
   roomId: string;
   roomName: string;
   studioName: string;
+  studioAddress?: string | null;
+  studioThumbnailUrl?: string | null;
   status: string;
   startsAt: string;
   endsAt: string;

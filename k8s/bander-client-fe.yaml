@@ -19,7 +19,7 @@ spec:
     spec:
       containers:
         - name: nginx
-          image: bander/client-fe:onprem-20260503-002521-notification-actions
+          image: bander/client-fe:onprem-20260503-004340-booking-detail-sync
           imagePullPolicy: Never
           ports:
             - containerPort: 80
