@@ -8,6 +8,10 @@ import { resolveProfileImageUrl } from '../../config/media';
 import { resolveHomeProfileMenuModel, type HomeProfileMenuModel } from '../../types/homeProfileMenu';
 import { BrandMark } from '../shared/BrandMark';
 import {
+  NOTIFICATION_UNREAD_COUNT_EVENT,
+  type NotificationUnreadCountChange,
+} from '../../lib/notificationUnreadEvents';
+import {
   ChevronIcon,
   HeaderAlarmIcon,
   HeaderChatIcon,
@@ -137,6 +141,27 @@ export function HomeHeader(props: HomeHeaderProps) {
     return () => {
       cancelled = true;
       window.clearInterval(timer);
+    };
+  }, [authenticated]);
+
+  useEffect(() => {
+    if (!authenticated || isMockMode()) return;
+
+    const onUnreadCountChange = (event: Event) => {
+      const detail = (event as CustomEvent<NotificationUnreadCountChange>).detail;
+      if (typeof detail?.count === 'number') {
+        setUnreadCount(Math.max(0, detail.count));
+        return;
+      }
+      const delta = detail?.delta;
+      if (typeof delta === 'number') {
+        setUnreadCount((prev) => Math.max(0, prev + delta));
+      }
+    };
+
+    window.addEventListener(NOTIFICATION_UNREAD_COUNT_EVENT, onUnreadCountChange);
+    return () => {
+      window.removeEventListener(NOTIFICATION_UNREAD_COUNT_EVENT, onUnreadCountChange);
     };
   }, [authenticated]);
 

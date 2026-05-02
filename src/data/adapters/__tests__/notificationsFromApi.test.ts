@@ -1,5 +1,6 @@
 import {
   categoryForNotificationType,
+  detailPathForNotification,
   iconForNotificationType,
   notificationFromApi,
   notificationsFromApiPage,
@@ -94,6 +95,32 @@ describe('notificationsFromApi adapter', () => {
     });
   });
 
+  describe('detailPathForNotification', () => {
+    it('BOOKING 참조는 예약 상세로 이동한다', () => {
+      expect(
+        detailPathForNotification('BOOKING_CONFIRMED', 'BOOKING', '308'),
+      ).toBe('/reservation-detail?bookingId=308');
+    });
+
+    it('COMMUNITY 참조는 게시글 상세로 이동한다', () => {
+      expect(
+        detailPathForNotification('COMMENT_ON_POST', 'COMMUNITY', '123'),
+      ).toBe('/community/post/123');
+    });
+
+    it('CHAT 참조는 채팅방으로 이동한다', () => {
+      expect(
+        detailPathForNotification('CHAT_MESSAGE_RECEIVED', 'CHAT', '77'),
+      ).toBe('/chat?t=77');
+    });
+
+    it('referenceId가 없으면 이동 경로를 만들지 않는다', () => {
+      expect(
+        detailPathForNotification('BOOKING_CONFIRMED', 'BOOKING', null),
+      ).toBeUndefined();
+    });
+  });
+
   describe('notificationFromApi', () => {
     const base: NotificationApiDto = {
       notificationId: '42',
@@ -115,6 +142,10 @@ describe('notificationsFromApi adapter', () => {
       expect(result.message).toBe('예약이 확정되었습니다.');
       expect(result.timeLabel).toBe('30분 전');
       expect(result.read).toBe(false);
+      expect(result.type).toBe('BOOKING_CONFIRMED');
+      expect(result.referenceType).toBe('BOOKING');
+      expect(result.referenceId).toBe('7');
+      expect(result.detailPath).toBe('/reservation-detail?bookingId=7');
     });
 
     it('content 비어있으면 title로 fallback', () => {

@@ -26,6 +26,40 @@ export function categoryForNotificationType(
   return 'activity';
 }
 
+export function detailPathForNotification(
+  type: string,
+  referenceType: string | null | undefined,
+  referenceId: string | null | undefined,
+): string | undefined {
+  const normalizedReferenceType = (referenceType ?? '').trim().toUpperCase();
+  const normalizedReferenceId = (referenceId ?? '').trim();
+
+  if (!normalizedReferenceId) {
+    return undefined;
+  }
+
+  if (
+    normalizedReferenceType === 'BOOKING' ||
+    (!normalizedReferenceType && type.startsWith('BOOKING_'))
+  ) {
+    return `/reservation-detail?bookingId=${encodeURIComponent(normalizedReferenceId)}`;
+  }
+
+  if (
+    normalizedReferenceType === 'COMMUNITY' ||
+    normalizedReferenceType === 'POST' ||
+    ['COMMENT_ON_POST', 'REPLY_ON_COMMENT', 'LIKE_ON_POST'].includes(type)
+  ) {
+    return `/community/post/${encodeURIComponent(normalizedReferenceId)}`;
+  }
+
+  if (normalizedReferenceType === 'CHAT' || type === 'CHAT_MESSAGE_RECEIVED') {
+    return `/chat?t=${encodeURIComponent(normalizedReferenceId)}`;
+  }
+
+  return undefined;
+}
+
 /** KST 기준 YYYY-MM-DD 문자열 */
 function toKstDateKey(date: Date): string {
   const shifted = new Date(date.getTime() + KST_OFFSET_MS);
@@ -83,13 +117,21 @@ export function notificationFromApi(
 ): AppNotification {
   return {
     id: dto.notificationId,
+    type: dto.type,
+    referenceType: dto.referenceType,
+    referenceId: dto.referenceId,
+    detailPath: detailPathForNotification(
+      dto.type,
+      dto.referenceType,
+      dto.referenceId,
+    ),
     section: sectionForCreatedAt(dto.createdAt, now),
     category: categoryForNotificationType(dto.type),
     icon: iconForNotificationType(dto.type),
     message: (dto.content && dto.content.trim()) || dto.title,
     timeLabel: timeLabelForCreatedAt(dto.createdAt, now),
     read: dto.read,
-    // thumbUrl/cta: 백엔드가 아직 미제공 → referenceType/Id 기반 라우팅은 추후 확장
+    // thumbUrl/cta: 백엔드가 아직 미제공.
   };
 }
 

@@ -18,6 +18,10 @@ export type AppNotification = {
   icon: NotificationIconKind;
   id: string;
   message: string;
+  type?: string;
+  referenceType?: string | null;
+  referenceId?: string | null;
+  detailPath?: string;
   section: NotificationTimeSection;
   timeLabel: string;
   thumbUrl?: string;

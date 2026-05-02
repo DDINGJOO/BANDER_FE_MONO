@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { HomeFooter } from '../components/home/HomeFooter';
 import { HomeHeader } from '../components/home/HomeHeader';
 import { HEADER_SEARCH_KEYWORD_SUGGESTIONS } from '../config/searchSuggestions';
@@ -12,8 +12,13 @@ import {
   type NotificationIconKind,
   type NotificationTabFilter,
 } from '../data/notifications';
-import { fetchNotifications } from '../api/notifications';
+import {
+  fetchNotifications,
+  markAllNotificationsRead,
+  markNotificationRead,
+} from '../api/notifications';
 import { notificationsFromApiPage } from '../data/adapters/notificationsFromApi';
+import { emitNotificationUnreadCountChange } from '../lib/notificationUnreadEvents';
 import '../styles/notifications.css';
 
 /** Figma 6465:30579 — 헤더 알림과 동일 실루엣, 66px · Gray 4 톤 */
@@ -111,62 +116,76 @@ function NotificationGlyph({ kind }: { kind: NotificationIconKind }) {
   }
 }
 
-function NotificationCard({ item }: { item: AppNotification }) {
-  const navigate = useNavigate();
+function NotificationCard({
+  item,
+  markingRead,
+  onMarkRead,
+  onOpen,
+}: {
+  item: AppNotification;
+  markingRead: boolean;
+  onMarkRead: (item: AppNotification) => void;
+  onOpen: (item: AppNotification) => void;
+}) {
   const hasThumb = Boolean(item.thumbUrl);
   const hasCta = Boolean(item.cta);
-
-  const inner = (
-    <div className="notifications__card-inner">
-      <div className="notifications__icon-wrap" aria-hidden>
-        <NotificationGlyph kind={item.icon} />
-      </div>
-      <div
-        className={`notifications__body${hasCta ? '' : ' notifications__body--tight'}`}
-      >
-        <div>
-          <p className="notifications__message">{item.message}</p>
-          <p className="notifications__time">{item.timeLabel}</p>
-        </div>
-        {item.cta ? (
-          <Link className="notifications__cta" to={item.cta.href}>
-            {item.cta.label}
-          </Link>
-        ) : null}
-      </div>
-    </div>
-  );
-
-  if (hasCta) {
-    return (
-      <article
-        className="notifications__card notifications__card--static"
-        role="listitem"
-      >
-        {inner}
-      </article>
-    );
-  }
+  const unread = item.read !== true;
+  const canOpen = Boolean(item.detailPath ?? item.cta?.href);
 
   return (
-    <button
-      type="button"
-      className="notifications__card"
+    <article
+      className={`notifications__card${unread ? ' notifications__card--unread' : ' notifications__card--read'}${canOpen ? ' notifications__card--actionable' : ''}`}
       role="listitem"
-      onClick={() => navigate('/')}
     >
-      {inner}
-      {hasThumb ? (
-        <img
-          alt=""
-          className="notifications__thumb"
-          height={60}
-          src={item.thumbUrl}
-          width={60}
-          loading="lazy"
-        />
-      ) : null}
-    </button>
+      <button
+        type="button"
+        className="notifications__card-main"
+        onClick={() => onOpen(item)}
+        aria-label={`${item.message} ${unread ? '읽지 않음' : '읽음'}`}
+      >
+        <span className="notifications__unread-dot" aria-hidden />
+        <div className="notifications__card-inner">
+          <div className="notifications__icon-wrap" aria-hidden>
+            <NotificationGlyph kind={item.icon} />
+          </div>
+          <div
+            className={`notifications__body${hasCta ? '' : ' notifications__body--tight'}`}
+          >
+            <div>
+              <p className="notifications__message">{item.message}</p>
+              <p className="notifications__time">{item.timeLabel}</p>
+            </div>
+            {item.cta ? (
+              <span className="notifications__cta">
+                {item.cta.label}
+              </span>
+            ) : null}
+          </div>
+        </div>
+        {hasThumb ? (
+          <img
+            alt=""
+            className="notifications__thumb"
+            height={60}
+            src={item.thumbUrl}
+            width={60}
+            loading="lazy"
+          />
+        ) : null}
+      </button>
+      {unread ? (
+        <button
+          type="button"
+          className="notifications__read-btn"
+          disabled={markingRead}
+          onClick={() => onMarkRead(item)}
+        >
+          {markingRead ? '처리중' : '읽음'}
+        </button>
+      ) : (
+        <span className="notifications__read-state">읽음</span>
+      )}
+    </article>
   );
 }
 
@@ -183,6 +202,11 @@ export function NotificationsPage() {
   );
   const [loading, setLoading] = useState<boolean>(!isMockMode());
   const [loadError, setLoadError] = useState<Error | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [markingReadIds, setMarkingReadIds] = useState<ReadonlySet<string>>(
+    () => new Set(),
+  );
+  const [markingAllRead, setMarkingAllRead] = useState(false);
 
   useEffect(() => {
     if (isMockMode()) return;
@@ -218,6 +242,79 @@ export function NotificationsPage() {
       weekItems: filtered.filter((n) => n.section === 'week'),
     };
   }, [items, tab]);
+  const unreadItemCount = useMemo(
+    () => items.filter((item) => item.read !== true).length,
+    [items],
+  );
+
+  const markItemRead = useCallback(async (item: AppNotification) => {
+    if (item.read === true || markingReadIds.has(item.id)) {
+      return;
+    }
+
+    setActionError(null);
+    if (isMockMode()) {
+      setItems((prev) =>
+        prev.map((candidate) =>
+          candidate.id === item.id ? { ...candidate, read: true } : candidate,
+        ),
+      );
+      return;
+    }
+
+    setMarkingReadIds((prev) => new Set(prev).add(item.id));
+    try {
+      await markNotificationRead(item.id);
+      setItems((prev) =>
+        prev.map((candidate) =>
+          candidate.id === item.id ? { ...candidate, read: true } : candidate,
+        ),
+      );
+      emitNotificationUnreadCountChange({ delta: -1 });
+    } catch {
+      setActionError('알림 읽음 처리에 실패했습니다.');
+    } finally {
+      setMarkingReadIds((prev) => {
+        const next = new Set(prev);
+        next.delete(item.id);
+        return next;
+      });
+    }
+  }, [markingReadIds]);
+
+  const openNotification = useCallback(
+    (item: AppNotification) => {
+      const destination = item.detailPath ?? item.cta?.href;
+      void markItemRead(item);
+      if (destination) {
+        navigate(destination);
+      }
+    },
+    [markItemRead, navigate],
+  );
+
+  const markAllRead = useCallback(async () => {
+    if (unreadItemCount === 0 || markingAllRead) {
+      return;
+    }
+
+    setActionError(null);
+    if (isMockMode()) {
+      setItems((prev) => prev.map((item) => ({ ...item, read: true })));
+      return;
+    }
+
+    setMarkingAllRead(true);
+    try {
+      await markAllNotificationsRead();
+      setItems((prev) => prev.map((item) => ({ ...item, read: true })));
+      emitNotificationUnreadCountChange({ count: 0 });
+    } catch {
+      setActionError('전체 읽음 처리에 실패했습니다.');
+    } finally {
+      setMarkingAllRead(false);
+    }
+  }, [markingAllRead, unreadItemCount]);
 
   const onHeaderSearchSubmit = useCallback(
     (value: string) => {
@@ -274,7 +371,17 @@ export function NotificationsPage() {
 
       <div className="notifications-page__main">
         <div className="notifications">
-          <h1 className="notifications__title">알림</h1>
+          <div className="notifications__head">
+            <h1 className="notifications__title">알림</h1>
+            <button
+              type="button"
+              className="notifications__mark-all"
+              disabled={unreadItemCount === 0 || markingAllRead}
+              onClick={markAllRead}
+            >
+              {markingAllRead ? '처리중' : '모두 읽음'}
+            </button>
+          </div>
 
           <div
             className="notifications__tabs"
@@ -294,6 +401,12 @@ export function NotificationsPage() {
               </button>
             ))}
           </div>
+
+          {actionError ? (
+            <p className="notifications__error" role="alert">
+              {actionError}
+            </p>
+          ) : null}
 
           {empty ? (
             <div className="notifications__empty-state" role="status">
@@ -317,7 +430,13 @@ export function NotificationsPage() {
                   </h2>
                   <div className="notifications__section-list" role="list">
                     {todayItems.map((item) => (
-                      <NotificationCard item={item} key={item.id} />
+                      <NotificationCard
+                        item={item}
+                        key={item.id}
+                        markingRead={markingReadIds.has(item.id)}
+                        onMarkRead={markItemRead}
+                        onOpen={openNotification}
+                      />
                     ))}
                   </div>
                 </section>
@@ -336,7 +455,13 @@ export function NotificationsPage() {
                   </h2>
                   <div className="notifications__section-list" role="list">
                     {weekItems.map((item) => (
-                      <NotificationCard item={item} key={item.id} />
+                      <NotificationCard
+                        item={item}
+                        key={item.id}
+                        markingRead={markingReadIds.has(item.id)}
+                        onMarkRead={markItemRead}
+                        onOpen={openNotification}
+                      />
                     ))}
                   </div>
                 </section>

@@ -24,5 +24,5 @@ export function markNotificationRead(notificationId: string) {
 }
 
 export function markAllNotificationsRead() {
-  return requestVoid('/api/v1/notifications/read-all', { method: 'POST' });
+  return requestVoid('/api/v1/notifications/read-all', { method: 'PATCH' });
 }
