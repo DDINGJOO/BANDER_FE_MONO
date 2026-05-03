@@ -16,13 +16,17 @@ import {
   RESERVATION_CANCEL_ALERT_DEFAULT,
   RESERVATION_CANCEL_LEAD_LINES,
   RESERVATION_CANCEL_NOTICE_DEFAULT,
+  buildCancelLeadLines,
+  buildCancelNoticeRows,
 } from '../data/reservationCancelModal';
 import {
   getBookingDetail,
   cancelBooking,
+  getRefundEstimate,
   type BookingDetailResponse,
   type ReservationAnswerRequest,
 } from '../api/bookings';
+import type { ReservationCancelNoticeRow } from '../components/reservations/ReservationCancelModal';
 
 function ChatGlyph20() {
   return (
@@ -129,7 +133,26 @@ function badgeForStatus(status: string) {
   if (status === 'CONFIRMED') {
     return { className: 'res-detail__badge res-detail__badge--blue', text: '예약확정' };
   }
-  return { className: 'res-detail__badge res-detail__badge--blue', text: '이용완료' };
+  if (status === 'COMPLETED') {
+    return { className: 'res-detail__badge res-detail__badge--blue', text: '이용완료' };
+  }
+  if (status === 'CANCELED_USER') {
+    return { className: 'res-detail__badge res-detail__badge--muted', text: '예약취소' };
+  }
+  if (status === 'CANCELED_VENDOR') {
+    return { className: 'res-detail__badge res-detail__badge--muted', text: '업체예약취소' };
+  }
+  return { className: 'res-detail__badge res-detail__badge--muted', text: status };
+}
+
+function reservationAction(status: string): 'cancel' | 'review' | 'none' {
+  if (status === 'PENDING' || status === 'CONFIRMED') {
+    return 'cancel';
+  }
+  if (status === 'COMPLETED') {
+    return 'review';
+  }
+  return 'none';
 }
 
 export function ReservationDetailPage() {
@@ -142,6 +165,9 @@ export function ReservationDetailPage() {
   const [headerSearchQuery, setHeaderSearchQuery] = useState('');
   const headerSearchRef = useRef<HTMLDivElement | null>(null);
   const [cancelModalOpen, setCancelModalOpen] = useState(false);
+  const [cancelNoticeRows, setCancelNoticeRows] = useState<ReservationCancelNoticeRow[]>(RESERVATION_CANCEL_NOTICE_DEFAULT);
+  const [cancelLeadLines, setCancelLeadLines] = useState<[string, string]>(RESERVATION_CANCEL_LEAD_LINES);
+  const [isCancelling, setIsCancelling] = useState(false);
   const [detail, setDetail] = useState<BookingDetailResponse | null>(null);
 
   const filteredSuggestions = HEADER_SEARCH_KEYWORD_SUGGESTIONS.filter((item) =>
@@ -179,7 +205,7 @@ export function ReservationDetailPage() {
   }
 
   const badge = badgeForStatus(detail.status);
-  const isCompleted = detail.status === 'COMPLETED';
+  const action = reservationAction(detail.status);
   const hasStudioAddress = Boolean(detail.studioAddress?.trim());
   const studioAddress = detail.studioAddress?.trim() || '주소 정보 없음';
   const reservationAnswers = (detail.reservationAnswers ?? [])
@@ -201,9 +227,11 @@ export function ReservationDetailPage() {
   const durationMs = endDate.getTime() - new Date(detail.startsAt).getTime();
   const durationHours = durationMs / (1000 * 60 * 60);
 
-  const cta = isCompleted
+  const cta = action === 'review'
     ? { className: 'res-detail__cta res-detail__cta--yellow', label: '리뷰쓰기' }
-    : { className: 'res-detail__cta res-detail__cta--muted', label: '예약취소' };
+    : action === 'cancel'
+      ? { className: 'res-detail__cta res-detail__cta--muted', label: '예약취소' }
+      : null;
 
   return (
     <main className="res-detail-page">
@@ -378,21 +406,40 @@ export function ReservationDetailPage() {
             </section>
           </div>
 
-          <div className="res-detail__cta-wrap">
-            <button
-              type="button"
-              className={cta.className}
-              onClick={() => {
-                if (isCompleted) {
-                  navigate('/review/write');
-                  return;
-                }
-                setCancelModalOpen(true);
-              }}
-            >
-              {cta.label}
-            </button>
-          </div>
+          {cta ? (
+            <div className="res-detail__cta-wrap">
+              <button
+                type="button"
+                className={cta.className}
+                onClick={() => {
+                  if (action === 'review') {
+                    navigate('/review/write');
+                    return;
+                  }
+                  if (!bookingId) {
+                    return;
+                  }
+                  getRefundEstimate(bookingId)
+                    .then((estimate) => {
+                      if (!estimate.cancellable) {
+                        window.alert('취소 불가: 예약 시작 12시간 이내에는 취소할 수 없습니다.');
+                        return;
+                      }
+                      setCancelNoticeRows(buildCancelNoticeRows(estimate));
+                      setCancelLeadLines(buildCancelLeadLines(estimate));
+                      setCancelModalOpen(true);
+                    })
+                    .catch(() => {
+                      setCancelNoticeRows(RESERVATION_CANCEL_NOTICE_DEFAULT);
+                      setCancelLeadLines(RESERVATION_CANCEL_LEAD_LINES);
+                      setCancelModalOpen(true);
+                    });
+                }}
+              >
+                {cta.label}
+              </button>
+            </div>
+          ) : null}
 
           <footer className="res-detail__refund">
             <p className="res-detail__refund-title">
@@ -423,24 +470,34 @@ export function ReservationDetailPage() {
       <ReservationCancelModal
         alertText={RESERVATION_CANCEL_ALERT_DEFAULT}
         dividerAfterRowIndex={1}
-        leadLines={RESERVATION_CANCEL_LEAD_LINES}
-        noticeRows={RESERVATION_CANCEL_NOTICE_DEFAULT}
-        onClose={() => setCancelModalOpen(false)}
-        onConfirm={() => {
-          if (bookingId) {
-            cancelBooking(bookingId, { cancelReason: '고객 취소' })
-              .then(() => {
-                window.alert('예약취소에 성공했습니다.');
-                navigate('/my-reservations');
-              })
-              .catch((err) => {
-                const message = err instanceof Error && err.message
-                  ? err.message
-                  : '예약 취소에 실패했습니다. 잠시 후 다시 시도해주세요.';
-                window.alert(message);
-              });
+        leadLines={cancelLeadLines}
+        noticeRows={cancelNoticeRows}
+        onClose={() => {
+          if (isCancelling) {
+            return;
           }
           setCancelModalOpen(false);
+        }}
+        onConfirm={() => {
+          if (!bookingId || isCancelling) {
+            return;
+          }
+          setIsCancelling(true);
+          cancelBooking(bookingId, { cancelReason: '고객 취소' })
+            .then(() => {
+              window.alert('예약취소에 성공했습니다.');
+              navigate('/my-reservations');
+            })
+            .catch((err) => {
+              const message = err instanceof Error && err.message
+                ? err.message
+                : '예약 취소에 실패했습니다. 잠시 후 다시 시도해주세요.';
+              window.alert(message);
+            })
+            .finally(() => {
+              setIsCancelling(false);
+              setCancelModalOpen(false);
+            });
         }}
         open={cancelModalOpen}
       />
