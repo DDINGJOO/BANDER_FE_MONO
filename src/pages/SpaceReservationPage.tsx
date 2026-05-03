@@ -374,6 +374,9 @@ export function SpaceReservationPage() {
   });
   const [availabilitySlots, setAvailabilitySlots] = useState<SpaceAvailabilitySlot[]>([]);
   const [availabilityStatus, setAvailabilityStatus] = useState<AvailabilityStatus>('idle');
+  const [reservationBookerName, setReservationBookerName] = useState('');
+  const [reservationBookerPhone, setReservationBookerPhone] = useState('');
+  const [reservationNote, setReservationNote] = useState('');
   const [reservationAnswers, setReservationAnswers] = useState<Record<string, string>>({});
   const timelineScrollRef = useRef<HTMLDivElement | null>(null);
   const scrollDragStateRef = useRef({ active: false, scrollLeft: 0, startX: 0 });
@@ -711,16 +714,39 @@ export function SpaceReservationPage() {
     }));
   };
 
-  const buildReservationAnswerPayload = (): ReservationAnswerRequest[] =>
-    reservationFields.map((field, index) => {
+  const buildReservationAnswerPayload = (): ReservationAnswerRequest[] => {
+    const fixedAnswers: ReservationAnswerRequest[] = [
+      {
+        fieldId: '0',
+        sortOrder: 0,
+        title: '예약자 이름',
+        value: reservationBookerName.trim(),
+      },
+      {
+        fieldId: '0',
+        sortOrder: 1,
+        title: '연락처',
+        value: reservationBookerPhone.trim(),
+      },
+      {
+        fieldId: '0',
+        sortOrder: 2,
+        title: '추가 요청사항',
+        value: reservationNote.trim(),
+      },
+    ].filter((answer) => answer.value);
+
+    const customAnswers = reservationFields.map((field, index) => {
       const key = field.fieldId || `field-${index}`;
       return {
         fieldId: field.fieldId,
-        sortOrder: field.sortOrder ?? index,
+        sortOrder: (field.sortOrder ?? index) + 10,
         title: field.title,
         value: reservationAnswers[key]?.trim() ?? '',
       };
     });
+    return [...fixedAnswers, ...customAnswers];
+  };
 
   const buildContinuousSelection = (startIndex: number, endIndex: number) => {
     const step = startIndex <= endIndex ? 1 : -1;
@@ -1118,11 +1144,21 @@ export function SpaceReservationPage() {
             </div>
             <label className="space-reservation__field">
               <span>예약자 이름</span>
-              <input placeholder="이름을 입력해주세요" type="text" />
+              <input
+                placeholder="이름을 입력해주세요"
+                type="text"
+                value={reservationBookerName}
+                onChange={(event) => setReservationBookerName(event.target.value)}
+              />
             </label>
             <label className="space-reservation__field">
               <span>연락처</span>
-              <input placeholder="010-0000-0000" type="text" />
+              <input
+                placeholder="010-0000-0000"
+                type="text"
+                value={reservationBookerPhone}
+                onChange={(event) => setReservationBookerPhone(event.target.value)}
+              />
             </label>
             {reservationFields.map((field, index) => {
               const key = field.fieldId || `field-${index}`;
@@ -1166,7 +1202,11 @@ export function SpaceReservationPage() {
             })}
             <label className="space-reservation__field">
               <span>추가 요청사항</span>
-              <textarea placeholder="요청사항이 있다면 입력해주세요" />
+              <textarea
+                placeholder="요청사항이 있다면 입력해주세요"
+                value={reservationNote}
+                onChange={(event) => setReservationNote(event.target.value)}
+              />
             </label>
           </div>
         </section>

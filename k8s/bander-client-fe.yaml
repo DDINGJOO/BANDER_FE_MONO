@@ -19,7 +19,7 @@ spec:
     spec:
       containers:
         - name: nginx
-          image: bander/client-fe:onprem-20260503-005000-kakao-reservation-map
+          image: bander/client-fe:onprem-20260503-113300-booking-form-answers
           imagePullPolicy: Never
           ports:
             - containerPort: 80

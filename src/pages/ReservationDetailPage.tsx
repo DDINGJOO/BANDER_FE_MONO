@@ -17,7 +17,12 @@ import {
   RESERVATION_CANCEL_LEAD_LINES,
   RESERVATION_CANCEL_NOTICE_DEFAULT,
 } from '../data/reservationCancelModal';
-import { getBookingDetail, cancelBooking, type BookingDetailResponse } from '../api/bookings';
+import {
+  getBookingDetail,
+  cancelBooking,
+  type BookingDetailResponse,
+  type ReservationAnswerRequest,
+} from '../api/bookings';
 
 function ChatGlyph20() {
   return (
@@ -84,6 +89,39 @@ function formatPhone(phone: string | null | undefined) {
   return raw;
 }
 
+function isBookerNameAnswer(answer: ReservationAnswerRequest) {
+  const normalized = answer.title
+    .toLowerCase()
+    .replace(/[\s:/._-]/g, '');
+  return [
+    '예약자이름',
+    '예약자명',
+    '예약자성함',
+    '신청자이름',
+    '신청자명',
+    '성함',
+    '이름',
+    'name',
+    'bookername',
+  ].includes(normalized);
+}
+
+function isBookerPhoneAnswer(answer: ReservationAnswerRequest) {
+  const normalized = answer.title
+    .toLowerCase()
+    .replace(/[\s:/._-]/g, '');
+  return [
+    '연락처',
+    '전화번호',
+    '휴대폰',
+    '휴대폰번호',
+    '예약자연락처',
+    '신청자연락처',
+    'phone',
+    'bookerphone',
+  ].includes(normalized);
+}
+
 function badgeForStatus(status: string) {
   if (status === 'PENDING') {
     return { className: 'res-detail__badge res-detail__badge--muted', text: '승인대기' };
@@ -146,6 +184,8 @@ export function ReservationDetailPage() {
   const studioAddress = detail.studioAddress?.trim() || '주소 정보 없음';
   const reservationAnswers = (detail.reservationAnswers ?? [])
     .filter((answer) => answer.value?.trim())
+    .filter((answer) => !isBookerNameAnswer(answer))
+    .filter((answer) => !isBookerPhoneAnswer(answer))
     .slice()
     .sort((a, b) => a.sortOrder - b.sortOrder);
 
