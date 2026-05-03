@@ -19,7 +19,7 @@ spec:
     spec:
       containers:
         - name: nginx
-          image: bander/client-fe:onprem-20260503-123800-reservation-cancel-guard
+          image: bander/client-fe:onprem-20260503-124800-reservation-cancel-quote
           imagePullPolicy: Never
           ports:
             - containerPort: 80

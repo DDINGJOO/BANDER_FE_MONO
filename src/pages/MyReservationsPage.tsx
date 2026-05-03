@@ -188,6 +188,7 @@ export function MyReservationsPage() {
   const [bookings, setBookings] = useState<CardItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedBookingId, setSelectedBookingId] = useState<string | null>(null);
+  const [selectedCancelQuoteId, setSelectedCancelQuoteId] = useState<string | null>(null);
   const [reviewViewOpen, setReviewViewOpen] = useState(false);
   const [cancelModalOpen, setCancelModalOpen] = useState(false);
   const [cancelToast, setCancelToast] = useState(false);
@@ -328,11 +329,19 @@ export function MyReservationsPage() {
                             alert('취소 불가: 예약 시작 12시간 이내에는 취소할 수 없습니다.');
                             return;
                           }
+                          setSelectedCancelQuoteId(est.quoteId ?? null);
                           setCancelNoticeRows(buildCancelNoticeRows(est));
                           setCancelLeadLines(buildCancelLeadLines(est));
                           setCancelModalOpen(true);
                         })
                         .catch(() => {
+                          if (row.status === 'CONFIRMED') {
+                            window.alert('환불 정보를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.');
+                            setSelectedBookingId(null);
+                            setSelectedCancelQuoteId(null);
+                            return;
+                          }
+                          setSelectedCancelQuoteId(null);
                           setCancelNoticeRows(RESERVATION_CANCEL_NOTICE_DEFAULT);
                           setCancelLeadLines(RESERVATION_CANCEL_LEAD_LINES);
                           setCancelModalOpen(true);
@@ -362,6 +371,7 @@ export function MyReservationsPage() {
         onClose={() => {
           setCancelModalOpen(false);
           setSelectedBookingId(null);
+          setSelectedCancelQuoteId(null);
         }}
         onConfirm={() => {
           // 이전엔 cancel API 응답 전에 toast 를 띄워 실제 실패해도 "취소 성공" 으로 보였음.
@@ -369,7 +379,10 @@ export function MyReservationsPage() {
           if (selectedBookingId != null) {
             const targetId = selectedBookingId;
             import('../api/bookings').then(({ cancelBooking }) => {
-              cancelBooking(targetId, { cancelReason: '고객 취소' }).then(() => {
+              cancelBooking(targetId, {
+                cancelReason: '고객 취소',
+                quoteId: selectedCancelQuoteId ?? undefined,
+              }).then(() => {
                 setBookings((prev) => prev.filter((b) => b.bookingId !== targetId));
                 setCancelToast(true);
                 window.setTimeout(() => setCancelToast(false), 6000);
@@ -383,6 +396,7 @@ export function MyReservationsPage() {
           }
           setCancelModalOpen(false);
           setSelectedBookingId(null);
+          setSelectedCancelQuoteId(null);
         }}
         open={cancelModalOpen}
       />

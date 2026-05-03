@@ -167,6 +167,7 @@ export function ReservationDetailPage() {
   const [cancelModalOpen, setCancelModalOpen] = useState(false);
   const [cancelNoticeRows, setCancelNoticeRows] = useState<ReservationCancelNoticeRow[]>(RESERVATION_CANCEL_NOTICE_DEFAULT);
   const [cancelLeadLines, setCancelLeadLines] = useState<[string, string]>(RESERVATION_CANCEL_LEAD_LINES);
+  const [cancelQuoteId, setCancelQuoteId] = useState<string | null>(null);
   const [isCancelling, setIsCancelling] = useState(false);
   const [detail, setDetail] = useState<BookingDetailResponse | null>(null);
 
@@ -425,11 +426,18 @@ export function ReservationDetailPage() {
                         window.alert('취소 불가: 예약 시작 12시간 이내에는 취소할 수 없습니다.');
                         return;
                       }
+                      setCancelQuoteId(estimate.quoteId ?? null);
                       setCancelNoticeRows(buildCancelNoticeRows(estimate));
                       setCancelLeadLines(buildCancelLeadLines(estimate));
                       setCancelModalOpen(true);
                     })
                     .catch(() => {
+                      if (detail.status === 'CONFIRMED') {
+                        window.alert('환불 정보를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.');
+                        setCancelQuoteId(null);
+                        return;
+                      }
+                      setCancelQuoteId(null);
                       setCancelNoticeRows(RESERVATION_CANCEL_NOTICE_DEFAULT);
                       setCancelLeadLines(RESERVATION_CANCEL_LEAD_LINES);
                       setCancelModalOpen(true);
@@ -476,6 +484,7 @@ export function ReservationDetailPage() {
           if (isCancelling) {
             return;
           }
+          setCancelQuoteId(null);
           setCancelModalOpen(false);
         }}
         onConfirm={() => {
@@ -483,7 +492,10 @@ export function ReservationDetailPage() {
             return;
           }
           setIsCancelling(true);
-          cancelBooking(bookingId, { cancelReason: '고객 취소' })
+          cancelBooking(bookingId, {
+            cancelReason: '고객 취소',
+            quoteId: cancelQuoteId ?? undefined,
+          })
             .then(() => {
               window.alert('예약취소에 성공했습니다.');
               navigate('/my-reservations');
@@ -496,6 +508,7 @@ export function ReservationDetailPage() {
             })
             .finally(() => {
               setIsCancelling(false);
+              setCancelQuoteId(null);
               setCancelModalOpen(false);
             });
         }}

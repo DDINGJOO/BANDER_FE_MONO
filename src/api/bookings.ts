@@ -21,6 +21,7 @@ export type ReservationAnswerRequest = {
 
 export type CancelBookingRequest = {
   cancelReason: string;
+  quoteId?: string;
 };
 
 export type ConfirmPaymentRequest = {
@@ -107,6 +108,8 @@ export type RefundEstimateResponse = {
   cancellationFee: number;
   refundAmount: number;
   cancellable: boolean;
+  quoteId?: string | null;
+  expiresAt?: string | null;
 };
 
 // --- Saga (orchestrator) types ---
