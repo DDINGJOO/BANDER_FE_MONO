@@ -71,6 +71,29 @@ function formatUnreadBadge(count: number): string {
   return String(count);
 }
 
+function renderSearchSuggestionText(item: string, query: string) {
+  const trimmedQuery = query.trim();
+  if (!trimmedQuery) {
+    return <span>{item}</span>;
+  }
+
+  const matchIndex = item.toLowerCase().indexOf(trimmedQuery.toLowerCase());
+  if (matchIndex < 0) {
+    return <span>{item}</span>;
+  }
+
+  const before = item.slice(0, matchIndex);
+  const match = item.slice(matchIndex, matchIndex + trimmedQuery.length);
+  const after = item.slice(matchIndex + trimmedQuery.length);
+  return (
+    <>
+      <span>{before}</span>
+      <span className="home-header__search-highlight">{match}</span>
+      <span>{after}</span>
+    </>
+  );
+}
+
 function fetchUserSummaryOnce(): Promise<UserMeSummary | null> {
   if (cachedUserSummary) return Promise.resolve(cachedUserSummary);
   if (summaryFetchInFlight) return summaryFetchInFlight;
@@ -282,22 +305,16 @@ export function HomeHeader(props: HomeHeaderProps) {
 
               {props.searchOpen && props.searchQuery ? (
                 <div className="home-header__search-menu">
-                  {props.filteredSuggestions.map((item) => {
-                    const [prefix, suffix] = item.split(props.searchQuery);
-
-                    return (
-                      <button
-                        className="home-header__search-option"
-                        key={item}
-                        onClick={() => props.onSuggestionSelect(item)}
-                        type="button"
-                      >
-                        <span>{prefix ?? ''}</span>
-                        <span className="home-header__search-highlight">{props.searchQuery}</span>
-                        <span>{suffix ?? ''}</span>
-                      </button>
-                    );
-                  })}
+                  {props.filteredSuggestions.map((item) => (
+                    <button
+                      className="home-header__search-option"
+                      key={item}
+                      onClick={() => props.onSuggestionSelect(item)}
+                      type="button"
+                    >
+                      {renderSearchSuggestionText(item, props.searchQuery)}
+                    </button>
+                  ))}
                 </div>
               ) : null}
             </div>

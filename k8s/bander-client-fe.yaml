@@ -19,7 +19,7 @@ spec:
     spec:
       containers:
         - name: nginx
-          image: bander/client-fe:onprem-20260503-120700-community-write-inline
+          image: bander/client-fe:onprem-20260503-121800-search-suggestion-highlight
           imagePullPolicy: Never
           ports:
             - containerPort: 80
