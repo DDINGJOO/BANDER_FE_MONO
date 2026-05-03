@@ -19,7 +19,7 @@ spec:
     spec:
       containers:
         - name: nginx
-          image: bander/client-fe:onprem-20260503-115200-booking-detail-layout
+          image: bander/client-fe:onprem-20260503-120700-community-write-inline
           imagePullPolicy: Never
           ports:
             - containerPort: 80

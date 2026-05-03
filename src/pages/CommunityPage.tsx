@@ -231,15 +231,17 @@ export function CommunityPage() {
             다음 페이지
           </button>
         </div>
-      </div>
 
-      <button
-        className="community-page__fab"
-        onClick={() => navigate('/community/write')}
-        type="button"
-      >
-        글쓰기
-      </button>
+        <div className="community-page__write-row">
+          <button
+            className="community-page__write-button"
+            onClick={() => navigate('/community/write')}
+            type="button"
+          >
+            글쓰기
+          </button>
+        </div>
+      </div>
 
       <HomeFooter />
     </main>

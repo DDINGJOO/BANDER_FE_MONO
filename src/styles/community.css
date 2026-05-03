@@ -337,24 +337,25 @@ a.community-page__card--link {
   cursor: not-allowed;
 }
 
-.community-page__fab {
-  position: fixed;
-  right: 24px;
-  bottom: 32px;
-  z-index: 40;
+.community-page__write-row {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 14px;
+}
+
+.community-page__write-button {
   padding: 14px 22px;
   border: 0;
-  border-radius: 999px;
+  border-radius: 10px;
   background: var(--color-main-yellow, #ffe030);
   color: var(--color-black, #0f1114);
   font-size: 15px;
   font-weight: 700;
   line-height: 22px;
   cursor: pointer;
-  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.12);
 }
 
-.community-page__fab:hover {
+.community-page__write-button:hover {
   filter: brightness(1.03);
 }
 
@@ -404,6 +405,10 @@ a.community-page__card--link {
 
   .community-page__page-button {
     flex: 1;
+  }
+
+  .community-page__write-button {
+    width: 100%;
   }
 
   .community-page__card {
