@@ -18,7 +18,7 @@ type PaymentFilter = 'all' | PaymentHistoryKind;
 const FILTER_OPTIONS: readonly { id: PaymentFilter; label: string }[] = [
   { id: 'all', label: '전체' },
   { id: 'payment', label: '결제' },
-  { id: 'refund', label: '취소/환불' },
+  { id: 'refund', label: '취소' },
 ];
 
 function filterEntries(
@@ -34,7 +34,7 @@ function PaymentHistoryRow({ entry }: { entry: PaymentHistoryEntry }) {
     entry.kind === 'payment' ? (
       <p className="payment-info__tag payment-info__tag--payment">결제</p>
     ) : (
-      <p className="payment-info__tag payment-info__tag--refund">취소/환불</p>
+      <p className="payment-info__tag payment-info__tag--refund">취소</p>
     );
 
   const amountText =

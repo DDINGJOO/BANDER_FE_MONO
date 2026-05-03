@@ -13,6 +13,7 @@ import { useCouponDownloads } from '../hooks/useCouponDownloads';
 import { useSpaceDetail } from '../hooks/useSpaceDetail';
 import { getAvailableCoupons } from '../api/coupons';
 import {
+  cancelSagaPayment,
   getSpaceAvailability,
   createBooking,
   type BookingCommandResponse,
@@ -905,7 +906,8 @@ export function SpaceReservationPage() {
     if (!sagaPending) return;
 
     // PR-2.8a: when the saga polling response first exposes orderId + amount,
-    // launch the Toss SDK once. Polling continues until COMPLETED.
+    // launch the Toss SDK once. paymentId is not required on the client path;
+    // waiting for it can deadlock the UI if the backend only surfaces orderId/customerKey first.
     const data = sagaState.data;
     if (data?.bookingId) {
       sessionStorage.setItem('bander_pending_booking_id', data.bookingId);
@@ -913,7 +915,6 @@ export function SpaceReservationPage() {
     if (
       !tossLaunchedRef.current &&
       data?.orderId &&
-      data?.paymentId &&
       typeof data.amount === 'number' &&
       data.amount > 0
     ) {
@@ -949,6 +950,16 @@ export function SpaceReservationPage() {
         // saga 가 먼저 COMPLETED 를 받아 success 가 set 됐다면 이 failed 는 거부됨.
         // eslint-disable-next-line no-console
         console.warn('[toss] requestPayment rejected', err);
+        if (sagaId) {
+          void cancelSagaPayment(sagaId, {
+            errorCode: 'USER_CANCEL',
+            errorMessage: err instanceof Error ? err.message : 'payment request cancelled',
+          }).catch(() => {
+            // best-effort compensation: UI should still unblock even if rollback call fails
+          });
+        }
+        sessionStorage.removeItem('bander_pending_saga_id');
+        sessionStorage.removeItem('bander_pending_booking_id');
         setSagaPending(false);
         showPaymentFailure(err);
       });
@@ -973,8 +984,13 @@ export function SpaceReservationPage() {
     if (sagaState.status === 'FAILED') {
       setSagaPending(false);
       showPaymentFailure({ code: data?.errorCode ?? 'PROVIDER_ERROR' });
+      return;
     }
-  }, [dateParam, roomId, sagaPending, sagaState.status, sagaState.timedOut, sagaState.data, reservationSummary.title, showPaymentFailure, slug]);
+    if (sagaState.status === 'COMPENSATED') {
+      setSagaPending(false);
+      showPaymentFailure({ code: data?.errorCode ?? 'USER_CANCEL' });
+    }
+  }, [dateParam, roomId, sagaId, sagaPending, sagaState.status, sagaState.timedOut, sagaState.data, reservationSummary.title, showPaymentFailure, slug]);
 
   const handleDownloadCoupon = async (couponId: string) => {
     if (!isAuthenticated) {

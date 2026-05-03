@@ -128,7 +128,7 @@ function isBookerPhoneAnswer(answer: ReservationAnswerRequest) {
 
 function badgeForStatus(status: string) {
   if (status === 'PENDING') {
-    return { className: 'res-detail__badge res-detail__badge--muted', text: '승인대기' };
+    return { className: 'res-detail__badge res-detail__badge--muted', text: '예약대기' };
   }
   if (status === 'CONFIRMED') {
     return { className: 'res-detail__badge res-detail__badge--blue', text: '예약확정' };

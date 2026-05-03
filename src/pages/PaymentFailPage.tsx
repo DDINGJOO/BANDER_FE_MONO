@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { cancelSagaPayment } from '../api/bookings';
 import { HomeHeader } from '../components/home/HomeHeader';
 import { ErrorIcon } from '../components/shared/Icons';
 import { loadAuthSession } from '../data/authSession';
@@ -14,6 +15,24 @@ export function PaymentFailPage() {
 
   const failure = paymentFailureFromSearchParams(searchParams);
   const roomDetailPath = roomDetailPathFromPaymentContext(searchParams);
+
+  useEffect(() => {
+    const sagaId = sessionStorage.getItem('bander_pending_saga_id');
+    if (!sagaId) {
+      sessionStorage.removeItem('bander_pending_booking_id');
+      return;
+    }
+
+    void cancelSagaPayment(sagaId, {
+      errorCode: failure.code ?? 'USER_CANCEL',
+      errorMessage: failure.message,
+    }).catch(() => {
+      // best-effort cleanup: keep the fail page usable even if rollback request fails
+    }).finally(() => {
+      sessionStorage.removeItem('bander_pending_saga_id');
+      sessionStorage.removeItem('bander_pending_booking_id');
+    });
+  }, [failure.code, failure.message]);
 
   return (
     <main className="payment-result">

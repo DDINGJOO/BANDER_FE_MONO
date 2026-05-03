@@ -67,7 +67,7 @@ export function PaymentSuccessPage() {
         if (status.status === 'COMPLETED') {
           return { ok: true };
         }
-        if (status.status === 'FAILED' || status.status === 'COMPENSATING') {
+        if (status.status === 'FAILED' || status.status === 'COMPENSATING' || status.status === 'COMPENSATED') {
           return {
             ok: false,
             failure: normalizePaymentFailure({ code: status.errorCode ?? 'PROVIDER_ERROR' }, '예약 확정에 실패했습니다.'),

@@ -19,7 +19,7 @@ export type UseSagaPollingState = {
   timedOut: boolean;
 };
 
-const TERMINAL: ReadonlySet<SagaStatus> = new Set<SagaStatus>(['COMPLETED', 'FAILED']);
+const TERMINAL: ReadonlySet<SagaStatus> = new Set<SagaStatus>(['COMPLETED', 'FAILED', 'COMPENSATED']);
 
 /**
  * Polls /api/v1/orchestrator/sagas/{sagaId} every `intervalMs` until the saga reaches a

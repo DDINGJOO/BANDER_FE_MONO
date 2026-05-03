@@ -119,7 +119,7 @@ export type SagaStartResponse = {
   expiresAt: string;
 };
 
-export type SagaStatus = 'RUNNING' | 'IN_PROGRESS' | 'COMPLETED' | 'FAILED' | 'COMPENSATING';
+export type SagaStatus = 'RUNNING' | 'IN_PROGRESS' | 'COMPLETED' | 'FAILED' | 'COMPENSATING' | 'COMPENSATED';
 
 export type SagaStatusResponse = {
   status: SagaStatus;
@@ -147,6 +147,11 @@ export type CreateBookingResult =
 export type ConfirmSagaPaymentResponse = {
   sagaId: string;
   status: SagaStatus;
+};
+
+export type CancelSagaPaymentRequest = {
+  errorCode?: string;
+  errorMessage?: string;
 };
 
 // --- Functions ---
@@ -215,6 +220,10 @@ export function confirmPayment(bookingId: number | string, req: ConfirmPaymentRe
 
 export function confirmSagaPayment(sagaId: string, req: ConfirmPaymentRequest) {
   return postJson<ConfirmSagaPaymentResponse>(`/api/v1/orchestrator/sagas/${sagaId}/confirm-payment`, req);
+}
+
+export function cancelSagaPayment(sagaId: string, req: CancelSagaPaymentRequest = {}) {
+  return postJson<ConfirmSagaPaymentResponse>(`/api/v1/orchestrator/sagas/${sagaId}/cancel-payment`, req);
 }
 
 export function getBookingDetail(bookingId: number | string) {
