@@ -288,6 +288,18 @@ export function ReservationDetailPage() {
                   {startFormatted} ~ {endTime} (총 {durationHours}시간)
                 </span>
               </div>
+              <div className="res-detail__row">
+                <span className="res-detail__row-label">예약번호</span>
+                <span className="res-detail__row-value">{detail.bookingId}</span>
+              </div>
+              <div className="res-detail__row">
+                <span className="res-detail__row-label">이름</span>
+                <span className="res-detail__row-value">{detail.bookerName || '—'}</span>
+              </div>
+              <div className="res-detail__row">
+                <span className="res-detail__row-label">연락처</span>
+                <span className="res-detail__row-value">{formatPhone(detail.bookerPhone)}</span>
+              </div>
               {detail.bookerNote ? (
                 <div className="res-detail__row">
                   <span className="res-detail__row-label">추가 요청사항</span>
@@ -330,26 +342,6 @@ export function ReservationDetailPage() {
           <hr className="res-detail__divider" />
 
           <div className="res-detail__stack">
-            <section>
-              <h2 className="res-detail__section-title">예약자 정보</h2>
-              <div className="res-detail__subcard">
-                <div className="res-detail__rows">
-                  <div className="res-detail__row">
-                    <span className="res-detail__row-label">예약번호</span>
-                    <span className="res-detail__row-value">{detail.bookingId}</span>
-                  </div>
-                  <div className="res-detail__row">
-                    <span className="res-detail__row-label">이름</span>
-                    <span className="res-detail__row-value">{detail.bookerName || '—'}</span>
-                  </div>
-                  <div className="res-detail__row">
-                    <span className="res-detail__row-label">연락처</span>
-                    <span className="res-detail__row-value">{formatPhone(detail.bookerPhone)}</span>
-                  </div>
-                </div>
-              </div>
-            </section>
-
             <section>
               <h2 className="res-detail__section-title">결제 정보</h2>
               <div className="res-detail__subcard">
