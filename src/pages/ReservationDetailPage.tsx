@@ -2,13 +2,13 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { HomeFooter } from '../components/home/HomeFooter';
 import { HomeHeader } from '../components/home/HomeHeader';
+import { KakaoAddressMapView } from '../components/map/KakaoAddressMapView';
 import { useGuestGate } from '../components/home/GuestGateProvider';
 import { ReservationCancelModal } from '../components/reservations/ReservationCancelModal';
 import { ChevronIcon } from '../components/shared/Icons';
 import { HEADER_SEARCH_KEYWORD_SUGGESTIONS } from '../config/searchSuggestions';
 import { loadAuthSession } from '../data/authSession';
 import {
-  RESERVATION_DETAIL_MAP_IMAGE,
   RESERVATION_REFUND_POLICY,
   reservationDetailChatHref,
 } from '../data/reservationDetail';
@@ -142,6 +142,7 @@ export function ReservationDetailPage() {
 
   const badge = badgeForStatus(detail.status);
   const isCompleted = detail.status === 'COMPLETED';
+  const hasStudioAddress = Boolean(detail.studioAddress?.trim());
   const studioAddress = detail.studioAddress?.trim() || '주소 정보 없음';
   const reservationAnswers = (detail.reservationAnswers ?? [])
     .filter((answer) => answer.value?.trim())
@@ -149,7 +150,9 @@ export function ReservationDetailPage() {
     .sort((a, b) => a.sortOrder - b.sortOrder);
 
   const onCopyAddress = () => {
-    void navigator.clipboard.writeText(studioAddress);
+    if (hasStudioAddress) {
+      void navigator.clipboard.writeText(studioAddress);
+    }
   };
 
   const startFormatted = formatDateTime(detail.startsAt);
@@ -263,9 +266,13 @@ export function ReservationDetailPage() {
           <section>
             <h2 className="res-detail__section-title">위치 정보</h2>
             <div className="res-detail__map-wrap">
-              <div className="res-detail__map">
-                <img alt="" src={RESERVATION_DETAIL_MAP_IMAGE} loading="lazy" />
-              </div>
+              <KakaoAddressMapView
+                address={hasStudioAddress ? studioAddress : ''}
+                className="res-detail__map"
+                level={3}
+                markerTitle={detail.studioName || detail.roomName}
+                title={`${detail.studioName || detail.roomName} 위치 지도`}
+              />
             </div>
             <div className="res-detail__address-copy">
               <p>{studioAddress}</p>

@@ -45,7 +45,7 @@ function appendKakaoScript(appKey: string): Promise<void> {
     script.async = true;
     script.defer = true;
     script.dataset.banderKakaoMapsSdk = '1';
-    script.src = `https://dapi.kakao.com/v2/maps/sdk.js?autoload=false&appkey=${encodeURIComponent(appKey)}`;
+    script.src = `https://dapi.kakao.com/v2/maps/sdk.js?autoload=false&appkey=${encodeURIComponent(appKey)}&libraries=services`;
     script.onload = () => resolve();
     script.onerror = () => {
       script.dataset.banderKakaoMapsSdkFailed = '1';
