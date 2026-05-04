@@ -35,20 +35,20 @@ function buildQuery(params: ExploreMapSearchParams): string {
 }
 
 export function getExploreMapMarkers(params: ExploreMapSearchParams = {}) {
-  return getJson<ExploreMapMarkersResponseDto>(`/api/v1/explore/map/markers${buildQuery(params)}`, {
+  return getJson<ExploreMapMarkersResponseDto>(`/api/v1/spaces/map/markers${buildQuery(params)}`, {
     preserveAuthOnUnauthorized: true,
   });
 }
 
 export function getExploreMapSpaces(params: ExploreMapSearchParams = {}) {
-  return getJson<ExploreMapSpacesResponseDto>(`/api/v1/explore/map/spaces${buildQuery(params)}`, {
+  return getJson<ExploreMapSpacesResponseDto>(`/api/v1/spaces/map/spaces${buildQuery(params)}`, {
     preserveAuthOnUnauthorized: true,
   });
 }
 
 export function getExploreMapPopularVendors(params: ExploreMapSearchParams = {}) {
   return getJson<ExploreMapPopularVendorsResponseDto>(
-    `/api/v1/explore/map/popular-vendors${buildQuery(params)}`,
+    `/api/v1/spaces/map/popular-vendors${buildQuery(params)}`,
     {
       preserveAuthOnUnauthorized: true,
     }

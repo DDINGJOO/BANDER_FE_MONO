@@ -57,8 +57,10 @@ export type SpaceFilterState = {
 type HomeSpaceExplorerProps = {
   headerContent?: React.ReactNode;
   initialFilters?: SpaceFilterState;
+  initialSearchQuery?: string;
   onFilterChange?: (filters: SpaceFilterState) => void;
   resultLimit?: number;
+  searchBasePath?: string;
   spaces?: SpaceCardData[];
   variant?: ExplorerVariant;
 };
@@ -131,8 +133,10 @@ function summarizeSelection(values: string[], emptyLabel: string) {
 export function HomeSpaceExplorer({
   headerContent,
   initialFilters,
+  initialSearchQuery = '',
   onFilterChange,
   resultLimit,
+  searchBasePath = '/search',
   spaces = [],
   variant = 'section',
 }: HomeSpaceExplorerProps) {
@@ -143,7 +147,7 @@ export function HomeSpaceExplorer({
     typeof resultLimit === 'number' ? spaces.slice(0, resultLimit) : spaces;
   const explorerRef = useRef<HTMLDivElement | null>(null);
   const [openPanel, setOpenPanel] = useState<ExplorerPanel>(null);
-  const [heroSearchQuery, setHeroSearchQuery] = useState('');
+  const [heroSearchQuery, setHeroSearchQuery] = useState(initialSearchQuery);
   const [reservableOnly, setReservableOnly] = useState(initialFilters?.reservable === true);
   const [parkingOnly, setParkingOnly] = useState(initialFilters?.parking === true);
 
@@ -274,7 +278,7 @@ export function HomeSpaceExplorer({
       trimmed,
     );
     const queryString = search.toString();
-    navigate(queryString ? `/search?${queryString}` : '/search');
+    navigate(queryString ? `${searchBasePath}?${queryString}` : searchBasePath);
   }, [
     appliedDate,
     appliedKeywordSelections,
@@ -285,7 +289,12 @@ export function HomeSpaceExplorer({
     navigate,
     parkingOnly,
     reservableOnly,
+    searchBasePath,
   ]);
+
+  useEffect(() => {
+    setHeroSearchQuery(initialSearchQuery);
+  }, [initialSearchQuery]);
 
   const handleDateRangeChange = (nextValue: number[]) => {
     const [startHour, endHour] = nextValue;

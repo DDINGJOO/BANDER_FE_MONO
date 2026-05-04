@@ -8,7 +8,26 @@ import {
 import { ExploreMapPage } from '../ExploreMapPage';
 
 jest.mock('../../components/home/HomeHeader', () => ({
-  HomeHeader: () => <div data-testid="home-header" />,
+  HomeHeader: ({
+    onSearchChange,
+    onSearchSubmit,
+    searchQuery,
+  }: {
+    onSearchChange: (value: string) => void;
+    onSearchSubmit: (value: string) => void;
+    searchQuery: string;
+  }) => (
+    <div data-testid="home-header">
+      <input
+        aria-label="지도 검색"
+        onChange={(event) => onSearchChange(event.target.value)}
+        value={searchQuery}
+      />
+      <button onClick={() => onSearchSubmit(searchQuery)} type="button">
+        검색
+      </button>
+    </div>
+  ),
 }));
 
 jest.mock('../../components/home/HomeSpaceExplorer', () => ({
@@ -16,8 +35,18 @@ jest.mock('../../components/home/HomeSpaceExplorer', () => ({
 }));
 
 jest.mock('../../components/map/KakaoMapView', () => ({
-  KakaoMapView: ({ markers = [] }: { markers?: unknown[] }) => (
-    <div data-marker-count={markers.length} data-testid="explore-map" />
+  KakaoMapView: ({
+    center,
+    markers = [],
+  }: {
+    center: { lat: number; lng: number };
+    markers?: unknown[];
+  }) => (
+    <div
+      data-center={`${center.lat},${center.lng}`}
+      data-marker-count={markers.length}
+      data-testid="explore-map"
+    />
   ),
 }));
 
@@ -69,7 +98,7 @@ test('renders the map without dummy cards when the backend has no map data', asy
 });
 
 test('exposes a mobile map list toggle for backend practice rooms', async () => {
-  mockedGetExploreMapSpaces.mockResolvedValueOnce({
+  mockedGetExploreMapSpaces.mockResolvedValue({
     hasNext: false,
     items: [
       {
@@ -103,7 +132,7 @@ test('exposes a mobile map list toggle for backend practice rooms', async () => 
     size: 20,
     totalCount: 2,
   });
-  mockedGetExploreMapMarkers.mockResolvedValueOnce({
+  mockedGetExploreMapMarkers.mockResolvedValue({
     markers: [
       {
         availableRoomCount: 1,
@@ -130,4 +159,56 @@ test('exposes a mobile map list toggle for backend practice rooms', async () => 
 
   expect(toggle).toHaveAttribute('aria-expanded', 'true');
   expect(screen.getByRole('button', { name: /지도 안 합주실 2곳 접기/ })).toBeInTheDocument();
+});
+
+test('searches inside the map page and recenters the map to the first result marker', async () => {
+  mockedGetExploreMapSpaces.mockResolvedValue({
+    hasNext: false,
+    items: [
+      {
+        bookmarkSaved: false,
+        detailPath: '/spaces/bind-a-room',
+        imageUrl: 'https://cdn.example.com/bind-a-room.png',
+        location: '인천 남동구',
+        priceLabel: '20,000원',
+        priceSuffix: '/60분',
+        rating: '4.8',
+        spaceType: '합주실',
+        studio: '바인드 합주실',
+        tags: ['주차가능'],
+        title: 'A룸',
+      },
+    ],
+    page: 0,
+    size: 20,
+    totalCount: 1,
+  });
+  mockedGetExploreMapMarkers.mockResolvedValue({
+    markers: [
+      {
+        availableRoomCount: 2,
+        id: 'studio-bind',
+        label: '바인드 합주실',
+        lat: 37.4453311,
+        lng: 126.6961342,
+        spaceOrVendorId: '308123557085450250',
+      },
+    ],
+  });
+
+  render(
+    <MemoryRouter initialEntries={['/search/map']}>
+      <ExploreMapPage />
+    </MemoryRouter>,
+  );
+
+  fireEvent.change(screen.getByLabelText('지도 검색'), { target: { value: '바인드' } });
+  fireEvent.click(screen.getByRole('button', { name: '검색' }));
+
+  await waitFor(() => {
+    expect(mockedGetExploreMapSpaces).toHaveBeenLastCalledWith(expect.objectContaining({ q: '바인드' }));
+  });
+  await waitFor(() => {
+    expect(screen.getByTestId('explore-map')).toHaveAttribute('data-center', '37.4453311,126.6961342');
+  });
 });

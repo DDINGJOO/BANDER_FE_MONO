@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { HomeHeader } from '../components/home/HomeHeader';
 import { KakaoMapView } from '../components/map/KakaoMapView';
 import { HomeSpaceExplorer, type SpaceFilterState } from '../components/home/HomeSpaceExplorer';
@@ -13,7 +13,7 @@ import {
 import { HEADER_SEARCH_KEYWORD_SUGGESTIONS } from '../config/searchSuggestions';
 import { exploreMapListItemFromDto } from '../data/adapters/exploreMapFromApi';
 import { loadAuthSession } from '../data/authSession';
-import { serializeSearchFilters } from '../lib/searchQuery';
+import { parseSearchFilters, serializeSearchFilters } from '../lib/searchQuery';
 import {
   EXPLORE_MAP_CENTER,
   type ExploreMapListItem,
@@ -72,9 +72,14 @@ function normalizeSpaceFilters(filters: SpaceFilterState): SpaceFilterState {
   return next;
 }
 
-function buildExploreMapFilterParams(filters: SpaceFilterState): ExploreMapSearchParams {
+function buildExploreMapFilterParams(filters: SpaceFilterState, query: string): ExploreMapSearchParams {
   const cleanKeywords = filters.keywords?.map((keyword) => keyword.replace(/^#/, '')).filter(Boolean) ?? [];
   const params: ExploreMapSearchParams = {};
+  const trimmedQuery = query.trim();
+
+  if (trimmedQuery) {
+    params.q = trimmedQuery;
+  }
 
   if (filters.category) {
     params.category = filters.category;
@@ -118,13 +123,23 @@ function isExploreMapMarker(marker: ExploreMapMarker | null): marker is ExploreM
 
 export function ExploreMapPage() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const searchParamString = searchParams.toString();
   const isAuthenticated = Boolean(loadAuthSession());
+  const parsedSearch = useMemo(
+    () => parseSearchFilters(new URLSearchParams(searchParamString)),
+    [searchParamString],
+  );
+  const query = parsedSearch.q ?? '';
+  const initialSpaceFilters = useMemo(() => parsedSearch.filters, [parsedSearch]);
+  const initialSpaceFilterKey = useMemo(() => JSON.stringify(initialSpaceFilters), [initialSpaceFilters]);
   const [headerSearchOpen, setHeaderSearchOpen] = useState(false);
-  const [headerSearchQuery, setHeaderSearchQuery] = useState('');
+  const [headerSearchQuery, setHeaderSearchQuery] = useState(query);
   const headerSearchRef = useRef<HTMLDivElement | null>(null);
   const [mapResetKey, setMapResetKey] = useState(0);
+  const [mapCenter, setMapCenter] = useState<{ lat: number; lng: number }>(EXPLORE_MAP_CENTER);
   const [mobileListOpen, setMobileListOpen] = useState(false);
-  const [spaceFilters, setSpaceFilters] = useState<SpaceFilterState>({});
+  const [spaceFilters, setSpaceFilters] = useState<SpaceFilterState>(initialSpaceFilters);
   const [listItems, setListItems] = useState<ExploreMapListItem[]>([]);
   const [mapMarkers, setMapMarkers] = useState<ExploreMapMarker[]>([]);
   const [popularVendors, setPopularVendors] = useState<ExploreMapPopularVendor[]>([]);
@@ -144,8 +159,19 @@ export function ExploreMapPage() {
       return;
     }
     const params = serializeSearchFilters(spaceFilters, normalizedValue);
-    navigate(`/search?${params.toString()}`);
+    setSearchParams(params);
+    setMobileListOpen(true);
   };
+
+  useEffect(() => {
+    setHeaderSearchQuery(query);
+  }, [query]);
+
+  useEffect(() => {
+    setSpaceFilters((current) => (
+      JSON.stringify(current) === initialSpaceFilterKey ? current : initialSpaceFilters
+    ));
+  }, [initialSpaceFilterKey, initialSpaceFilters]);
 
   useEffect(() => {
     const handlePointerDown = (event: MouseEvent) => {
@@ -160,7 +186,7 @@ export function ExploreMapPage() {
 
   useEffect(() => {
     let cancelled = false;
-    const params = buildExploreMapFilterParams(normalizeSpaceFilters(spaceFilters));
+    const params = buildExploreMapFilterParams(normalizeSpaceFilters(spaceFilters), query);
 
     Promise.all([
       getExploreMapSpaces({ ...params, page: 0, size: 20 }).catch(() => null),
@@ -172,14 +198,18 @@ export function ExploreMapPage() {
       }
 
       setListItems((spacesResponse?.items ?? []).map(exploreMapListItemFromDto));
-      setMapMarkers((markersResponse?.markers ?? []).map(exploreMapMarkerFromDto).filter(isExploreMapMarker));
+      const nextMarkers = (markersResponse?.markers ?? []).map(exploreMapMarkerFromDto).filter(isExploreMapMarker);
+      setMapMarkers(nextMarkers);
       setPopularVendors(popularVendorsResponse?.vendors ?? []);
+      if (query.trim() && nextMarkers.length > 0) {
+        setMapCenter({ lat: nextMarkers[0].lat, lng: nextMarkers[0].lng });
+      }
     });
 
     return () => {
       cancelled = true;
     };
-  }, [spaceFilters]);
+  }, [query, spaceFilters]);
 
   useEffect(() => {
     setSavedByPath((current) => {
@@ -234,7 +264,14 @@ export function ExploreMapPage() {
       <div className="explore-map-page__body">
         <aside className="explore-map-page__sidebar">
           <div className="explore-map-page__explorer">
-            <HomeSpaceExplorer onFilterChange={handleFilterChange} variant="map" />
+            <HomeSpaceExplorer
+              initialFilters={initialSpaceFilters}
+              initialSearchQuery={query}
+              key={initialSpaceFilterKey}
+              onFilterChange={handleFilterChange}
+              searchBasePath="/search/map"
+              variant="map"
+            />
           </div>
 
           {hasListItems ? (
@@ -342,7 +379,7 @@ export function ExploreMapPage() {
 
         <div className="explore-map-page__map-wrap">
           <KakaoMapView
-            center={EXPLORE_MAP_CENTER}
+            center={mapCenter}
             className="explore-map-page__map-frame"
             key={mapResetKey}
             level={5}
@@ -352,7 +389,10 @@ export function ExploreMapPage() {
           <button
             aria-label="지도 위치 초기화"
             className="explore-map-page__recenter"
-            onClick={() => setMapResetKey((prev) => prev + 1)}
+            onClick={() => {
+              setMapCenter(EXPLORE_MAP_CENTER);
+              setMapResetKey((prev) => prev + 1);
+            }}
             type="button"
           >
             <RecenterIcon />
