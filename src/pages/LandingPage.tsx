@@ -364,7 +364,9 @@ export function LandingPage() {
             <div className="landing__owner-copy">
               <span className="landing__eyebrow landing__eyebrow--dark">Pre-register</span>
               <h2 className="landing__section-title landing__section-title--light" id="landing-owner-title">
-                오픈 소식, 가장 먼저 받아보세요
+                오픈 소식,
+                <br />
+                가장 먼저 받아보세요
               </h2>
               <p className="landing__owner-desc">
                 서비스 시작 소식을 받아보고 싶으신가요?

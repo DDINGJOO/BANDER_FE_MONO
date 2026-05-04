@@ -526,6 +526,13 @@
   line-height: 1.2;
   margin: 0 0 12px;
   text-align: center;
+  word-break: keep-all;
+  overflow-wrap: break-word;
+}
+
+.landing__hero-title {
+  word-break: keep-all;
+  overflow-wrap: break-word;
 }
 
 .landing__section-title--left {
