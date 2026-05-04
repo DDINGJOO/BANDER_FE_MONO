@@ -9,6 +9,7 @@ import {
   HOME_FILTER_REGION_DISTRICTS,
   HOME_FILTER_SPACE_OPTIONS,
 } from '../../data/home';
+import { serializeSearchFilters } from '../../lib/searchQuery';
 
 type ExplorerPanel = 'date' | 'keyword' | 'people' | 'region' | 'space' | null;
 type ExplorerVariant = 'hero' | 'map' | 'section';
@@ -125,55 +126,6 @@ function summarizeSelection(values: string[], emptyLabel: string) {
   }
 
   return `${values[0]} 외 ${values.length - 1}`;
-}
-
-const DAY_OF_WEEK_PARAMS = [
-  'SUNDAY',
-  'MONDAY',
-  'TUESDAY',
-  'WEDNESDAY',
-  'THURSDAY',
-  'FRIDAY',
-  'SATURDAY',
-] as const;
-
-function formatDateParam(date: DateDraft) {
-  return [
-    String(date.year).padStart(4, '0'),
-    String(date.month).padStart(2, '0'),
-    String(date.day).padStart(2, '0'),
-  ].join('-');
-}
-
-function getDayOfWeekParam(date: DateDraft) {
-  return DAY_OF_WEEK_PARAMS[new Date(date.year, date.month - 1, date.day).getDay()];
-}
-
-function appendSpaceFilterSearchParams(search: URLSearchParams, filters: SpaceFilterState) {
-  if (filters.category) {
-    search.set('category', filters.category);
-  }
-  if (filters.capacity) {
-    search.set('capacity', String(filters.capacity));
-  }
-  if (filters.parking) {
-    search.set('parking', 'true');
-  }
-  if (filters.reservable) {
-    search.set('reservable', 'true');
-  }
-  filters.regions?.filter(Boolean).forEach((region) => {
-    search.append('regions', region);
-  });
-  filters.keywords?.map((keyword) => keyword.replace(/^#/, '')).filter(Boolean).forEach((keyword) => {
-    search.append('keywords', keyword);
-  });
-  if (filters.date) {
-    search.set('date', formatDateParam(filters.date));
-    search.set('dayOfWeek', getDayOfWeekParam(filters.date));
-    search.set('startHour', String(filters.date.startHour));
-    search.set('endHour', String(filters.date.endHour));
-  }
 }
 
 export function HomeSpaceExplorer({
@@ -309,19 +261,18 @@ export function HomeSpaceExplorer({
 
   const submitHeroSearch = useCallback(() => {
     const trimmed = heroSearchQuery.trim();
-    const search = new URLSearchParams();
-    if (trimmed) {
-      search.set('q', trimmed);
-    }
-    appendSpaceFilterSearchParams(search, {
-      category: appliedSpaceSelections.length === 1 ? appliedSpaceSelections[0] : undefined,
-      capacity: appliedPeopleCount > 0 ? appliedPeopleCount : undefined,
-      date: appliedDate ?? undefined,
-      parking: parkingOnly || undefined,
-      reservable: reservableOnly || undefined,
-      regions: appliedRegionSelections.length > 0 ? appliedRegionSelections : undefined,
-      keywords: appliedKeywordSelections.length > 0 ? appliedKeywordSelections : undefined,
-    });
+    const search = serializeSearchFilters(
+      {
+        category: appliedSpaceSelections.length === 1 ? appliedSpaceSelections[0] : undefined,
+        capacity: appliedPeopleCount > 0 ? appliedPeopleCount : undefined,
+        date: appliedDate ?? undefined,
+        parking: parkingOnly || undefined,
+        reservable: reservableOnly || undefined,
+        regions: appliedRegionSelections.length > 0 ? appliedRegionSelections : undefined,
+        keywords: appliedKeywordSelections.length > 0 ? appliedKeywordSelections : undefined,
+      },
+      trimmed,
+    );
     const queryString = search.toString();
     navigate(queryString ? `/search?${queryString}` : '/search');
   }, [

@@ -13,6 +13,7 @@ import {
 import { HEADER_SEARCH_KEYWORD_SUGGESTIONS } from '../config/searchSuggestions';
 import { exploreMapListItemFromDto } from '../data/adapters/exploreMapFromApi';
 import { loadAuthSession } from '../data/authSession';
+import { serializeSearchFilters } from '../lib/searchQuery';
 import {
   EXPLORE_MAP_CENTER,
   type ExploreMapListItem,
@@ -133,8 +134,7 @@ export function ExploreMapPage() {
   );
 
   const handleFilterChange = useCallback((filters: SpaceFilterState) => {
-    const next = normalizeSpaceFilters(filters);
-    setSpaceFilters((current) => (JSON.stringify(current) === JSON.stringify(next) ? current : next));
+    setSpaceFilters((current) => (JSON.stringify(current) === JSON.stringify(filters) ? current : filters));
   }, []);
 
   const handleSearchSubmit = (value: string) => {
@@ -142,7 +142,8 @@ export function ExploreMapPage() {
     if (!normalizedValue) {
       return;
     }
-    navigate(`/search?q=${encodeURIComponent(normalizedValue)}`);
+    const params = serializeSearchFilters(spaceFilters, normalizedValue);
+    navigate(`/search?${params.toString()}`);
   };
 
   useEffect(() => {
@@ -158,7 +159,7 @@ export function ExploreMapPage() {
 
   useEffect(() => {
     let cancelled = false;
-    const params = buildExploreMapFilterParams(spaceFilters);
+    const params = buildExploreMapFilterParams(normalizeSpaceFilters(spaceFilters));
 
     Promise.all([
       getExploreMapSpaces({ ...params, page: 0, size: 20 }).catch(() => null),
