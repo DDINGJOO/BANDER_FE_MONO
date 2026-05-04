@@ -261,6 +261,91 @@
   flex: 0 0 auto;
 }
 
+/* PR-E: 업체 탭 좌측 카드 + 우측 지도 분할 레이아웃 */
+.search-results__vendor-split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 16px;
+  align-items: stretch;
+  /* 헤더/필터 높이 제외하고 viewport 의 상당 부분을 채워서 지도가 의미 있는 크기로 보이게. */
+  min-height: min(720px, calc(100vh - 280px));
+}
+
+.search-results__vendor-mobile-toggle {
+  display: none;
+}
+
+.search-results__vendor-list-pane {
+  min-width: 0;
+  min-height: 0;
+  overflow-y: auto;
+  border: 1px solid #edf1f6;
+  border-radius: 14px;
+  background: var(--color-white);
+}
+
+.search-results__vendor-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.search-results__vendor-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  border-bottom: 1px solid #f0f2f5;
+  text-decoration: none;
+  color: inherit;
+  cursor: pointer;
+}
+
+.search-results__vendor-row:last-child {
+  border-bottom: 0;
+}
+
+.search-results__vendor-row:hover,
+.search-results__vendor-row--active {
+  background: #f9fafc;
+}
+
+.search-results__vendor-rooms {
+  color: var(--color-accent-text);
+  font-weight: 600;
+}
+
+.search-results__vendor-map-pane {
+  min-width: 0;
+  min-height: 360px;
+  position: sticky;
+  top: 12px;
+  align-self: flex-start;
+  height: min(720px, calc(100vh - 280px));
+  border-radius: 14px;
+  overflow: hidden;
+  border: 1px solid #edf1f6;
+  background: #f6f8fa;
+}
+
+.search-results__vendor-map {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.search-results__empty {
+  padding: 40px 16px;
+  text-align: center;
+  color: var(--color-muted);
+  font-size: 14px;
+}
+
+.search-results__loading {
+  padding: 40px 16px;
+  text-align: center;
+  color: var(--color-muted);
+}
+
 @media (max-width: 760px) {
   .search-results__inner {
     width: min(100% - 32px, 1288px);
@@ -322,6 +407,53 @@
   .search-results__vendor-grid,
   .search-results__community-list {
     grid-template-columns: 1fr;
+  }
+
+  /* 모바일: 분할 레이아웃을 단일 열 + list/map 토글로 전환 */
+  .search-results__vendor-split {
+    display: flex;
+    flex-direction: column;
+    min-height: auto;
+    gap: 0;
+  }
+
+  .search-results__vendor-mobile-toggle {
+    display: flex;
+    border-bottom: 1px solid #edf1f6;
+    margin-bottom: 12px;
+  }
+
+  .search-results__vendor-mobile-tab {
+    flex: 1;
+    padding: 10px 0;
+    border: 0;
+    border-bottom: 2px solid transparent;
+    background: transparent;
+    color: var(--color-muted);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .search-results__vendor-mobile-tab--active {
+    border-bottom-color: var(--color-black);
+    color: var(--color-black);
+  }
+
+  /* list 모드: 카드 보이고 지도 숨김 */
+  .search-results__vendor-split--list .search-results__vendor-map-pane {
+    display: none;
+  }
+
+  /* map 모드: 지도 보이고 카드 숨김 */
+  .search-results__vendor-split--map .search-results__vendor-list-pane {
+    display: none;
+  }
+
+  .search-results__vendor-split--map .search-results__vendor-map-pane {
+    height: 60vh;
+    min-height: 300px;
+    position: static;
   }
 }
 

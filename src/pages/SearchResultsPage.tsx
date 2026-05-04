@@ -7,9 +7,11 @@ import {
   type SpaceFilterState,
 } from '../components/home/HomeSpaceExplorer';
 import { ChevronIcon } from '../components/shared/Icons';
+import { KakaoMapView, type KakaoMapBoundsPayload } from '../components/map/KakaoMapView';
 import { useSearchSuggestions } from '../hooks/useSearchSuggestions';
 import { COMMUNITY_SORT_OPTIONS, COMMUNITY_FEED_ITEMS } from '../data/communityFeed';
 import { loadAuthSession } from '../data/authSession';
+import { EXPLORE_MAP_CENTER } from '../data/exploreMap';
 import {
   searchRooms,
   searchVendors,
@@ -20,6 +22,14 @@ import {
 } from '../api/search';
 import { isMockMode } from '../config/publicEnv';
 import { getDayOfWeekParam, parseSearchFilters, serializeSearchFilters } from '../lib/searchQuery';
+import {
+  bboxToParam,
+  boundsCenterDistance,
+  boundsDiagonal,
+  paramToBbox,
+  type Bounds,
+  type BoundsWithCenter,
+} from '../lib/mapBounds';
 
 const MOCK_VENDOR_RESULTS = [
   { name: '유스뮤직', slug: 'youth-music', spaces: '15개의 공간', tone: 'linear-gradient(135deg, #7f1315, #e26447)' },
@@ -90,6 +100,20 @@ function buildSearchPath(query: string, filters: SpaceFilterState) {
   return queryString ? `/search?${queryString}` : '/search';
 }
 
+/** viewport 자동 재검색 임계값 — 사용자가 "충분히 움직였다" 라고 판단하는 기준.
+ *  데스크톱 20%, 모바일 30% (한 손 swipe 가 더 크게 잡힘). */
+const REFETCH_THRESHOLD_DESKTOP = 0.2;
+const REFETCH_THRESHOLD_MOBILE = 0.3;
+const VIEWPORT_DEBOUNCE_MS = 350;
+const MOBILE_BREAKPOINT_PX = 760;
+
+function pickRefetchThreshold(): number {
+  if (typeof window === 'undefined') return REFETCH_THRESHOLD_DESKTOP;
+  return window.innerWidth <= MOBILE_BREAKPOINT_PX
+    ? REFETCH_THRESHOLD_MOBILE
+    : REFETCH_THRESHOLD_DESKTOP;
+}
+
 function hasSpaceSearchFilters(filters: SpaceFilterState) {
   return Boolean(
     filters.category ||
@@ -114,6 +138,12 @@ export function SearchResultsPage() {
   const query = parsedSearch.q ?? '';
   const initialSpaceFilters = useMemo(() => parsedSearch.filters, [parsedSearch]);
   const initialSpaceFilterKey = useMemo(() => JSON.stringify(initialSpaceFilters), [initialSpaceFilters]);
+  // URL 의 bbox 를 마운트 시점에 한 번만 흡수 — 그 후로는 지도 onBoundsChange 가 단일 진실의 원천.
+  // searchParamString 의 다른 부분이 바뀌어도 bbox 만으로 재마운트하지 않음.
+  const initialBboxRef = useRef<Bounds | null | undefined>(undefined);
+  if (initialBboxRef.current === undefined) {
+    initialBboxRef.current = paramToBbox(searchParams.get('bbox'));
+  }
   const [activeTab, setActiveTab] = useState<SearchTab>('space');
   const [headerSearchOpen, setHeaderSearchOpen] = useState(false);
   const [headerSearchQuery, setHeaderSearchQuery] = useState(query);
@@ -134,6 +164,38 @@ export function SearchResultsPage() {
   const [postsLoading, setPostsLoading] = useState(false);
   const [postsTotalCount, setPostsTotalCount] = useState<number | null>(null);
 
+  // viewport 재검색에 실제로 적용 중인 bbox. 임계값 초과 시에만 갱신 → fetch 재트리거.
+  const [appliedBounds, setAppliedBounds] = useState<Bounds | null>(initialBboxRef.current);
+  // handleBoundsChange 의 setTimeout closure 가 stale 한 appliedBounds 를 참조하지 않도록
+  // ref 로 미러링. 매 렌더 effect 에서 갱신.
+  const appliedBoundsRef = useRef<Bounds | null>(initialBboxRef.current);
+  useEffect(() => {
+    appliedBoundsRef.current = appliedBounds;
+  }, [appliedBounds]);
+  // 지도 중심: appliedBounds (URL bbox) 의 중심 또는 EXPLORE_MAP_CENTER. 새 검색 결과가
+  // 도착하면 마커 평균으로 한 번 이동. viewport 재검색 결과는 이동 안 함 (사용자가 정한 viewport 무효화 금지).
+  const [mapCenter, setMapCenter] = useState<{ lat: number; lng: number }>(() => {
+    const seed = initialBboxRef.current;
+    if (seed) {
+      return {
+        lat: (seed.swLat + seed.neLat) / 2,
+        lng: (seed.swLng + seed.neLng) / 2,
+      };
+    }
+    return EXPLORE_MAP_CENTER;
+  });
+  // 새 query/필터 검색 시 true → 다음 vendor 결과 도착 시 마커 평균으로 mapCenter 이동 (1회).
+  // viewport 재검색 시 false → 사용자 viewport 유지.
+  const shouldRefitRef = useRef(true);
+  // programmatic setCenter (예: fitBounds) 와 사용자 조작을 구분 — false 면 onBoundsChange 무시.
+  const isUserDrivenRef = useRef(false);
+  // viewport debounce timer. 새 idle 이벤트가 들어오면 기존 타이머 취소.
+  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // vendor 카드 hover/click 으로 강조할 마커 식별자.
+  const [activeVendorId, setActiveVendorId] = useState<string | null>(null);
+  // 모바일에서 vendor 탭 안 sub-toggle ('list' | 'map'). 데스크톱에서는 무시.
+  const [vendorMobileView, setVendorMobileView] = useState<'list' | 'map'>('list');
+
   const spaceFiltersRef = useRef<SpaceFilterState>(initialSpaceFilters);
   const [spaceFilterKey, setSpaceFilterKey] = useState(0);
 
@@ -151,6 +213,16 @@ export function SearchResultsPage() {
     spaceFiltersRef.current = initialSpaceFilters;
     setSpaceFilterKey((k) => k + 1);
   }, [initialSpaceFilterKey, initialSpaceFilters]);
+
+  // URL 의 bbox 가 바뀌면 (예: 사용자가 헤더에서 새 query 검색 → buildSearchPath 가 bbox 미포함 URL push)
+  // appliedBounds 도 동기화해야 stale 한 옛 viewport 로 fetch 하지 않는다.
+  // initialBboxRef 의 lazy init 만으로는 mount 이후의 URL 변동을 잡지 못함.
+  useEffect(() => {
+    const next = paramToBbox(new URLSearchParams(searchParamString).get('bbox'));
+    setAppliedBounds(next);
+    // 새 URL 진입 → 다음 vendor 결과 도착 시 마커 평균으로 setMapCenter 1회 허용.
+    shouldRefitRef.current = true;
+  }, [searchParamString]);
 
   useEffect(() => {
     setHeaderSearchQuery(query);
@@ -191,10 +263,38 @@ export function SearchResultsPage() {
 
     if (activeTab === 'vendor') {
       setVendorsLoading(true);
-      searchVendors({ q: query || undefined, sort: sortBy, size: 20 })
+      const sf = spaceFiltersRef.current;
+      const cleanKeywords = sf.keywords?.map((k) => k.replace(/^#/, '')).filter(Boolean) ?? [];
+      // PR-A1 백엔드 미지원 항목 (category/capacity/parking/price) 은 의도적으로 누락.
+      // sort 는 vendor 전용 union 만 보냄 — space 의 'LATEST' 등은 차단.
+      const vendorSort = (VENDOR_SORT_OPTIONS as readonly string[]).includes(sortBy)
+        ? (sortBy as 'relevance' | 'popular' | 'latest')
+        : undefined;
+      searchVendors({
+        q: query || undefined,
+        sort: vendorSort,
+        size: 20,
+        regions: sf.regions?.length ? sf.regions : undefined,
+        keywords: cleanKeywords.length ? cleanKeywords : undefined,
+        bbox: appliedBounds ?? undefined,
+      })
         .then((res) => {
           setVendors(res.items);
           setVendorsTotalCount(res.totalCount ?? null);
+          // 새 query/필터 검색 (= shouldRefitRef.current === true) 이고 좌표 보유 vendor 가 1개 이상이면
+          // 마커 평균으로 mapCenter 이동 — viewport 밖에 결과가 모인 경우 "결과 없음" 오해 방지.
+          // 정확한 fitBounds 는 KakaoMapView 의 setBounds API 가 필요 (본 PR 범위 외) → center 이동만으로 80% 해결.
+          if (shouldRefitRef.current) {
+            const located = res.items.filter(
+              (v) => typeof v.latitude === 'number' && typeof v.longitude === 'number',
+            );
+            if (located.length > 0) {
+              const sumLat = located.reduce((acc, v) => acc + (v.latitude as number), 0);
+              const sumLng = located.reduce((acc, v) => acc + (v.longitude as number), 0);
+              setMapCenter({ lat: sumLat / located.length, lng: sumLng / located.length });
+            }
+            shouldRefitRef.current = false;
+          }
         })
         .finally(() => setVendorsLoading(false));
     }
@@ -209,7 +309,7 @@ export function SearchResultsPage() {
         .finally(() => setPostsLoading(false));
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [query, activeTab, sortBy, spaceFilterKey]);
+  }, [query, activeTab, sortBy, spaceFilterKey, appliedBounds]);
 
   useEffect(() => {
     const handlePointerDown = (event: MouseEvent) => {
@@ -229,6 +329,100 @@ export function SearchResultsPage() {
       document.removeEventListener('mousedown', handlePointerDown);
     };
   }, []);
+
+  // URL 의 ?bbox 만 갱신 (다른 필터 키는 그대로 보존). replaceState 라 history 가 부풀지 않음.
+  const writeBboxToUrl = useCallback((bounds: Bounds | null) => {
+    if (typeof window === 'undefined') return;
+    const next = new URLSearchParams(window.location.search);
+    if (bounds) {
+      next.set('bbox', bboxToParam(bounds));
+    } else {
+      next.delete('bbox');
+    }
+    const qs = next.toString();
+    const nextUrl = qs ? `${window.location.pathname}?${qs}` : window.location.pathname;
+    window.history.replaceState(window.history.state, '', nextUrl);
+  }, []);
+
+  // 사용자가 직접 drag/zoom 시작 — 다음 idle 부터의 bounds 변경을 진짜로 취급.
+  const handleUserInteractionStart = useCallback(() => {
+    isUserDrivenRef.current = true;
+  }, []);
+
+  // KakaoMap 의 idle 콜백. 매 idle 마다 lastBoundsRef 는 최신화하지만,
+  // 임계값 통과 + 사용자 조작 직후일 때만 setAppliedBounds (= 재검색 트리거).
+  // debounce 로 zoom/drag 연속 구간을 1번으로 합친다.
+  // appliedBounds 는 ref 로 읽어 setTimeout closure 의 stale 값을 회피 + callback identity 안정화 →
+  // KakaoMapView 의 viewport effect 가 listener 를 재등록하지 않음.
+  const handleBoundsChange = useCallback(
+    (payload: KakaoMapBoundsPayload) => {
+      const next: BoundsWithCenter = payload;
+
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+      debounceTimerRef.current = setTimeout(() => {
+        debounceTimerRef.current = null;
+        if (!isUserDrivenRef.current) {
+          // programmatic move (fitBounds, 초기 마운트) — 재검색 차단.
+          return;
+        }
+        const current = appliedBoundsRef.current;
+        const prev = current
+          ? ({
+              ...current,
+              centerLat: (current.swLat + current.neLat) / 2,
+              centerLng: (current.swLng + current.neLng) / 2,
+              level: next.level,
+            } as BoundsWithCenter)
+          : null;
+        const threshold = pickRefetchThreshold();
+        const diag = boundsDiagonal(next);
+        const movedEnough =
+          !prev ||
+          prev.level !== next.level ||
+          boundsCenterDistance(prev, next) >= diag * threshold;
+        if (!movedEnough) return;
+
+        const applied: Bounds = {
+          swLat: next.swLat,
+          swLng: next.swLng,
+          neLat: next.neLat,
+          neLng: next.neLng,
+        };
+        // viewport 재검색 — 사용자가 방금 정한 viewport 무효화하면 안 되므로 setMapCenter 차단.
+        shouldRefitRef.current = false;
+        setAppliedBounds(applied);
+        writeBboxToUrl(applied);
+        // 사용자 조작 cycle 종료 — 다음 사용자 입력 전까지는 다시 programmatic 으로 간주.
+        isUserDrivenRef.current = false;
+      }, VIEWPORT_DEBOUNCE_MS);
+    },
+    [writeBboxToUrl],
+  );
+
+  // unmount / 탭 전환 시 진행 중인 debounce 타이머 정리.
+  useEffect(() => {
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+        debounceTimerRef.current = null;
+      }
+    };
+  }, []);
+
+  // 마커: 좌표 보유 vendor 만. label="공간 N" (N>0). active 시 pinStyle 강조.
+  const vendorMarkers = useMemo(() => {
+    return vendors
+      .filter((v) => typeof v.latitude === 'number' && typeof v.longitude === 'number')
+      .map((v) => ({
+        lat: v.latitude as number,
+        lng: v.longitude as number,
+        title: v.name,
+        label: v.roomCount && v.roomCount > 0 ? `공간 ${v.roomCount}` : undefined,
+        pinStyle: (activeVendorId === v.id ? 'active' : 'default') as 'active' | 'default',
+      }));
+  }, [vendors, activeVendorId]);
 
   const { suggestions: filteredSuggestions } = useSearchSuggestions(headerSearchQuery);
 
@@ -381,6 +575,7 @@ export function SearchResultsPage() {
           vendorsLoading ? (
             <div className="search-results__loading">로딩 중...</div>
           ) : isMockMode() ? (
+            // mock 모드: 지도 SDK 비활성 가능성 — 기존 카드 그리드만 유지.
             <div className="search-results__vendor-grid">
               {MOCK_VENDOR_RESULTS.map((vendor) => (
                 <Link className="search-results__vendor-card search-results__vendor-card--link" key={vendor.slug} to={`/vendors/${vendor.slug}`}>
@@ -396,19 +591,86 @@ export function SearchResultsPage() {
               ))}
             </div>
           ) : (
-            <div className="search-results__vendor-grid">
-              {vendors.map((vendor) => (
-                <Link className="search-results__vendor-card search-results__vendor-card--link" key={vendor.id} to={`/vendors/${vendor.slug || vendor.id}`}>
-                  <div
-                    className="search-results__vendor-avatar"
-                    style={vendor.thumbnailUrl ? { backgroundImage: `url(${vendor.thumbnailUrl})`, backgroundSize: 'cover' } : undefined}
-                  />
-                  <div className="search-results__vendor-body">
-                    <h2 className="search-results__vendor-name">{vendor.name}</h2>
-                    <p className="search-results__vendor-meta">{vendor.address}</p>
+            <div
+              className={`search-results__vendor-split search-results__vendor-split--${vendorMobileView}`}
+              data-testid="vendor-split"
+            >
+              {/* 모바일에서만 보이는 list/map 토글. 데스크톱에서는 CSS 로 숨김. */}
+              <div className="search-results__vendor-mobile-toggle" role="tablist">
+                <button
+                  aria-selected={vendorMobileView === 'list'}
+                  className={`search-results__vendor-mobile-tab ${vendorMobileView === 'list' ? 'search-results__vendor-mobile-tab--active' : ''}`}
+                  onClick={() => setVendorMobileView('list')}
+                  role="tab"
+                  type="button"
+                >
+                  목록
+                </button>
+                <button
+                  aria-selected={vendorMobileView === 'map'}
+                  className={`search-results__vendor-mobile-tab ${vendorMobileView === 'map' ? 'search-results__vendor-mobile-tab--active' : ''}`}
+                  onClick={() => setVendorMobileView('map')}
+                  role="tab"
+                  type="button"
+                >
+                  지도
+                </button>
+              </div>
+
+              <div className="search-results__vendor-list-pane">
+                {vendors.length === 0 ? (
+                  <div className="search-results__empty">조건에 맞는 업체가 없어요.</div>
+                ) : (
+                  <div className="search-results__vendor-list">
+                    {vendors.map((vendor) => {
+                      const hasCoord =
+                        typeof vendor.latitude === 'number' && typeof vendor.longitude === 'number';
+                      const isActive = activeVendorId === vendor.id;
+                      return (
+                        <Link
+                          className={`search-results__vendor-row search-results__vendor-card--link${isActive ? ' search-results__vendor-row--active' : ''}`}
+                          data-vendor-id={vendor.id}
+                          key={vendor.id}
+                          onClick={() => setActiveVendorId(vendor.id)}
+                          onMouseEnter={hasCoord ? () => setActiveVendorId(vendor.id) : undefined}
+                          onMouseLeave={hasCoord ? () => setActiveVendorId((prev) => (prev === vendor.id ? null : prev))
+                            : undefined}
+                          to={`/vendors/${vendor.slug || vendor.id}`}
+                        >
+                          <div
+                            className="search-results__vendor-avatar"
+                            style={vendor.thumbnailUrl ? { backgroundImage: `url(${vendor.thumbnailUrl})`, backgroundSize: 'cover' } : undefined}
+                          />
+                          <div className="search-results__vendor-body">
+                            <h2 className="search-results__vendor-name">{vendor.name}</h2>
+                            <p className="search-results__vendor-meta">
+                              {vendor.address}
+                              {typeof vendor.roomCount === 'number' && vendor.roomCount > 0 ? (
+                                <>
+                                  {' · '}
+                                  <span className="search-results__vendor-rooms">공간 {vendor.roomCount}개</span>
+                                </>
+                              ) : null}
+                            </p>
+                          </div>
+                        </Link>
+                      );
+                    })}
                   </div>
-                </Link>
-              ))}
+                )}
+              </div>
+
+              <div className="search-results__vendor-map-pane">
+                <KakaoMapView
+                  center={mapCenter}
+                  className="search-results__vendor-map"
+                  level={5}
+                  markers={vendorMarkers}
+                  onBoundsChange={handleBoundsChange}
+                  onUserInteractionStart={handleUserInteractionStart}
+                  title="업체 검색 결과 지도"
+                />
+              </div>
             </div>
           )
         ) : null}

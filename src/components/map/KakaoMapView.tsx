@@ -196,6 +196,11 @@ export function KakaoMapView({
   const overlaysRef = useRef<KakaoCustomOverlayInstance[]>([]);
   const onBoundsChangeRef = useRef(onBoundsChange);
   const onUserInteractionStartRef = useRef(onUserInteractionStart);
+  const onReadyRef = useRef(onReady);
+  // mount effect 가 center.lat/lng 에 의존하면 부모의 setCenter 호출마다 지도가 destroy + 재생성 →
+  // 마커 깜빡임 + Kakao tile 재요청 → "viewport 자동 재검색" UX 와 정반대. 마운트 시점의 초기 center
+  // 만 잡기 위해 ref 로 보관, 이후 center 변경은 별도 setCenter effect 가 처리한다.
+  const initialCenterRef = useRef(center);
   const levelRef = useRef(level);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   /** 지도가 비동기로 생성돼서, 첫 페인트 시점에는 mapRef가 비어 마커 effect가 즉시 return 하던 버그 방지 */
@@ -209,6 +214,10 @@ export function KakaoMapView({
   useEffect(() => {
     onUserInteractionStartRef.current = onUserInteractionStart;
   }, [onUserInteractionStart]);
+
+  useEffect(() => {
+    onReadyRef.current = onReady;
+  }, [onReady]);
 
   useEffect(() => {
     levelRef.current = level;
@@ -238,15 +247,16 @@ export function KakaoMapView({
           return;
         }
 
+        const initialCenter = initialCenterRef.current;
         const map = new kakaoMaps.Map(mapContainerRef.current, {
-          center: new kakaoMaps.LatLng(center.lat, center.lng),
+          center: new kakaoMaps.LatLng(initialCenter.lat, initialCenter.lng),
           level,
         });
 
         mapRef.current = map;
         mountedMap = map;
         mountedKakaoMaps = kakaoMaps;
-        onReady?.(map);
+        onReadyRef.current?.(map);
 
         const bumpLayout = () => {
           map.relayout?.();
@@ -284,7 +294,10 @@ export function KakaoMapView({
       overlaysRef.current = [];
       mapRef.current = null;
     };
-  }, [center.lat, center.lng, level, onReady]);
+    // 의도적으로 [level] 만. center 변경은 setCenter effect (line 363 인근) 에서 처리하고,
+    // onReady 는 onReadyRef 로 mirror 한다 — 호출자가 inline 화살표를 매 렌더 새로 만들어도
+    // 지도가 destroy + 재생성되지 않도록.
+  }, [level]);
 
   // viewport 이벤트 (idle / dragstart / zoom_start) 구독.
   // 콜백이 전달된 경우에만 listener 등록 — 의미 없는 콜백 방지.
