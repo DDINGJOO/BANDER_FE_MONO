@@ -33,6 +33,7 @@ type KakaoCustomOverlayInstance = {
 };
 
 type KakaoMarker = {
+  detailPath?: string;
   label?: string;
   labelClassName?: string;
   lat: number;
@@ -64,6 +65,7 @@ type Props = {
    * 호출자가 debounce/throttle 책임을 진다 (KakaoMapView 는 throttle 하지 않음).
    */
   onBoundsChange?: (bounds: KakaoMapBoundsPayload) => void;
+  onMarkerClick?: (marker: KakaoMarker) => void;
   onReady?: (map: KakaoMapInstance) => void;
   /**
    * 사용자가 직접 'dragstart' 또는 'zoom_start' 를 트리거한 시점 알림.
@@ -90,10 +92,11 @@ type KakaoCustomOverlayOptions = {
   zIndex?: number;
 };
 
-type KakaoEventName = 'idle' | 'dragstart' | 'zoom_start';
+type KakaoEventName = 'click' | 'idle' | 'dragstart' | 'zoom_start';
 
 type KakaoEventListenerHandle = {
   handler: () => void;
+  target: unknown;
   type: KakaoEventName;
 };
 
@@ -101,12 +104,12 @@ type KakaoMapsNs = {
   CustomOverlay: new (options: KakaoCustomOverlayOptions) => KakaoCustomOverlayInstance;
   event?: {
     addListener: (
-      target: KakaoMapInstance,
+      target: unknown,
       type: KakaoEventName,
       handler: () => void
     ) => KakaoEventHandle | void;
     removeListener?: (
-      target: KakaoMapInstance,
+      target: unknown,
       type: KakaoEventName,
       handler: () => void
     ) => void;
@@ -186,6 +189,7 @@ export function KakaoMapView({
   markerImageSrc,
   markers = [],
   onBoundsChange,
+  onMarkerClick,
   onReady,
   onUserInteractionStart,
   title,
@@ -194,7 +198,9 @@ export function KakaoMapView({
   const mapRef = useRef<KakaoMapInstance | null>(null);
   const markersRef = useRef<KakaoMarkerInstance[]>([]);
   const overlaysRef = useRef<KakaoCustomOverlayInstance[]>([]);
+  const markerListenerHandlesRef = useRef<KakaoEventListenerHandle[]>([]);
   const onBoundsChangeRef = useRef(onBoundsChange);
+  const onMarkerClickRef = useRef(onMarkerClick);
   const onUserInteractionStartRef = useRef(onUserInteractionStart);
   const onReadyRef = useRef(onReady);
   // mount effect 가 center.lat/lng 에 의존하면 부모의 setCenter 호출마다 지도가 destroy + 재생성 →
@@ -210,6 +216,10 @@ export function KakaoMapView({
   useEffect(() => {
     onBoundsChangeRef.current = onBoundsChange;
   }, [onBoundsChange]);
+
+  useEffect(() => {
+    onMarkerClickRef.current = onMarkerClick;
+  }, [onMarkerClick]);
 
   useEffect(() => {
     onUserInteractionStartRef.current = onUserInteractionStart;
@@ -263,7 +273,7 @@ export function KakaoMapView({
         };
         requestAnimationFrame(bumpLayout);
         kakaoMaps.event?.addListener(map, 'idle', bumpLayout);
-        mountListenerHandles.push({ handler: bumpLayout, type: 'idle' });
+        mountListenerHandles.push({ handler: bumpLayout, target: map, type: 'idle' });
 
         if (mounted) {
           setMapReady(true);
@@ -288,6 +298,14 @@ export function KakaoMapView({
           }
         }
       }
+      for (const { handler, target, type } of markerListenerHandlesRef.current) {
+        try {
+          mountedKakaoMaps?.event?.removeListener?.(target, type, handler);
+        } catch {
+          /* SDK 미지원 또는 map already destroyed — best-effort */
+        }
+      }
+      markerListenerHandlesRef.current = [];
       markersRef.current.forEach((marker) => marker.setMap(null));
       markersRef.current = [];
       overlaysRef.current.forEach((overlay) => overlay.setMap(null));
@@ -305,6 +323,7 @@ export function KakaoMapView({
   // 매 렌더 새로 만들어도 listener churn 이 발생하지 않음. 실제 호출은 ref 를 통해 최신 콜백으로 위임.
   const wantBounds = Boolean(onBoundsChange);
   const wantInteraction = Boolean(onUserInteractionStart);
+  const wantMarkerClick = Boolean(onMarkerClick);
 
   useEffect(() => {
     if (!mapReady) {
@@ -339,21 +358,21 @@ export function KakaoMapView({
     const listenerHandles: KakaoEventListenerHandle[] = [];
     if (wantBounds) {
       kakaoMaps.event.addListener(map, 'idle', handleIdle);
-      listenerHandles.push({ handler: handleIdle, type: 'idle' });
+      listenerHandles.push({ handler: handleIdle, target: map, type: 'idle' });
     }
     if (wantInteraction) {
       kakaoMaps.event.addListener(map, 'dragstart', handleDragStart);
-      listenerHandles.push({ handler: handleDragStart, type: 'dragstart' });
+      listenerHandles.push({ handler: handleDragStart, target: map, type: 'dragstart' });
       kakaoMaps.event.addListener(map, 'zoom_start', handleZoomStart);
-      listenerHandles.push({ handler: handleZoomStart, type: 'zoom_start' });
+      listenerHandles.push({ handler: handleZoomStart, target: map, type: 'zoom_start' });
     }
 
     return () => {
       // best-effort: removeListener 가 SDK 에 없거나 map 이 이미 destroy 된 경우엔
       // 조용히 GC 에 위임. ref 콜백은 다음 tick 에 noop/새 값으로 갱신됨.
-      for (const { handler, type } of listenerHandles) {
+      for (const { handler, target, type } of listenerHandles) {
         try {
-          kakaoMaps.event?.removeListener?.(map, type, handler);
+          kakaoMaps.event?.removeListener?.(target, type, handler);
         } catch {
           /* SDK 미지원 또는 map already destroyed — best-effort, GC 의존 */
         }
@@ -386,6 +405,14 @@ export function KakaoMapView({
       return;
     }
 
+    markerListenerHandlesRef.current.forEach(({ handler, target, type }) => {
+      try {
+        kakaoMaps.event?.removeListener?.(target, type, handler);
+      } catch {
+        /* SDK 미지원 또는 marker already destroyed — best-effort */
+      }
+    });
+    markerListenerHandlesRef.current = [];
     markersRef.current.forEach((marker) => marker.setMap(null));
     overlaysRef.current.forEach((overlay) => overlay.setMap(null));
 
@@ -401,6 +428,18 @@ export function KakaoMapView({
         ...(marker.title ? { title: marker.title } : {}),
         zIndex: 10,
       });
+
+      if (kakaoMaps.event && onMarkerClickRef.current) {
+        const handleMarkerClick = () => {
+          onMarkerClickRef.current?.(marker);
+        };
+        kakaoMaps.event.addListener(instance, 'click', handleMarkerClick);
+        markerListenerHandlesRef.current.push({
+          handler: handleMarkerClick,
+          target: instance,
+          type: 'click',
+        });
+      }
 
       if (marker.label) {
         const overlay = new kakaoMaps.CustomOverlay({
@@ -422,7 +461,7 @@ export function KakaoMapView({
     requestAnimationFrame(() => {
       map.relayout?.();
     });
-  }, [mapReady, markerImageActiveSrc, markerImageSrc, markers]);
+  }, [mapReady, markerImageActiveSrc, markerImageSrc, markers, wantMarkerClick]);
 
   if (errorMessage) {
     return (

@@ -5,6 +5,7 @@ import {
   getExploreMapPopularVendors,
   getExploreMapSpaces,
 } from '../../api/exploreMap';
+import { fetchVendorDetail } from '../../api/spaces';
 import { ExploreMapPage } from '../ExploreMapPage';
 
 jest.mock('../../components/home/HomeHeader', () => ({
@@ -38,15 +39,26 @@ jest.mock('../../components/map/KakaoMapView', () => ({
   KakaoMapView: ({
     center,
     markers = [],
+    onMarkerClick,
   }: {
     center: { lat: number; lng: number };
-    markers?: unknown[];
+    markers?: Array<{ detailPath?: string; lat: number; lng: number; title?: string }>;
+    onMarkerClick?: (marker: { detailPath?: string; lat: number; lng: number; title?: string }) => void;
   }) => (
     <div
       data-center={`${center.lat},${center.lng}`}
       data-marker-count={markers.length}
       data-testid="explore-map"
-    />
+    >
+      {markers.map((marker, index) => (
+        <button
+          aria-label={`마커 ${marker.title ?? index}`}
+          key={`${marker.title ?? 'marker'}-${index}`}
+          onClick={() => onMarkerClick?.(marker)}
+          type="button"
+        />
+      ))}
+    </div>
   ),
 }));
 
@@ -60,16 +72,64 @@ jest.mock('../../api/exploreMap', () => ({
   getExploreMapSpaces: jest.fn(),
 }));
 
+jest.mock('../../api/spaces', () => ({
+  fetchVendorDetail: jest.fn(),
+}));
+
 const mockedGetExploreMapMarkers = getExploreMapMarkers as jest.MockedFunction<typeof getExploreMapMarkers>;
 const mockedGetExploreMapPopularVendors = getExploreMapPopularVendors as jest.MockedFunction<
   typeof getExploreMapPopularVendors
 >;
 const mockedGetExploreMapSpaces = getExploreMapSpaces as jest.MockedFunction<typeof getExploreMapSpaces>;
+const mockedFetchVendorDetail = fetchVendorDetail as jest.MockedFunction<typeof fetchVendorDetail>;
+
+function vendorDetail(overrides: Partial<Awaited<ReturnType<typeof fetchVendorDetail>>> = {}) {
+  return {
+    address: {
+      detailAddress: '지하 1층',
+      latitude: 37.4453311,
+      longitude: 126.6961342,
+      roadAddress: '인천 남동구 문화서로4번길 19-1',
+    },
+    basicInfoRows: [],
+    businessHours: [],
+    contactPhone: '010-0000-0000',
+    description: '바인드 합주실 상세 설명',
+    hashTags: ['#합주실'],
+    holidays: [],
+    homepageUrls: [],
+    keywords: [],
+    name: '바인드 합주실',
+    ownerUserId: 'owner-1',
+    parkingPolicy: null,
+    primaryImageRef: null,
+    primaryImageUrl: 'https://cdn.example.com/bind-main.png',
+    rooms: [
+      {
+        categoryLabel: '합주실',
+        imageUrl: 'https://cdn.example.com/a-room.png',
+        location: '인천 남동구',
+        priceLabel: '20,000원',
+        priceSuffix: '/60분',
+        rating: null,
+        roomId: 'room-1',
+        slug: 'bind-a-room',
+        studioLabel: '바인드 합주실',
+        tags: ['예약가능'],
+        title: 'A룸',
+      },
+    ],
+    slug: 'bind-studio',
+    vendorId: 'vendor-1',
+    ...overrides,
+  };
+}
 
 beforeEach(() => {
   mockedGetExploreMapSpaces.mockReset();
   mockedGetExploreMapMarkers.mockReset();
   mockedGetExploreMapPopularVendors.mockReset();
+  mockedFetchVendorDetail.mockReset();
 
   mockedGetExploreMapSpaces.mockResolvedValue({
     hasNext: false,
@@ -80,6 +140,7 @@ beforeEach(() => {
   });
   mockedGetExploreMapMarkers.mockResolvedValue({ markers: [] });
   mockedGetExploreMapPopularVendors.mockResolvedValue({ vendors: [] });
+  mockedFetchVendorDetail.mockResolvedValue(vendorDetail());
 });
 
 test('renders the map without dummy cards when the backend has no map data', async () => {
@@ -214,4 +275,90 @@ test('searches inside the map page and recenters the map to the first result mar
   await waitFor(() => {
     expect(screen.getByTestId('explore-map')).toHaveAttribute('data-center', '37.4453311,126.6961342');
   });
+});
+
+test('opens vendor detail beside the map from a list item without full-page navigation', async () => {
+  mockedGetExploreMapSpaces.mockResolvedValue({
+    hasNext: false,
+    items: [
+      {
+        availableRoomCount: 2,
+        bookmarkSaved: false,
+        detailPath: '/vendors/bind-studio',
+        imageUrl: 'https://cdn.example.com/bind-studio.png',
+        location: '인천 남동구',
+        priceLabel: '20,000원~',
+        priceSuffix: '/60분',
+        rating: '',
+        spaceType: '업체',
+        studio: '2개 공간',
+        tags: ['공간 2개', '예약가능'],
+        title: '바인드 합주실',
+      },
+    ],
+    page: 0,
+    size: 20,
+    totalCount: 1,
+  });
+
+  render(
+    <MemoryRouter initialEntries={['/search/map?q=바인드']}>
+      <ExploreMapPage />
+    </MemoryRouter>,
+  );
+
+  fireEvent.click(await screen.findByRole('button', { name: /바인드 합주실/ }));
+
+  await waitFor(() => expect(mockedFetchVendorDetail).toHaveBeenCalledWith('bind-studio'));
+  expect(await screen.findByRole('heading', { name: '바인드 합주실' })).toBeInTheDocument();
+  expect(screen.getByRole('link', { name: '전체 상세' })).toHaveAttribute('href', '/vendors/bind-studio');
+  expect(screen.getByText('A룸')).toBeInTheDocument();
+});
+
+test('opens the same vendor detail from a map marker click', async () => {
+  mockedGetExploreMapSpaces.mockResolvedValue({
+    hasNext: false,
+    items: [
+      {
+        availableRoomCount: 2,
+        bookmarkSaved: false,
+        detailPath: '/vendors/bind-studio',
+        imageUrl: '',
+        location: '인천 남동구',
+        priceLabel: '20,000원~',
+        priceSuffix: '/60분',
+        rating: '',
+        spaceType: '업체',
+        studio: '2개 공간',
+        tags: ['공간 2개'],
+        title: '바인드 합주실',
+      },
+    ],
+    page: 0,
+    size: 20,
+    totalCount: 1,
+  });
+  mockedGetExploreMapMarkers.mockResolvedValue({
+    markers: [
+      {
+        availableRoomCount: 2,
+        id: 'studio-bind',
+        label: '바인드 합주실',
+        lat: 37.4453311,
+        lng: 126.6961342,
+        spaceOrVendorId: 'bind-studio',
+      },
+    ],
+  });
+
+  render(
+    <MemoryRouter initialEntries={['/search/map?q=바인드']}>
+      <ExploreMapPage />
+    </MemoryRouter>,
+  );
+
+  fireEvent.click(await screen.findByRole('button', { name: '마커 바인드 합주실' }));
+
+  await waitFor(() => expect(mockedFetchVendorDetail).toHaveBeenCalledWith('bind-studio'));
+  expect(await screen.findByRole('heading', { name: '바인드 합주실' })).toBeInTheDocument();
 });

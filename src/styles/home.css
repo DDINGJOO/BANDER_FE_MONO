@@ -1404,6 +1404,7 @@ img.home-header__avatar::after {
   font-weight: 500;
   line-height: 22px;
   cursor: pointer;
+  white-space: nowrap;
 }
 
 .home-search__filter--split,
@@ -2030,6 +2031,7 @@ img.home-header__avatar::after {
   font-weight: 500;
   line-height: 18px;
   cursor: pointer;
+  white-space: nowrap;
 }
 
 .home-explorer__filter .signup-profile__chevron {

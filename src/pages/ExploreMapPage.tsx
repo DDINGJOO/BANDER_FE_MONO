@@ -4,6 +4,7 @@ import { HomeHeader } from '../components/home/HomeHeader';
 import { KakaoMapView } from '../components/map/KakaoMapView';
 import { HomeSpaceExplorer, type SpaceFilterState } from '../components/home/HomeSpaceExplorer';
 import { StarIcon } from '../components/shared/Icons';
+import { fetchVendorDetail, type VendorDetailDto } from '../api/spaces';
 import {
   getExploreMapMarkers,
   getExploreMapPopularVendors,
@@ -121,6 +122,15 @@ function isExploreMapMarker(marker: ExploreMapMarker | null): marker is ExploreM
   return marker !== null;
 }
 
+function vendorSlugFromDetailPath(detailPath: string): string | null {
+  const match = detailPath.match(/^\/vendors\/([^/?#]+)/);
+  return match ? decodeURIComponent(match[1]) : null;
+}
+
+function vendorHeroImage(vendor: VendorDetailDto | null, fallback?: ExploreMapListItem | null) {
+  return vendor?.primaryImageUrl || vendor?.rooms.find((room) => room.imageUrl)?.imageUrl || fallback?.image || '';
+}
+
 export function ExploreMapPage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -144,6 +154,10 @@ export function ExploreMapPage() {
   const [mapMarkers, setMapMarkers] = useState<ExploreMapMarker[]>([]);
   const [popularVendors, setPopularVendors] = useState<ExploreMapPopularVendor[]>([]);
   const [savedByPath, setSavedByPath] = useState<Record<string, boolean>>({});
+  const [selectedVendorSlug, setSelectedVendorSlug] = useState<string | null>(null);
+  const [selectedVendor, setSelectedVendor] = useState<VendorDetailDto | null>(null);
+  const [selectedVendorLoading, setSelectedVendorLoading] = useState(false);
+  const [selectedVendorError, setSelectedVendorError] = useState(false);
 
   const filteredSuggestions = HEADER_SEARCH_KEYWORD_SUGGESTIONS.filter((item) =>
     item.toLowerCase().includes(headerSearchQuery.toLowerCase())
@@ -221,19 +235,80 @@ export function ExploreMapPage() {
     });
   }, [listItems]);
 
+  useEffect(() => {
+    if (!selectedVendorSlug) {
+      setSelectedVendor(null);
+      setSelectedVendorLoading(false);
+      setSelectedVendorError(false);
+      return;
+    }
+
+    let cancelled = false;
+    setSelectedVendor(null);
+    setSelectedVendorLoading(true);
+    setSelectedVendorError(false);
+
+    fetchVendorDetail(selectedVendorSlug)
+      .then((detail) => {
+        if (!cancelled) {
+          setSelectedVendor(detail);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setSelectedVendorError(true);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setSelectedVendorLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedVendorSlug]);
+
+  useEffect(() => {
+    if (!selectedVendorSlug) {
+      return;
+    }
+    const stillVisible = listItems.some((item) => vendorSlugFromDetailPath(item.detailPath) === selectedVendorSlug);
+    if (!stillVisible) {
+      setSelectedVendorSlug(null);
+    }
+  }, [listItems, selectedVendorSlug]);
+
   const hasListItems = listItems.length > 0;
   const hasPopularVendors = popularVendors.length > 0;
+  const selectedListItem = selectedVendorSlug
+    ? listItems.find((item) => vendorSlugFromDetailPath(item.detailPath) === selectedVendorSlug) ?? null
+    : null;
+  const selectedHeroImage = vendorHeroImage(selectedVendor, selectedListItem);
+
+  const openVendorDetail = useCallback((slug: string | null) => {
+    if (!slug) {
+      return;
+    }
+    setSelectedVendorSlug(slug);
+    setMobileListOpen(false);
+  }, []);
 
   const kakaoMarkers = useMemo(
     () =>
       mapMarkers.map((m) => ({
         ...m,
+        pinStyle:
+          (selectedVendorSlug && vendorSlugFromDetailPath(m.detailPath) === selectedVendorSlug
+            ? 'active'
+            : 'default') as 'active' | 'default',
         label:
           typeof m.availableRoomCount === 'number' && m.availableRoomCount > 0
             ? `공간 ${m.availableRoomCount}`
             : undefined,
       })),
-    [mapMarkers],
+    [mapMarkers, selectedVendorSlug],
   );
 
   return (
@@ -299,7 +374,11 @@ export function ExploreMapPage() {
                 return (
                   <div className="explore-map-card" key={item.detailPath}>
                     <div className="explore-map-card__row">
-                      <Link className="explore-map-card__link" to={item.detailPath}>
+                      <button
+                        className="explore-map-card__link"
+                        onClick={() => openVendorDetail(vendorSlugFromDetailPath(item.detailPath))}
+                        type="button"
+                      >
                         {item.image ? (
                           <img alt="" className="explore-map-card__thumb" src={item.image} />
                         ) : (
@@ -343,7 +422,7 @@ export function ExploreMapPage() {
                             ) : null}
                           </div>
                         </div>
-                      </Link>
+                      </button>
                       <button
                         aria-label={saved ? '스크랩 해제' : '스크랩'}
                         className="explore-map-card__bookmark"
@@ -385,6 +464,88 @@ export function ExploreMapPage() {
           ) : null}
         </aside>
 
+        {selectedVendorSlug ? (
+          <section className="explore-map-detail" aria-label="업체 상세 정보">
+            <div className="explore-map-detail__head">
+              <button
+                className="explore-map-detail__back"
+                onClick={() => setSelectedVendorSlug(null)}
+                type="button"
+              >
+                목록
+              </button>
+              <Link className="explore-map-detail__full-link" to={`/vendors/${selectedVendorSlug}`}>
+                전체 상세
+              </Link>
+            </div>
+
+            {selectedVendorError ? (
+              <div className="explore-map-detail__state">업체 정보를 불러오지 못했습니다.</div>
+            ) : (
+              <>
+                {selectedHeroImage ? (
+                  <img alt="" className="explore-map-detail__hero" src={selectedHeroImage} />
+                ) : (
+                  <div aria-hidden className="explore-map-detail__hero explore-map-detail__hero--placeholder" />
+                )}
+
+                <div className="explore-map-detail__body">
+                  <p className="explore-map-detail__eyebrow">
+                    {selectedVendor
+                      ? `${selectedVendor.rooms.length}개 공간`
+                      : selectedListItem?.studio ?? '업체 정보'}
+                  </p>
+                  <h2 className="explore-map-detail__title">
+                    {selectedVendor?.name ?? selectedListItem?.title ?? '업체'}
+                  </h2>
+                  <p className="explore-map-detail__address">
+                    {selectedVendor?.address?.roadAddress ?? selectedListItem?.location ?? ''}
+                  </p>
+
+                  {selectedVendorLoading ? (
+                    <div className="explore-map-detail__state">상세 정보를 불러오는 중입니다.</div>
+                  ) : null}
+
+                  {selectedVendor?.description ? (
+                    <p className="explore-map-detail__description">{selectedVendor.description}</p>
+                  ) : null}
+
+                  {selectedVendor?.hashTags.length ? (
+                    <div className="explore-map-detail__chips" aria-label="업체 태그">
+                      {selectedVendor.hashTags.map((tag) => (
+                        <span key={tag}>{tag}</span>
+                      ))}
+                    </div>
+                  ) : null}
+
+                  <section className="explore-map-detail__section">
+                    <h3>공간</h3>
+                    {selectedVendor?.rooms.length ? (
+                      <div className="explore-map-detail__rooms">
+                        {selectedVendor.rooms.map((room) => (
+                          <Link className="explore-map-detail__room" key={room.slug} to={`/spaces/${room.slug}`}>
+                            {room.imageUrl ? (
+                              <img alt="" src={room.imageUrl} />
+                            ) : (
+                              <span aria-hidden className="explore-map-detail__room-placeholder" />
+                            )}
+                            <span className="explore-map-detail__room-copy">
+                              <strong>{room.title}</strong>
+                              <span>{room.priceLabel}{room.priceSuffix}</span>
+                            </span>
+                          </Link>
+                        ))}
+                      </div>
+                    ) : selectedVendorLoading ? null : (
+                      <p className="explore-map-detail__empty">등록된 공간이 없습니다.</p>
+                    )}
+                  </section>
+                </div>
+              </>
+            )}
+          </section>
+        ) : null}
+
         <div className="explore-map-page__map-wrap">
           <KakaoMapView
             center={mapCenter}
@@ -392,6 +553,10 @@ export function ExploreMapPage() {
             key={mapResetKey}
             level={5}
             markers={kakaoMarkers}
+            onMarkerClick={(marker) => {
+              openVendorDetail(marker.detailPath ? vendorSlugFromDetailPath(marker.detailPath) : null);
+              setMapCenter({ lat: marker.lat, lng: marker.lng });
+            }}
             title="지도: 서울 마포구 인근"
           />
           <button
