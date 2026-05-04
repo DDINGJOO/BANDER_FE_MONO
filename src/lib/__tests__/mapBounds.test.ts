@@ -72,6 +72,13 @@ describe('paramToBbox', () => {
     expect(paramToBbox('NaN,126.9,37.6,127.0')).toBeNull();
   });
 
+  // 회귀 가드: Number('') === 0 이라 빈 토큰이 (0,0) 영역으로 통과되던 버그.
+  it('빈 토큰 포함 -> null (Number("") === 0 회귀 방지)', () => {
+    expect(paramToBbox(',,,')).toBeNull();
+    expect(paramToBbox('1,,3,4')).toBeNull();
+    expect(paramToBbox('   ,   ,   ,   ')).toBeNull();
+  });
+
   it('sw 가 ne 보다 크면 (역전) -> null', () => {
     expect(paramToBbox('37.7,126.9,37.6,127.0')).toBeNull();
     expect(paramToBbox('37.5,127.5,37.6,127.0')).toBeNull();

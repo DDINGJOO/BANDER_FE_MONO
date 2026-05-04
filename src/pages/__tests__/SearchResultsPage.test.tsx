@@ -366,6 +366,71 @@ describe('SearchResultsPage — 업체 탭', () => {
     }
   });
 
+  it('임계값 미만 사용자 조작 후 다음 programmatic move 가 사용자 조작으로 오인되지 않는다 — gate reset 회귀 방지', async () => {
+    jest.useFakeTimers('modern');
+    try {
+      render(
+        <MemoryRouter initialEntries={['/search']}>
+          <SearchResultsPage />
+        </MemoryRouter>,
+      );
+
+      await act(async () => {
+        fireEvent.click(screen.getByText('업체'));
+        await Promise.resolve();
+      });
+
+      const { onBoundsChange, onUserInteractionStart } = captureMapHandlers();
+
+      // 1차: appliedBounds 시드 (재검색 trigger). lastLevelRef = 5, isUserDriven = false (cycle 종료).
+      act(() => {
+        onUserInteractionStart?.();
+        onBoundsChange?.({
+          swLat: 37.4, swLng: 126.8, neLat: 37.6, neLng: 127.0,
+          centerLat: 37.5, centerLng: 126.9, level: 5,
+        });
+      });
+      await act(async () => {
+        jest.advanceTimersByTime(400);
+        await Promise.resolve();
+      });
+      const afterSeed = mockedSearchVendors.mock.calls.length;
+
+      // 2차: 사용자가 임계값 미만 미세 조작. isUserDriven=true 로 진입했지만
+      // movedEnough=false 이므로 fetch 차단. 수정 전: gate 가 true 로 남음.
+      // 수정 후: gate 가 false 로 reset 되어야 함.
+      act(() => {
+        onUserInteractionStart?.();
+        onBoundsChange?.({
+          swLat: 37.4, swLng: 126.8, neLat: 37.6, neLng: 127.0,
+          centerLat: 37.501, centerLng: 126.901, level: 5,
+        });
+      });
+      await act(async () => {
+        jest.advanceTimersByTime(400);
+        await Promise.resolve();
+      });
+      expect(mockedSearchVendors.mock.calls.length).toBe(afterSeed);
+
+      // 3차: programmatic move 시뮬레이션 — onUserInteractionStart 없이 큰 폭 이동.
+      // 수정 전: 직전 cycle 의 gate=true 잔존 → 임계값 초과 시 재검색 trigger (버그).
+      // 수정 후: gate=false → programmatic 으로 인식 → 재검색 차단.
+      act(() => {
+        onBoundsChange?.({
+          swLat: 38.0, swLng: 127.5, neLat: 38.2, neLng: 127.7,
+          centerLat: 38.1, centerLng: 127.6, level: 5,
+        });
+      });
+      await act(async () => {
+        jest.advanceTimersByTime(400);
+        await Promise.resolve();
+      });
+      expect(mockedSearchVendors.mock.calls.length).toBe(afterSeed);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
   it('URL ?bbox 가 빠르게 두 번 바뀌어도 마지막 응답만 vendors 에 적용된다 — F2 race 방지', async () => {
     // 첫 fetch (bbox=A) 응답을 사람이 풀어줄 때까지 보류.
     let resolveFirst: (v: ReturnType<typeof vendorPage>) => void = () => {};

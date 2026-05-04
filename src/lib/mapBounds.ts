@@ -57,7 +57,10 @@ export function paramToBbox(s: string | null | undefined): Bounds | null {
   if (!s) return null;
   const parts = s.split(',');
   if (parts.length !== 4) return null;
-  const nums = parts.map((p) => Number(p.trim()));
+  const nums = parts.map((p) => {
+    const trimmed = p.trim();
+    return trimmed === '' ? NaN : Number(trimmed);
+  });
   if (nums.some((n) => !Number.isFinite(n))) return null;
   const [swLat, swLng, neLat, neLng] = nums;
   const bounds: Bounds = { swLat, swLng, neLat, neLng };

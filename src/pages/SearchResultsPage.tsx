@@ -411,7 +411,13 @@ export function SearchResultsPage() {
           boundsCenterDistance(prev, next) >= diag * threshold;
         // 다음 비교를 위해 level snapshot 갱신은 movedEnough 결과와 무관하게 항상 수행.
         lastLevelRef.current = next.level;
-        if (!movedEnough) return;
+        if (!movedEnough) {
+          // 임계값 미만 조작도 사용자 의도이므로 gate 를 reset.
+          // false 로 두면 다음 programmatic move (예: 새 검색 결과의 setMapCenter) 가
+          // user-driven 으로 오인되어 의도치 않은 bbox URL 갱신 + 추가 fetch 발생.
+          isUserDrivenRef.current = false;
+          return;
+        }
 
         const applied: Bounds = {
           swLat: next.swLat,
