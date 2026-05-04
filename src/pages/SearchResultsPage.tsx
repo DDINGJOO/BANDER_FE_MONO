@@ -172,6 +172,9 @@ export function SearchResultsPage() {
   useEffect(() => {
     appliedBoundsRef.current = appliedBounds;
   }, [appliedBounds]);
+  // 직전 onBoundsChange 의 zoom level. Bounds 자체에는 level 이 없으므로 별도 ref 로 추적.
+  // null = 아직 한 번도 idle 이벤트가 안 옴 → 첫 비교에서는 zoom 변경 미감지 (center 비교만으로 충분).
+  const lastLevelRef = useRef<number | null>(null);
   // 지도 중심: appliedBounds (URL bbox) 의 중심 또는 EXPLORE_MAP_CENTER. 새 검색 결과가
   // 도착하면 마커 평균으로 한 번 이동. viewport 재검색 결과는 이동 안 함 (사용자가 정한 viewport 무효화 금지).
   const [mapCenter, setMapCenter] = useState<{ lat: number; lng: number }>(() => {
@@ -235,6 +238,10 @@ export function SearchResultsPage() {
 
   useEffect(() => {
     if (isMockMode()) return;
+    // URL/필터/탭/bbox 변경으로 effect 가 재실행되면 직전 fetch 결과는 무효화한다.
+    // 특히 URL → setAppliedBounds 가 별도 effect 에서 일어나는 경우, 같은 렌더의 옛 fetch 와
+    // 다음 렌더의 새 fetch 가 동시에 진행되어 응답 순서가 뒤바뀌면 stale 결과가 마지막에 적용될 수 있음.
+    let cancelled = false;
 
     if (activeTab === 'space') {
       setRoomsLoading(true);
@@ -255,10 +262,14 @@ export function SearchResultsPage() {
         size: 20,
       })
         .then((res) => {
+          if (cancelled) return;
           setRooms(res.rooms);
           setRoomsTotalCount(res.totalElements);
         })
-        .finally(() => setRoomsLoading(false));
+        .finally(() => {
+          if (cancelled) return;
+          setRoomsLoading(false);
+        });
     }
 
     if (activeTab === 'vendor') {
@@ -279,6 +290,7 @@ export function SearchResultsPage() {
         bbox: appliedBounds ?? undefined,
       })
         .then((res) => {
+          if (cancelled) return;
           setVendors(res.items);
           setVendorsTotalCount(res.totalCount ?? null);
           // 새 query/필터 검색 (= shouldRefitRef.current === true) 이고 좌표 보유 vendor 가 1개 이상이면
@@ -296,18 +308,29 @@ export function SearchResultsPage() {
             shouldRefitRef.current = false;
           }
         })
-        .finally(() => setVendorsLoading(false));
+        .finally(() => {
+          if (cancelled) return;
+          setVendorsLoading(false);
+        });
     }
 
     if (activeTab === 'community') {
       setPostsLoading(true);
       searchPosts({ q: query || undefined, size: 20 })
         .then((res) => {
+          if (cancelled) return;
           setPosts(res.items);
           setPostsTotalCount(res.totalCount ?? null);
         })
-        .finally(() => setPostsLoading(false));
+        .finally(() => {
+          if (cancelled) return;
+          setPostsLoading(false);
+        });
     }
+
+    return () => {
+      cancelled = true;
+    };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [query, activeTab, sortBy, spaceFilterKey, appliedBounds]);
 
@@ -368,20 +391,26 @@ export function SearchResultsPage() {
           return;
         }
         const current = appliedBoundsRef.current;
+        // zoom level 비교는 별도 ref 로 추적한 직전 level 과 비교한다.
+        // (Bounds 에는 level 필드가 없고, prev 객체에 next.level 을 spread 하면 비교가 dead 된다)
+        const prevLevel = lastLevelRef.current;
+        const levelChanged = prevLevel !== null && prevLevel !== next.level;
         const prev = current
           ? ({
               ...current,
               centerLat: (current.swLat + current.neLat) / 2,
               centerLng: (current.swLng + current.neLng) / 2,
-              level: next.level,
+              level: prevLevel ?? next.level,
             } as BoundsWithCenter)
           : null;
         const threshold = pickRefetchThreshold();
         const diag = boundsDiagonal(next);
         const movedEnough =
           !prev ||
-          prev.level !== next.level ||
+          levelChanged ||
           boundsCenterDistance(prev, next) >= diag * threshold;
+        // 다음 비교를 위해 level snapshot 갱신은 movedEnough 결과와 무관하게 항상 수행.
+        lastLevelRef.current = next.level;
         if (!movedEnough) return;
 
         const applied: Bounds = {

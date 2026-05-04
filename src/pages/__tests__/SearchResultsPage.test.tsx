@@ -26,7 +26,17 @@ jest.mock('../../components/home/HomeSpaceExplorer', () => ({
 /**
  * KakaoMapView stub.
  * onClick → onUserInteractionStart + onBoundsChange (large move, 대각선 20% 초과).
+ * 추가로 captureMapHandlers() 가 마지막 마운트의 onBoundsChange / onUserInteractionStart 를
+ * 가져와 임의 payload 로 호출할 수 있게 한다 (zoom-only 변경 등 시나리오용).
  */
+let __lastOnBoundsChange: ((p: unknown) => void) | undefined;
+let __lastOnUserInteractionStart: (() => void) | undefined;
+function captureMapHandlers() {
+  return {
+    onBoundsChange: __lastOnBoundsChange,
+    onUserInteractionStart: __lastOnUserInteractionStart,
+  };
+}
 jest.mock('../../components/map/KakaoMapView', () => ({
   KakaoMapView: ({
     markers = [],
@@ -38,26 +48,30 @@ jest.mock('../../components/map/KakaoMapView', () => ({
     onBoundsChange?: (p: unknown) => void;
     onUserInteractionStart?: () => void;
     title?: string;
-  }) => (
-    <div
-      aria-label={title}
-      data-marker-count={markers.length}
-      data-testid="vendor-map"
-      onClick={() => {
-        onUserInteractionStart?.();
-        onBoundsChange?.({
-          swLat: 37.4,
-          swLng: 126.8,
-          neLat: 37.6,
-          neLng: 127.0,
-          centerLat: 37.5,
-          centerLng: 126.9,
-          level: 5,
-        });
-      }}
-      role="img"
-    />
-  ),
+  }) => {
+    __lastOnBoundsChange = onBoundsChange;
+    __lastOnUserInteractionStart = onUserInteractionStart;
+    return (
+      <div
+        aria-label={title}
+        data-marker-count={markers.length}
+        data-testid="vendor-map"
+        onClick={() => {
+          onUserInteractionStart?.();
+          onBoundsChange?.({
+            swLat: 37.4,
+            swLng: 126.8,
+            neLat: 37.6,
+            neLng: 127.0,
+            centerLat: 37.5,
+            centerLng: 126.9,
+            level: 5,
+          });
+        }}
+        role="img"
+      />
+    );
+  },
 }));
 
 jest.mock('../../components/shared/Icons', () => ({
@@ -249,6 +263,150 @@ describe('SearchResultsPage — 업체 탭', () => {
     } finally {
       jest.useRealTimers();
     }
+  });
+
+  it('zoom level 만 변경되어도 (center 동일) viewport 재검색이 트리거된다 — F1 회귀 방지', async () => {
+    jest.useFakeTimers('modern');
+    try {
+      render(
+        <MemoryRouter initialEntries={['/search']}>
+          <SearchResultsPage />
+        </MemoryRouter>,
+      );
+
+      await act(async () => {
+        fireEvent.click(screen.getByText('업체'));
+        await Promise.resolve();
+      });
+
+      const baseline = mockedSearchVendors.mock.calls.length;
+      const { onBoundsChange, onUserInteractionStart } = captureMapHandlers();
+      expect(onBoundsChange).toBeDefined();
+
+      // 1차 idle: level 5 — 직전 level 이 null 이므로 levelChanged 는 false 지만
+      //         최초 사용자 조작 + center 미설정이므로 어차피 trigger 됨. lastLevelRef 에 5 가 박힘.
+      act(() => {
+        onUserInteractionStart?.();
+        onBoundsChange?.({
+          swLat: 37.4, swLng: 126.8, neLat: 37.6, neLng: 127.0,
+          centerLat: 37.5, centerLng: 126.9, level: 5,
+        });
+      });
+      await act(async () => {
+        jest.advanceTimersByTime(400);
+        await Promise.resolve();
+      });
+      const afterFirstZoom = mockedSearchVendors.mock.calls.length;
+      expect(afterFirstZoom).toBeGreaterThan(baseline);
+
+      // 2차 idle: 동일 bbox/center, level 만 6 으로 변경 → center 거리 0 이지만 levelChanged 로 trigger.
+      act(() => {
+        onUserInteractionStart?.();
+        onBoundsChange?.({
+          swLat: 37.4, swLng: 126.8, neLat: 37.6, neLng: 127.0,
+          centerLat: 37.5, centerLng: 126.9, level: 6,
+        });
+      });
+      await act(async () => {
+        jest.advanceTimersByTime(400);
+        await Promise.resolve();
+      });
+      expect(mockedSearchVendors.mock.calls.length).toBeGreaterThan(afterFirstZoom);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('center 가 임계값 미만으로만 움직이고 zoom 동일하면 재검색하지 않는다', async () => {
+    jest.useFakeTimers('modern');
+    try {
+      render(
+        <MemoryRouter initialEntries={['/search']}>
+          <SearchResultsPage />
+        </MemoryRouter>,
+      );
+
+      await act(async () => {
+        fireEvent.click(screen.getByText('업체'));
+        await Promise.resolve();
+      });
+
+      const { onBoundsChange, onUserInteractionStart } = captureMapHandlers();
+
+      // 1차: appliedBounds 시드 + level 5 등록.
+      act(() => {
+        onUserInteractionStart?.();
+        onBoundsChange?.({
+          swLat: 37.4, swLng: 126.8, neLat: 37.6, neLng: 127.0,
+          centerLat: 37.5, centerLng: 126.9, level: 5,
+        });
+      });
+      await act(async () => {
+        jest.advanceTimersByTime(400);
+        await Promise.resolve();
+      });
+      const beforeMicroMove = mockedSearchVendors.mock.calls.length;
+
+      // 2차: 같은 level, center 가 대각선의 1% 만 이동 (임계값 20% 미달) → trigger 금지.
+      // 대각선 ≈ sqrt(0.2^2+0.2^2) ≈ 0.283. 임계값 20% ≈ 0.057. 0.001 이동은 한참 미달.
+      act(() => {
+        onUserInteractionStart?.();
+        onBoundsChange?.({
+          swLat: 37.4, swLng: 126.8, neLat: 37.6, neLng: 127.0,
+          centerLat: 37.501, centerLng: 126.901, level: 5,
+        });
+      });
+      await act(async () => {
+        jest.advanceTimersByTime(400);
+        await Promise.resolve();
+      });
+      expect(mockedSearchVendors.mock.calls.length).toBe(beforeMicroMove);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('URL ?bbox 가 빠르게 두 번 바뀌어도 마지막 응답만 vendors 에 적용된다 — F2 race 방지', async () => {
+    // 첫 fetch (bbox=A) 응답을 사람이 풀어줄 때까지 보류.
+    let resolveFirst: (v: ReturnType<typeof vendorPage>) => void = () => {};
+    const firstPending = new Promise<ReturnType<typeof vendorPage>>((resolve) => {
+      resolveFirst = resolve;
+    });
+    const firstItems = vendorPage([vendorItem({ id: 'old', name: '옛결과' })]);
+    const secondItems = vendorPage([vendorItem({ id: 'new', name: '새결과' })]);
+
+    mockedSearchVendors.mockImplementationOnce(() => firstPending);
+    mockedSearchVendors.mockImplementationOnce(() => Promise.resolve(secondItems));
+
+    const { rerender } = render(
+      <MemoryRouter initialEntries={['/search?bbox=37.5%2C126.9%2C37.6%2C127.0']}>
+        <SearchResultsPage />
+      </MemoryRouter>,
+    );
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('업체'));
+      await Promise.resolve();
+    });
+
+    // 두 번째 URL (bbox=B) 로 rerender → 첫 effect cleanup → cancelled = true.
+    rerender(
+      <MemoryRouter initialEntries={['/search?bbox=37.55%2C126.95%2C37.65%2C127.05']}>
+        <SearchResultsPage />
+      </MemoryRouter>,
+    );
+    // 두 번째 fetch (즉시 resolve) 가 먼저 완료.
+    await waitFor(() => expect(screen.getByText('새결과')).toBeInTheDocument(), { timeout: 3000 });
+
+    // 이제 첫 fetch 의 stale 응답이 resolve 되어도 setVendors 호출 차단되어야.
+    await act(async () => {
+      resolveFirst(firstItems);
+      await Promise.resolve();
+    });
+
+    // '옛결과' 가 화면에 절대 나타나면 안 됨.
+    expect(screen.queryByText('옛결과')).not.toBeInTheDocument();
+    expect(screen.getByText('새결과')).toBeInTheDocument();
   });
 
   it('모바일 토글: "지도" 탭 클릭 시 --map 클래스 적용', async () => {
