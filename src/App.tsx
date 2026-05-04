@@ -3,6 +3,7 @@ import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import './styles/index.css';
 import { ForgotPasswordPage } from './pages/ForgotPasswordPage';
 import { ForgotPasswordResetPage } from './pages/ForgotPasswordResetPage';
+import { LandingPage } from './pages/LandingPage';
 import { LoginPage } from './pages/LoginPage';
 import { MainPage } from './pages/MainPage';
 import { ExploreMapPage } from './pages/ExploreMapPage';
@@ -61,6 +62,7 @@ function App() {
         <ScrollToTop />
         <Routes>
           <Route element={<MainPage />} path="/" />
+          <Route element={<LandingPage />} path="/landing" />
           <Route element={<MainPage previewAuthenticated />} path="/home-auth" />
           <Route element={<CommunityWritePage />} path="/community/write" />
           <Route element={<CommunityWritePage />} path="/community/post/:slug/edit" />
