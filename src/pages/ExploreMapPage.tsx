@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { HomeHeader } from '../components/home/HomeHeader';
 import { KakaoMapView } from '../components/map/KakaoMapView';
@@ -104,6 +104,7 @@ function exploreMapMarkerFromDto(row: ExploreMapMarkerDto): ExploreMapMarker | n
   }
 
   return {
+    availableRoomCount: row.availableRoomCount,
     detailPath: row.spaceOrVendorId ? `/spaces/${encodeURIComponent(row.spaceOrVendorId)}` : '#',
     lat,
     lng,
@@ -192,6 +193,18 @@ export function ExploreMapPage() {
 
   const hasListItems = listItems.length > 0;
   const hasPopularVendors = popularVendors.length > 0;
+
+  const kakaoMarkers = useMemo(
+    () =>
+      mapMarkers.map((m) => ({
+        ...m,
+        label:
+          typeof m.availableRoomCount === 'number' && m.availableRoomCount > 0
+            ? `공간 ${m.availableRoomCount}`
+            : undefined,
+      })),
+    [mapMarkers],
+  );
 
   return (
     <main className="explore-map-page">
@@ -333,7 +346,7 @@ export function ExploreMapPage() {
             className="explore-map-page__map-frame"
             key={mapResetKey}
             level={5}
-            markers={mapMarkers}
+            markers={kakaoMarkers}
             title="지도: 서울 마포구 인근"
           />
           <button

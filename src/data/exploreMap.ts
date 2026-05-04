@@ -21,6 +21,7 @@ export type ExploreMapPopularVendor = {
 };
 
 export type ExploreMapMarker = {
+  availableRoomCount?: number;
   detailPath: string;
   lat: number;
   lng: number;
