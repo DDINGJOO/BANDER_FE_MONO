@@ -55,6 +55,7 @@ export type KakaoMapBoundsPayload = {
 type Props = {
   center: { lat: number; lng: number };
   className?: string;
+  layoutKey?: string | number;
   level?: number;
   /** 비우면 `public/map-pins/*.png` 브랜드 핀 사용 */
   markerImageActiveSrc?: string;
@@ -184,6 +185,7 @@ export function readBoundsPayload(
 export function KakaoMapView({
   center,
   className,
+  layoutKey,
   level = 4,
   markerImageActiveSrc,
   markerImageSrc,
@@ -405,6 +407,27 @@ export function KakaoMapView({
       return;
     }
 
+    requestAnimationFrame(() => {
+      map.relayout?.();
+      requestAnimationFrame(() => {
+        map.relayout?.();
+        map.setCenter(new kakaoMaps.LatLng(center.lat, center.lng));
+      });
+    });
+  }, [center.lat, center.lng, layoutKey, mapReady]);
+
+
+  useEffect(() => {
+    if (!mapReady) {
+      return;
+    }
+    const map = mapRef.current;
+    const globalWindow = window as KakaoWindow;
+    const kakaoMaps = globalWindow.kakao?.maps;
+    if (!map || !kakaoMaps) {
+      return;
+    }
+
     markerListenerHandlesRef.current.forEach(({ handler, target, type }) => {
       try {
         kakaoMaps.event?.removeListener?.(target, type, handler);
@@ -426,7 +449,7 @@ export function KakaoMapView({
         map,
         position,
         ...(marker.title ? { title: marker.title } : {}),
-        zIndex: 10,
+        zIndex: variant === 'active' ? 30 : 10,
       });
 
       if (kakaoMaps.event && onMarkerClickRef.current) {
@@ -450,7 +473,7 @@ export function KakaoMapView({
           // 라벨을 핀 상단 중앙에 배치: x 는 가운데, y 는 마커 핀 위로 띄움.
           xAnchor: 0.5,
           yAnchor: 1.6,
-          zIndex: 11,
+          zIndex: variant === 'active' ? 31 : 11,
         });
         nextOverlays.push(overlay);
       }

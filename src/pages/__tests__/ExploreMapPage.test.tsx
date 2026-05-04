@@ -38,15 +38,18 @@ jest.mock('../../components/home/HomeSpaceExplorer', () => ({
 jest.mock('../../components/map/KakaoMapView', () => ({
   KakaoMapView: ({
     center,
+    layoutKey,
     markers = [],
     onMarkerClick,
   }: {
     center: { lat: number; lng: number };
+    layoutKey?: string | number;
     markers?: Array<{ detailPath?: string; lat: number; lng: number; title?: string }>;
     onMarkerClick?: (marker: { detailPath?: string; lat: number; lng: number; title?: string }) => void;
   }) => (
     <div
       data-center={`${center.lat},${center.lng}`}
+      data-layout-key={layoutKey}
       data-marker-count={markers.length}
       data-testid="explore-map"
     >
@@ -326,6 +329,7 @@ test('opens vendor detail beside the map from a list item without full-page navi
   expect(screen.getByRole('link', { name: '전체 상세' })).toHaveAttribute('href', '/vendors/bind-studio');
   expect(screen.getByText('A룸')).toBeInTheDocument();
   expect(screen.getByTestId('explore-map')).toHaveAttribute('data-center', '37.4453311,126.6961342');
+  expect(screen.getByTestId('explore-map')).toHaveAttribute('data-layout-key', 'bind-studio');
 });
 
 test('opens the same vendor detail from a map marker click', async () => {

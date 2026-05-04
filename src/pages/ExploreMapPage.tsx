@@ -568,6 +568,7 @@ export function ExploreMapPage() {
             center={mapCenter}
             className="explore-map-page__map-frame"
             key={mapResetKey}
+            layoutKey={selectedVendorSlug ?? 'list'}
             level={5}
             markers={kakaoMarkers}
             onMarkerClick={(marker) => {
