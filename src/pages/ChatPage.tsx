@@ -216,18 +216,32 @@ export function ChatPage() {
     const filterType = chatFilter === 'vendor' ? 'VENDOR' : 'PERSONAL';
     const filtered = allRooms.filter((r) => r.chatRoomType === filterType);
     setRooms(filtered);
-    // 활성 방이 현재 필터에 없으면 첫 번째 방 선택
-    if (filtered.length > 0 && !filtered.some((r) => String(r.chatRoomId) === activeRoomId)) {
+    const hasActiveRoomInFilter = filtered.some((r) => String(r.chatRoomId) === activeRoomId);
+    // 필터 전환으로 활성 방이 사라지면 우측 패널/대화를 즉시 비워 stale UI를 막는다.
+    if (!hasActiveRoomInFilter) {
+      setMessages([]);
+      setNextCursor(null);
+      setHasMoreOlder(false);
+      setVendorDetail(null);
+      setHasNewMessageBelow(false);
+      observerEnabledRef.current = false;
+    }
+    // 활성 방이 현재 필터에 없으면 첫 번째 방 선택, 없으면 선택 해제
+    if (!hasActiveRoomInFilter) {
       const next = new URLSearchParams(searchParams);
-      next.set('t', String(filtered[0].chatRoomId));
+      if (filtered.length > 0) {
+        next.set('t', String(filtered[0].chatRoomId));
+      } else {
+        next.delete('t');
+      }
+      next.delete('empty');
       setSearchParams(next);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- activeRoomId/searchParams/setSearchParams 는 의도적으로 제외: 필터 변경시만 재계산, URL 변경 cascade 방지
-  }, [allRooms, chatFilter]);
+  }, [activeRoomId, allRooms, chatFilter, searchParams, setSearchParams]);
 
   // Load messages when active room changes
   useEffect(() => {
-    if (!activeRoomId) {
+    if (!activeRoomId || !rooms.some((r) => String(r.chatRoomId) === activeRoomId)) {
       setMessages([]);
       setNextCursor(null);
       setHasMoreOlder(false);
@@ -267,7 +281,7 @@ export function ChatPage() {
     markAsRead(activeRoomId).catch((err) => {
       console.error('[ChatPage] markAsRead failed:', err);
     });
-  }, [activeRoomId]);
+  }, [activeRoomId, rooms]);
 
   // 위로 스크롤 시 더 오래된 메시지 페이지네이션
   const loadOlderMessages = useCallback(async () => {
@@ -631,7 +645,7 @@ export function ChatPage() {
       : '0개의 채팅';
 
   const displayThreads = threads;
-  const displayActiveThreadId = activeRoomId ?? (displayThreads[0]?.id ?? '');
+  const displayActiveThreadId = activeRoom?.chatRoomId ?? (displayThreads[0]?.id ?? '');
   const activeThreadTitle =
     threads.find((thread) => thread.id === displayActiveThreadId)?.title ?? panel.name ?? '채팅';
 
