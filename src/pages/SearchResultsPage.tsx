@@ -4,7 +4,6 @@ import { HomeFooter } from '../components/home/HomeFooter';
 import { HomeHeader } from '../components/home/HomeHeader';
 import {
   HomeSpaceExplorer,
-  type SpaceDateFilterState,
   type SpaceFilterState,
 } from '../components/home/HomeSpaceExplorer';
 import { ChevronIcon } from '../components/shared/Icons';
@@ -20,6 +19,7 @@ import {
   type PostSearchItem,
 } from '../api/search';
 import { isMockMode } from '../config/publicEnv';
+import { getDayOfWeekParam, parseSearchFilters, serializeSearchFilters } from '../lib/searchQuery';
 
 const MOCK_VENDOR_RESULTS = [
   { name: '유스뮤직', slug: 'youth-music', spaces: '15개의 공간', tone: 'linear-gradient(135deg, #7f1315, #e26447)' },
@@ -84,135 +84,9 @@ function formatPostDateLabel(value: string): string {
   }).format(new Date(timestamp));
 }
 
-const DAY_OF_WEEK_PARAMS = [
-  'SUNDAY',
-  'MONDAY',
-  'TUESDAY',
-  'WEDNESDAY',
-  'THURSDAY',
-  'FRIDAY',
-  'SATURDAY',
-] as const;
-
-function dedupe(values: string[]) {
-  return Array.from(new Set(values.map((value) => value.trim()).filter(Boolean)));
-}
-
-function parsePositiveIntParam(searchParams: URLSearchParams, key: string) {
-  const value = searchParams.get(key);
-  if (!value) return undefined;
-
-  const parsed = Number(value);
-  return Number.isInteger(parsed) && parsed > 0 ? parsed : undefined;
-}
-
-function parseHourParam(searchParams: URLSearchParams, key: string, fallback: number) {
-  const value = searchParams.get(key);
-  if (!value) return fallback;
-
-  const parsed = Number(value);
-  return Number.isInteger(parsed) && parsed >= 0 && parsed <= 24 ? parsed : fallback;
-}
-
-function parseBooleanParam(searchParams: URLSearchParams, key: string) {
-  const value = searchParams.get(key);
-  return value === 'true' || value === '1' ? true : undefined;
-}
-
-function parseDateFilter(searchParams: URLSearchParams): SpaceDateFilterState | undefined {
-  const value = searchParams.get('date');
-  const match = value?.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-  if (!match) return undefined;
-
-  const year = Number(match[1]);
-  const month = Number(match[2]);
-  const day = Number(match[3]);
-  const date = new Date(year, month - 1, day);
-  if (date.getFullYear() !== year || date.getMonth() + 1 !== month || date.getDate() !== day) {
-    return undefined;
-  }
-
-  const startHour = parseHourParam(searchParams, 'startHour', 0);
-  const endHour = parseHourParam(searchParams, 'endHour', 24);
-  if (startHour >= endHour) {
-    return undefined;
-  }
-
-  return { day, endHour, month, startHour, year };
-}
-
-function keywordParamToFilterValue(value: string) {
-  const trimmed = value.trim();
-  if (!trimmed) return '';
-  return trimmed.startsWith('#') ? trimmed : `#${trimmed}`;
-}
-
-function parseSpaceFilters(searchParams: URLSearchParams): SpaceFilterState {
-  const regions = dedupe([
-    ...searchParams.getAll('regions'),
-    ...searchParams.getAll('region'),
-  ]);
-  const keywords = dedupe(searchParams.getAll('keywords').map(keywordParamToFilterValue));
-  const category = searchParams.get('category')?.trim() || undefined;
-
-  return {
-    category,
-    capacity: parsePositiveIntParam(searchParams, 'capacity'),
-    date: parseDateFilter(searchParams),
-    parking: parseBooleanParam(searchParams, 'parking'),
-    regions: regions.length ? regions : undefined,
-    reservable: parseBooleanParam(searchParams, 'reservable'),
-    keywords: keywords.length ? keywords : undefined,
-  };
-}
-
-function formatDateParam(date: SpaceDateFilterState) {
-  return [
-    String(date.year).padStart(4, '0'),
-    String(date.month).padStart(2, '0'),
-    String(date.day).padStart(2, '0'),
-  ].join('-');
-}
-
-function getDayOfWeekParam(date: SpaceDateFilterState) {
-  return DAY_OF_WEEK_PARAMS[new Date(date.year, date.month - 1, date.day).getDay()];
-}
-
-function appendSpaceFilterSearchParams(search: URLSearchParams, filters: SpaceFilterState) {
-  if (filters.category) {
-    search.set('category', filters.category);
-  }
-  if (filters.capacity) {
-    search.set('capacity', String(filters.capacity));
-  }
-  if (filters.parking) {
-    search.set('parking', 'true');
-  }
-  if (filters.reservable) {
-    search.set('reservable', 'true');
-  }
-  filters.regions?.filter(Boolean).forEach((region) => {
-    search.append('regions', region);
-  });
-  filters.keywords?.map((keyword) => keyword.replace(/^#/, '')).filter(Boolean).forEach((keyword) => {
-    search.append('keywords', keyword);
-  });
-  if (filters.date) {
-    search.set('date', formatDateParam(filters.date));
-    search.set('dayOfWeek', getDayOfWeekParam(filters.date));
-    search.set('startHour', String(filters.date.startHour));
-    search.set('endHour', String(filters.date.endHour));
-  }
-}
-
 function buildSearchPath(query: string, filters: SpaceFilterState) {
-  const search = new URLSearchParams();
-  const trimmed = query.trim();
-  if (trimmed) {
-    search.set('q', trimmed);
-  }
-  appendSpaceFilterSearchParams(search, filters);
-  const queryString = search.toString();
+  const params = serializeSearchFilters(filters, query);
+  const queryString = params.toString();
   return queryString ? `/search?${queryString}` : '/search';
 }
 
@@ -233,11 +107,12 @@ export function SearchResultsPage() {
   const [searchParams] = useSearchParams();
   const searchParamString = searchParams.toString();
   const isAuthenticated = Boolean(loadAuthSession());
-  const query = searchParams.get('q')?.trim() ?? '';
-  const initialSpaceFilters = useMemo(
-    () => parseSpaceFilters(new URLSearchParams(searchParamString)),
+  const parsedSearch = useMemo(
+    () => parseSearchFilters(new URLSearchParams(searchParamString)),
     [searchParamString]
   );
+  const query = parsedSearch.q ?? '';
+  const initialSpaceFilters = useMemo(() => parsedSearch.filters, [parsedSearch]);
   const initialSpaceFilterKey = useMemo(() => JSON.stringify(initialSpaceFilters), [initialSpaceFilters]);
   const [activeTab, setActiveTab] = useState<SearchTab>('space');
   const [headerSearchOpen, setHeaderSearchOpen] = useState(false);
