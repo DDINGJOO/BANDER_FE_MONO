@@ -38,6 +38,11 @@ export type VendorSearchItem = {
   description: string;
   address: string;
   thumbnailUrl: string;
+  /** PR-A1: vendor 가 보유한 공간 수 (마커 라벨 "공간 N" 표시용) */
+  roomCount?: number;
+  /** PR-A1: 지도 마커용 좌표 — 좌표 미제공 vendor 는 카드 리스트에만 노출 */
+  latitude?: number;
+  longitude?: number;
 };
 
 export type CursorPageResponse<T> = {
@@ -81,9 +86,15 @@ type RoomSearchParams = {
 
 type VendorSearchParams = {
   q?: string;
-  sort?: string;
+  sort?: 'relevance' | 'popular' | 'latest';
   cursor?: string;
   size?: number;
+  /** PR-A1: 같은 키 반복으로 직렬화 (regions=A&regions=B) */
+  regions?: string[];
+  /** PR-A1: 같은 키 반복. 선행 # 은 호출부에서 제거하고 넘긴다 */
+  keywords?: string[];
+  /** PR-A1: 객체로 받아서 "swLat,swLng,neLat,neLng" 단일 문자열로 직렬화 */
+  bbox?: { swLat: number; swLng: number; neLat: number; neLng: number };
 };
 
 type PostSearchParams = {
@@ -117,7 +128,13 @@ export function searchRooms(params: RoomSearchParams) {
 }
 
 export function searchVendors(params: VendorSearchParams) {
-  return getJson<CursorPageResponse<VendorSearchItem>>(`/api/v1/search/vendors${buildQuery(params)}`);
+  const { bbox, ...rest } = params;
+  // bbox 는 단일 문자열로 변환해 buildQuery 에 위임 — buildQuery 는 객체를 모른다.
+  const flat: Record<string, string | number | boolean | string[] | undefined> = { ...rest };
+  if (bbox) {
+    flat.bbox = `${bbox.swLat},${bbox.swLng},${bbox.neLat},${bbox.neLng}`;
+  }
+  return getJson<CursorPageResponse<VendorSearchItem>>(`/api/v1/search/vendors${buildQuery(flat)}`);
 }
 
 export function searchPosts(params: PostSearchParams) {
