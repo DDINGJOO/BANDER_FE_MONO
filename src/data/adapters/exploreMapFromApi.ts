@@ -8,6 +8,7 @@ import type { ExploreMapListItem } from '../exploreMap';
 export function exploreMapListItemFromDto(row: ExploreMapSpaceListItemDto): ExploreMapListItem {
   const [a, b] = row.tags ?? [];
   return {
+    availableRoomCount: row.availableRoomCount,
     bookmarkSaved: row.bookmarkSaved,
     detailPath: row.detailPath || '#',
     image: row.imageUrl || '',

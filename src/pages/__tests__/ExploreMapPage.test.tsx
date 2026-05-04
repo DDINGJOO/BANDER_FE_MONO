@@ -92,40 +92,42 @@ test('renders the map without dummy cards when the backend has no map data', asy
   await waitFor(() => expect(mockedGetExploreMapSpaces).toHaveBeenCalledTimes(1));
 
   expect(screen.getByTestId('explore-map')).toHaveAttribute('data-marker-count', '0');
-  expect(screen.queryByRole('button', { name: /지도 안 합주실/ })).not.toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: /지도 안 업체/ })).not.toBeInTheDocument();
   expect(screen.queryByText('A룸 그랜드 피아노 대관')).not.toBeInTheDocument();
   expect(screen.queryByText('서울 마포구 인기 합주실')).not.toBeInTheDocument();
 });
 
-test('exposes a mobile map list toggle for backend practice rooms', async () => {
+test('exposes a mobile map list toggle for backend vendors', async () => {
   mockedGetExploreMapSpaces.mockResolvedValue({
     hasNext: false,
     items: [
       {
+        availableRoomCount: 2,
         bookmarkSaved: false,
-        detailPath: '/spaces/a-room-grand-piano-rental',
-        imageUrl: 'https://cdn.example.com/a-room.png',
+        detailPath: '/vendors/upbeat-studio',
+        imageUrl: 'https://cdn.example.com/upbeat.png',
         location: '서울 마포구 서교동',
-        priceLabel: '10,000원',
+        priceLabel: '10,000원~',
         priceSuffix: '/60분',
-        rating: '4.5',
-        spaceType: '합주실',
-        studio: '업비트스튜디오',
-        tags: ['주차가능', '예약가능'],
-        title: 'A룸 그랜드 피아노 대관',
+        rating: '',
+        spaceType: '업체',
+        studio: '2개 공간',
+        tags: ['공간 2개', '예약가능'],
+        title: '업비트스튜디오',
       },
       {
+        availableRoomCount: 1,
         bookmarkSaved: true,
-        detailPath: '/spaces/upright-room',
-        imageUrl: 'https://cdn.example.com/upright-room.png',
+        detailPath: '/vendors/seoul-street-performance',
+        imageUrl: '',
         location: '서울 마포구 동교동',
-        priceLabel: '12,000원',
+        priceLabel: '12,000원~',
         priceSuffix: '/60분',
-        rating: '4.7',
-        spaceType: '연습실',
-        studio: '서울스트리트퍼포먼스',
-        tags: ['예약가능'],
-        title: '업라이트 피아노 연습실',
+        rating: '',
+        spaceType: '업체',
+        studio: '1개 공간',
+        tags: ['공간 1개'],
+        title: '서울스트리트퍼포먼스',
       },
     ],
     page: 0,
@@ -137,10 +139,10 @@ test('exposes a mobile map list toggle for backend practice rooms', async () => 
       {
         availableRoomCount: 1,
         id: 'marker-1',
-        label: 'A룸 그랜드 피아노 대관',
+        label: '업비트스튜디오',
         lat: 37.555,
         lng: 126.923,
-        spaceOrVendorId: 'a-room-grand-piano-rental',
+        spaceOrVendorId: 'upbeat-studio',
       },
     ],
   });
@@ -151,14 +153,14 @@ test('exposes a mobile map list toggle for backend practice rooms', async () => 
     </MemoryRouter>,
   );
 
-  const toggle = await screen.findByRole('button', { name: /지도 안 합주실 2곳 목록 보기/ });
+  const toggle = await screen.findByRole('button', { name: /지도 안 업체 2곳 목록 보기/ });
   expect(toggle).toHaveAttribute('aria-expanded', 'false');
   expect(screen.getByTestId('explore-map')).toHaveAttribute('data-marker-count', '1');
 
   fireEvent.click(toggle);
 
   expect(toggle).toHaveAttribute('aria-expanded', 'true');
-  expect(screen.getByRole('button', { name: /지도 안 합주실 2곳 접기/ })).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: /지도 안 업체 2곳 접기/ })).toBeInTheDocument();
 });
 
 test('searches inside the map page and recenters the map to the first result marker', async () => {
@@ -166,17 +168,18 @@ test('searches inside the map page and recenters the map to the first result mar
     hasNext: false,
     items: [
       {
+        availableRoomCount: 2,
         bookmarkSaved: false,
-        detailPath: '/spaces/bind-a-room',
-        imageUrl: 'https://cdn.example.com/bind-a-room.png',
+        detailPath: '/vendors/bind-studio',
+        imageUrl: 'https://cdn.example.com/bind-studio.png',
         location: '인천 남동구',
-        priceLabel: '20,000원',
+        priceLabel: '20,000원~',
         priceSuffix: '/60분',
-        rating: '4.8',
-        spaceType: '합주실',
-        studio: '바인드 합주실',
-        tags: ['주차가능'],
-        title: 'A룸',
+        rating: '',
+        spaceType: '업체',
+        studio: '2개 공간',
+        tags: ['공간 2개'],
+        title: '바인드 합주실',
       },
     ],
     page: 0,
@@ -191,7 +194,7 @@ test('searches inside the map page and recenters the map to the first result mar
         label: '바인드 합주실',
         lat: 37.4453311,
         lng: 126.6961342,
-        spaceOrVendorId: '308123557085450250',
+        spaceOrVendorId: 'bind-studio',
       },
     ],
   });

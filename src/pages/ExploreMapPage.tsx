@@ -110,7 +110,7 @@ function exploreMapMarkerFromDto(row: ExploreMapMarkerDto): ExploreMapMarker | n
 
   return {
     availableRoomCount: row.availableRoomCount,
-    detailPath: row.spaceOrVendorId ? `/spaces/${encodeURIComponent(row.spaceOrVendorId)}` : '#',
+    detailPath: row.spaceOrVendorId ? `/vendors/${encodeURIComponent(row.spaceOrVendorId)}` : '#',
     lat,
     lng,
     title: row.label,
@@ -278,12 +278,12 @@ export function ExploreMapPage() {
             <button
               aria-controls="explore-map-visible-list"
               aria-expanded={mobileListOpen}
-              aria-label={`지도 안 합주실 ${listItems.length}곳 ${mobileListOpen ? '접기' : '목록 보기'}`}
+              aria-label={`지도 안 업체 ${listItems.length}곳 ${mobileListOpen ? '접기' : '목록 보기'}`}
               className="explore-map-page__mobile-list-toggle"
               onClick={() => setMobileListOpen((open) => !open)}
               type="button"
             >
-              <span>지도 안 합주실 {listItems.length}곳</span>
+              <span>지도 안 업체 {listItems.length}곳</span>
               <span aria-hidden>{mobileListOpen ? '접기' : '목록 보기'}</span>
             </button>
           ) : null}
@@ -300,7 +300,11 @@ export function ExploreMapPage() {
                   <div className="explore-map-card" key={item.detailPath}>
                     <div className="explore-map-card__row">
                       <Link className="explore-map-card__link" to={item.detailPath}>
-                        <img alt="" className="explore-map-card__thumb" src={item.image} />
+                        {item.image ? (
+                          <img alt="" className="explore-map-card__thumb" src={item.image} />
+                        ) : (
+                          <div aria-hidden className="explore-map-card__thumb explore-map-card__thumb--placeholder" />
+                        )}
                         <div className="explore-map-card__stack">
                           <div className="explore-map-card__top">
                             <div className="explore-map-card__text">
@@ -311,9 +315,13 @@ export function ExploreMapPage() {
                               </div>
                               <span className="explore-map-card__title">{item.title}</span>
                               <div className="explore-map-card__rating-row">
-                                <StarIcon />
-                                <span className="explore-map-card__rating">{item.rating}</span>
-                                <span className="explore-map-card__dot" />
+                                {item.rating ? (
+                                  <>
+                                    <StarIcon />
+                                    <span className="explore-map-card__rating">{item.rating}</span>
+                                    <span className="explore-map-card__dot" />
+                                  </>
+                                ) : null}
                                 <span className="explore-map-card__location">{item.location}</span>
                               </div>
                             </div>

@@ -95,6 +95,23 @@
   width: 65px;
 }
 
+.explore-map-card__thumb--placeholder {
+  background: linear-gradient(135deg, #eef1f5, #dfe4ea);
+  position: relative;
+}
+
+.explore-map-card__thumb--placeholder::after {
+  background: #c8d0da;
+  border-radius: 50%;
+  content: "";
+  height: 18px;
+  left: 50%;
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 18px;
+}
+
 .explore-map-card__main {
   display: flex;
   flex: 1;

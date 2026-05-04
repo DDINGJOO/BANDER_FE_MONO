@@ -1,6 +1,7 @@
 /** 탐색_맵 공통 view model 타입 (검색·필터는 HomeSpaceExplorer variant="map"과 동일) */
 
 export type ExploreMapListItem = {
+  availableRoomCount?: number;
   bookmarkSaved: boolean;
   detailPath: string;
   image: string;

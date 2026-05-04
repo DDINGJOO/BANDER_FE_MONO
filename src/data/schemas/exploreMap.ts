@@ -30,6 +30,7 @@ export type ExploreMapSpaceListItemDto = {
   priceLabel: string;
   priceSuffix: string;
   tags: string[];
+  availableRoomCount?: number;
   bookmarkSaved: boolean;
 };
 
