@@ -345,7 +345,7 @@ export function ChatPage() {
   useChatWebSocket(isAuthenticated, (msg) => {
     if (activeRoomId && String(msg.chatRoomId) === activeRoomId) {
       setMessages((prev) => {
-        if (prev.some((m) => m.messageId === msg.messageId)) return prev;
+        if (prev.some((m) => String(m.messageId) === String(msg.messageId))) return prev;
         return [...prev, msg];
       });
     } else {
@@ -506,7 +506,9 @@ export function ChatPage() {
     try {
       const msg = await sendMessage(activeRoomId, { content, clientMsgId });
       setMessages((prev) =>
-        prev.some((message) => message.messageId === msg.messageId) ? prev : [...prev, msg],
+        prev.some((message) => String(message.messageId) === String(msg.messageId))
+          ? prev
+          : [...prev, msg],
       );
       setInputValue('');
     } catch (err) {
@@ -556,7 +558,9 @@ export function ChatPage() {
         clientMsgId,
       });
       setMessages((prev) =>
-        prev.some((message) => message.messageId === msg.messageId) ? prev : [...prev, msg],
+        prev.some((message) => String(message.messageId) === String(msg.messageId))
+          ? prev
+          : [...prev, msg],
       );
     } catch (err) {
       console.error('[ChatPage] uploadChatImage failed:', err);

@@ -13,6 +13,34 @@ const USER_CHAT_DESTINATION = '/user/queue/chat';
 // 모델에 맞춤. 한 사용자당 1 구독만 유지 (USER_QUEUE_KEY).
 const USER_QUEUE_KEY = '__user_queue__';
 
+function normalizeIncomingMessage(raw: unknown): ChatMessageResponse {
+  const parsed = (raw ?? {}) as Record<string, unknown>;
+  return {
+    messageId: String(parsed.messageId ?? ''),
+    chatRoomId: String(parsed.chatRoomId ?? ''),
+    senderUserId: String(parsed.senderUserId ?? ''),
+    content: typeof parsed.content === 'string' ? parsed.content : '',
+    messageType:
+      parsed.messageType === 'IMAGE' || parsed.messageType === 'SYSTEM'
+        ? parsed.messageType
+        : 'TEXT',
+    readAt: typeof parsed.readAt === 'string' ? parsed.readAt : null,
+    createdAt: typeof parsed.createdAt === 'string' ? parsed.createdAt : '',
+    imageUrl:
+      typeof parsed.imageUrl === 'string'
+        ? parsed.imageUrl
+        : typeof parsed.mediaUrl === 'string'
+          ? parsed.mediaUrl
+          : null,
+    senderNickname:
+      typeof parsed.senderNickname === 'string' ? parsed.senderNickname : null,
+    senderProfileImageRef:
+      typeof parsed.senderProfileImageRef === 'string' ? parsed.senderProfileImageRef : null,
+    senderProfileImageUrl:
+      typeof parsed.senderProfileImageUrl === 'string' ? parsed.senderProfileImageUrl : null,
+  };
+}
+
 export function connectChat(): Client {
   if (stompClient?.connected) return stompClient;
 
@@ -47,7 +75,7 @@ export function subscribeToRoom(roomId: string, callback: ChatMessageCallback): 
 
   const doSubscribe = () => {
     const sub = client.subscribe(topic, (message: IMessage) => {
-      const parsed = JSON.parse(message.body) as ChatMessageResponse;
+      const parsed = normalizeIncomingMessage(JSON.parse(message.body));
       callback(parsed);
     });
     subscriptions.set(roomId, { id: sub.id, unsubscribe: () => sub.unsubscribe() });
@@ -85,7 +113,7 @@ export function subscribeUserQueue(callback: ChatMessageCallback): () => void {
 
   const doSubscribe = () => {
     const sub = client.subscribe(USER_CHAT_DESTINATION, (message: IMessage) => {
-      const parsed = JSON.parse(message.body) as ChatMessageResponse;
+      const parsed = normalizeIncomingMessage(JSON.parse(message.body));
       callback(parsed);
     });
     subscriptions.set(USER_QUEUE_KEY, {
