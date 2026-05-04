@@ -26,6 +26,7 @@ import {
   bboxToParam,
   boundsCenterDistance,
   boundsDiagonal,
+  boundsEqual,
   paramToBbox,
   type Bounds,
   type BoundsWithCenter,
@@ -222,9 +223,12 @@ export function SearchResultsPage() {
   // initialBboxRef 의 lazy init 만으로는 mount 이후의 URL 변동을 잡지 못함.
   useEffect(() => {
     const next = paramToBbox(new URLSearchParams(searchParamString).get('bbox'));
-    setAppliedBounds(next);
-    // 새 URL 진입 → 다음 vendor 결과 도착 시 마커 평균으로 setMapCenter 1회 허용.
-    shouldRefitRef.current = true;
+    // 같은 bbox 면 setState skip → fetch effect 의 불필요한 재실행 방지 (P2 회귀 가드).
+    setAppliedBounds((prev) => (boundsEqual(prev, next) ? prev : next));
+    // URL 에 bbox 가 명시되어 있으면 (back/forward, 딥링크 등) 사용자/외부가 정한 viewport
+    // 이므로 marker centroid 로 재이동하면 안 됨 — 사용자 viewport 보존.
+    // bbox 가 없는 새 검색일 때만 refit 허용.
+    shouldRefitRef.current = next == null;
   }, [searchParamString]);
 
   useEffect(() => {

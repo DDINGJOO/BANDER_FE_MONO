@@ -1,6 +1,7 @@
 import {
   boundsCenterDistance,
   boundsDiagonal,
+  boundsEqual,
   bboxToParam,
   paramToBbox,
   type Bounds,
@@ -139,5 +140,34 @@ describe('boundsCenterDistance', () => {
       centerLat: a.centerLat + threshold * 1.1,
     };
     expect(boundsCenterDistance(a, moved)).toBeGreaterThan(threshold);
+  });
+});
+
+describe('boundsEqual', () => {
+  it('null vs null -> true', () => {
+    expect(boundsEqual(null, null)).toBe(true);
+  });
+
+  it('null vs object -> false (양방향)', () => {
+    expect(boundsEqual(null, sampleBounds)).toBe(false);
+    expect(boundsEqual(sampleBounds, null)).toBe(false);
+  });
+
+  it('모든 필드 같으면 true (다른 객체 인스턴스)', () => {
+    const a: Bounds = { swLat: 37.5, swLng: 126.9, neLat: 37.6, neLng: 127.0 };
+    const b: Bounds = { swLat: 37.5, swLng: 126.9, neLat: 37.6, neLng: 127.0 };
+    expect(boundsEqual(a, b)).toBe(true);
+  });
+
+  it('동일 참조 -> true', () => {
+    expect(boundsEqual(sampleBounds, sampleBounds)).toBe(true);
+  });
+
+  it('한 필드라도 다르면 false', () => {
+    const base: Bounds = { swLat: 37.5, swLng: 126.9, neLat: 37.6, neLng: 127.0 };
+    expect(boundsEqual(base, { ...base, swLat: 37.51 })).toBe(false);
+    expect(boundsEqual(base, { ...base, swLng: 126.91 })).toBe(false);
+    expect(boundsEqual(base, { ...base, neLat: 37.61 })).toBe(false);
+    expect(boundsEqual(base, { ...base, neLng: 127.01 })).toBe(false);
   });
 });

@@ -43,11 +43,13 @@ jest.mock('../../components/map/KakaoMapView', () => ({
     onBoundsChange,
     onUserInteractionStart,
     title,
+    center,
   }: {
     markers?: unknown[];
     onBoundsChange?: (p: unknown) => void;
     onUserInteractionStart?: () => void;
     title?: string;
+    center?: { lat: number; lng: number };
   }) => {
     __lastOnBoundsChange = onBoundsChange;
     __lastOnUserInteractionStart = onUserInteractionStart;
@@ -55,6 +57,8 @@ jest.mock('../../components/map/KakaoMapView', () => ({
       <div
         aria-label={title}
         data-marker-count={markers.length}
+        data-center-lat={center ? String(center.lat) : ''}
+        data-center-lng={center ? String(center.lng) : ''}
         data-testid="vendor-map"
         onClick={() => {
           onUserInteractionStart?.();
@@ -472,6 +476,51 @@ describe('SearchResultsPage — 업체 탭', () => {
     // '옛결과' 가 화면에 절대 나타나면 안 됨.
     expect(screen.queryByText('옛결과')).not.toBeInTheDocument();
     expect(screen.getByText('새결과')).toBeInTheDocument();
+  });
+
+  it('URL ?bbox 가 있으면 vendor 결과 도착 후에도 mapCenter 가 marker centroid 로 이동하지 않는다 — F1 #2 사용자 viewport 보존', async () => {
+    // bbox 가 명시된 viewport: center ≈ (37.55, 126.95). vendor 위치는 (37.55, 126.92).
+    // refit 이 일어나면 mapCenter 가 vendor 평균 (126.92) 으로 변하지만, URL bbox 가 있으면
+    // shouldRefitRef = false 이어야 하므로 mapCenter 는 초기값을 유지해야 한다.
+    mockedSearchVendors.mockResolvedValue(
+      vendorPage([vendorItem({ id: 'v1', latitude: 37.55, longitude: 126.92 })]),
+    );
+
+    render(
+      <MemoryRouter initialEntries={['/search?bbox=37.5%2C126.9%2C37.6%2C127.0']}>
+        <SearchResultsPage />
+      </MemoryRouter>,
+    );
+    await switchToVendorTab();
+
+    const map = screen.getByTestId('vendor-map');
+    // URL bbox 의 center = ((37.5+37.6)/2, (126.9+127.0)/2) = (37.55, 126.95).
+    // marker 평균 lng = 126.92 와 다르므로 보존되었는지 확실히 구분 가능.
+    expect(map.getAttribute('data-center-lng')).toBe('126.95');
+    expect(map.getAttribute('data-center-lat')).toBe('37.55');
+  });
+
+  it('같은 URL 로 rerender 해도 vendor fetch 가 추가로 트리거되지 않는다 — F1 #3 P2 회귀 가드', async () => {
+    const { rerender } = render(
+      <MemoryRouter initialEntries={['/search?bbox=37.5%2C126.9%2C37.6%2C127.0']}>
+        <SearchResultsPage />
+      </MemoryRouter>,
+    );
+    await switchToVendorTab();
+    const baseline = mockedSearchVendors.mock.calls.length;
+
+    // 동일 URL 로 rerender — searchParamString 이 같은 값으로 재계산되더라도 effect dep 가 동일.
+    // 단, URL sync effect 가 무조건 setAppliedBounds(next) 하면 새 객체 reference 로 인해
+    // fetch effect 가 재실행됨. boundsEqual 가드로 차단되어야 함.
+    rerender(
+      <MemoryRouter initialEntries={['/search?bbox=37.5%2C126.9%2C37.6%2C127.0']}>
+        <SearchResultsPage />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(mockedSearchVendors.mock.calls.length).toBe(baseline);
+    }, { timeout: 500 });
   });
 
   it('모바일 토글: "지도" 탭 클릭 시 --map 클래스 적용', async () => {

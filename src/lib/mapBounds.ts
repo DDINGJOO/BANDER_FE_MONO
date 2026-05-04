@@ -90,3 +90,19 @@ export function boundsDiagonal(b: Bounds): number {
   const dLng = b.neLng - b.swLng;
   return Math.sqrt(dLat * dLat + dLng * dLng);
 }
+
+/**
+ * 두 Bounds 가 동일한지 비교 (필드 단위 strict equality).
+ * URL sync effect 등에서 같은 bbox 면 setState 를 skip 하여 불필요한 fetch 재실행을 방지.
+ * null vs null = true, null vs object = false.
+ */
+export function boundsEqual(a: Bounds | null, b: Bounds | null): boolean {
+  if (a === b) return true;
+  if (!a || !b) return false;
+  return (
+    a.swLat === b.swLat &&
+    a.swLng === b.swLng &&
+    a.neLat === b.neLat &&
+    a.neLng === b.neLng
+  );
+}
