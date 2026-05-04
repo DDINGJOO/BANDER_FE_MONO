@@ -75,6 +75,13 @@ const FALLBACK_PANEL: ChatVendorPanel = {
   stats: [],
 };
 
+function buildClientMessageId(roomId: string, kind: 'text' | 'image') {
+  const randomPart =
+    typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  return `${kind}:${roomId}:${randomPart}`;
+}
 
 export function ChatPage() {
   const navigate = useNavigate();
@@ -491,15 +498,22 @@ export function ChatPage() {
   };
 
   const handleSend = async () => {
-    if (!inputValue.trim() || !activeRoomId) return;
+    if (!inputValue.trim() || !activeRoomId || sendInFlightRef.current) return;
+    const content = inputValue.trim();
+    const clientMsgId = buildClientMessageId(activeRoomId, 'text');
+    sendInFlightRef.current = true;
+    setSendingMessage(true);
     try {
-      const msg = await sendMessage(activeRoomId, { content: inputValue.trim() });
+      const msg = await sendMessage(activeRoomId, { content, clientMsgId });
       setMessages((prev) =>
         prev.some((message) => message.messageId === msg.messageId) ? prev : [...prev, msg],
       );
       setInputValue('');
     } catch (err) {
       console.error('[ChatPage] sendMessage failed:', err);
+    } finally {
+      sendInFlightRef.current = false;
+      setSendingMessage(false);
     }
   };
 
@@ -514,9 +528,11 @@ export function ChatPage() {
   // sendMessage(messageType=IMAGE, content=mediaRef, imageUrl=cdnUrl).
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [uploadingImage, setUploadingImage] = useState(false);
+  const sendInFlightRef = useRef(false);
+  const [sendingMessage, setSendingMessage] = useState(false);
 
   const handleCameraClick = () => {
-    if (!activeRoomId || uploadingImage) return;
+    if (!activeRoomId || uploadingImage || sendInFlightRef.current) return;
     fileInputRef.current?.click();
   };
 
@@ -532,10 +548,12 @@ export function ChatPage() {
     setUploadingImage(true);
     try {
       const { mediaRef, imageUrl } = await uploadChatImage(file);
+      const clientMsgId = buildClientMessageId(activeRoomId, 'image');
       const msg = await sendMessage(activeRoomId, {
         content: mediaRef,
         messageType: 'IMAGE',
         imageUrl,
+        clientMsgId,
       });
       setMessages((prev) =>
         prev.some((message) => message.messageId === msg.messageId) ? prev : [...prev, msg],
@@ -864,7 +882,7 @@ export function ChatPage() {
                 className="chat-page__composer-camera"
                 aria-label="사진 첨부"
                 onClick={handleCameraClick}
-                disabled={!activeRoomId || uploadingImage}
+                disabled={!activeRoomId || uploadingImage || sendingMessage}
               >
                 <CameraGlyph24 />
               </button>
@@ -889,6 +907,7 @@ export function ChatPage() {
                   className="chat-page__composer-send"
                   aria-label="보내기"
                   onClick={handleSend}
+                  disabled={!activeRoomId || !inputValue.trim() || sendingMessage || uploadingImage}
                 >
                   <SendGlyph24 />
                 </button>
