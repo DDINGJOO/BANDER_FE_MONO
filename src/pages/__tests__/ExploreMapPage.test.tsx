@@ -300,19 +300,32 @@ test('opens vendor detail beside the map from a list item without full-page navi
     size: 20,
     totalCount: 1,
   });
+  mockedGetExploreMapMarkers.mockResolvedValue({
+    markers: [
+      {
+        availableRoomCount: 2,
+        id: 'studio-bind',
+        label: '바인드 합주실',
+        lat: 37.4453311,
+        lng: 126.6961342,
+        spaceOrVendorId: 'bind-studio',
+      },
+    ],
+  });
 
   render(
-    <MemoryRouter initialEntries={['/search/map?q=바인드']}>
+    <MemoryRouter initialEntries={['/search/map']}>
       <ExploreMapPage />
     </MemoryRouter>,
   );
 
-  fireEvent.click(await screen.findByRole('button', { name: /바인드 합주실/ }));
+  fireEvent.click(await screen.findByText('바인드 합주실'));
 
   await waitFor(() => expect(mockedFetchVendorDetail).toHaveBeenCalledWith('bind-studio'));
   expect(await screen.findByRole('heading', { name: '바인드 합주실' })).toBeInTheDocument();
   expect(screen.getByRole('link', { name: '전체 상세' })).toHaveAttribute('href', '/vendors/bind-studio');
   expect(screen.getByText('A룸')).toBeInTheDocument();
+  expect(screen.getByTestId('explore-map')).toHaveAttribute('data-center', '37.4453311,126.6961342');
 });
 
 test('opens the same vendor detail from a map marker click', async () => {

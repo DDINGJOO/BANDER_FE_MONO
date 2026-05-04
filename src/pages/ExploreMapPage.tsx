@@ -280,6 +280,23 @@ export function ExploreMapPage() {
     }
   }, [listItems, selectedVendorSlug]);
 
+  useEffect(() => {
+    if (!selectedVendorSlug) {
+      return;
+    }
+    const selectedMarker = mapMarkers.find(
+      (marker) => vendorSlugFromDetailPath(marker.detailPath) === selectedVendorSlug,
+    );
+    if (!selectedMarker) {
+      return;
+    }
+    setMapCenter((current) => (
+      current.lat === selectedMarker.lat && current.lng === selectedMarker.lng
+        ? current
+        : { lat: selectedMarker.lat, lng: selectedMarker.lng }
+    ));
+  }, [mapMarkers, selectedVendorSlug]);
+
   const hasListItems = listItems.length > 0;
   const hasPopularVendors = popularVendors.length > 0;
   const selectedListItem = selectedVendorSlug
