@@ -38,6 +38,7 @@ export function LandingPage() {
   const [userType, setUserType] = useState<UserType | null>(null);
   const [consent, setConsent] = useState<ConsentState>(INITIAL_CONSENT);
   const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
 
@@ -92,7 +93,7 @@ export function LandingPage() {
     setConsent({ service: next, privacy: next, marketing: next });
   };
 
-  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError(null);
     if (!canSubmit) {
@@ -108,9 +109,32 @@ export function LandingPage() {
       return;
     }
 
-    // TODO: submit { name, phone, userType, consent } to backend when API is ready.
-    // Do not log PII to the console per repo policy.
-    setSubmitted(true);
+    const endpoint =
+      process.env.REACT_APP_LANDING_PREREGISTER_URL ?? '/api/v1/landing/pre-register';
+
+    setSubmitting(true);
+    try {
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: name.trim(),
+          phone,
+          userType,
+          consent,
+          submittedAt: new Date().toISOString(),
+        }),
+        credentials: 'omit',
+      });
+      if (!response.ok) {
+        throw new Error(`pre-register endpoint responded ${response.status}`);
+      }
+      setSubmitted(true);
+    } catch {
+      setError('사전신청 전송에 실패했어요. 잠시 후 다시 시도해주세요.');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const handleReset = () => {
@@ -507,10 +531,10 @@ export function LandingPage() {
 
                 <button
                   className="landing__btn landing__btn--primary landing__btn--submit"
-                  disabled={!canSubmit}
+                  disabled={!canSubmit || submitting}
                   type="submit"
                 >
-                  사전신청 완료
+                  {submitting ? '전송 중…' : '사전신청 완료'}
                 </button>
               </form>
             )}
