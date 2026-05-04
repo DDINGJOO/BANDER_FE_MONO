@@ -20,6 +20,7 @@ import {
   type CommunityPostBlockDto,
   type CommunityPostDetailDto,
 } from '../api/community';
+import { createPersonalChatRoom } from '../api/chat';
 import { ApiError } from '../api/client';
 import { CommunityPostReportConfirmModal } from '../components/community/CommunityPostReportConfirmModal';
 import { CommunityReportModal } from '../components/community/CommunityReportModal';
@@ -736,10 +737,24 @@ export function CommunityPostDetailPage() {
     setPostReportConfirmOpen(false);
   }, []);
 
-  const handleAuthorChatClick = useCallback(() => {
+  const handleAuthorChatClick = useCallback(async () => {
     setAuthorMenuOpen(false);
-    navigate('/chat');
-  }, [navigate]);
+    const authorUserId = post?.authorUserId ? String(post.authorUserId) : '';
+    if (!authorUserId) {
+      setActionError('채팅할 작성자 정보를 찾지 못했습니다.');
+      return;
+    }
+    if (!isAuthenticated) {
+      openGuestGate(location.pathname + location.search);
+      return;
+    }
+    try {
+      const room = await createPersonalChatRoom({ targetUserId: authorUserId });
+      navigate(`/chat?t=${encodeURIComponent(String(room.chatRoomId))}`);
+    } catch (error) {
+      setActionError(getErrorMessage(error, '채팅방을 만들지 못했습니다.'));
+    }
+  }, [isAuthenticated, location.pathname, location.search, navigate, openGuestGate, post?.authorUserId]);
 
   const handleAuthorFeedClick = useCallback(() => {
     setAuthorMenuOpen(false);
