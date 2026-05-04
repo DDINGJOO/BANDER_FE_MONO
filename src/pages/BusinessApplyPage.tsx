@@ -50,7 +50,7 @@ export function BusinessApplyPage() {
     (value: string) => {
       const q = value.trim();
       if (!q) return;
-      navigate(`/search?q=${encodeURIComponent(q)}`);
+      navigate(`/search/map?q=${encodeURIComponent(q)}`);
     },
     [navigate],
   );

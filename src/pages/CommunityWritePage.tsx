@@ -151,7 +151,7 @@ export function CommunityWritePage() {
       if (!query) {
         return;
       }
-      navigate(`/search?q=${encodeURIComponent(query)}`);
+      navigate(`/search/map?q=${encodeURIComponent(query)}`);
     },
     [navigate]
   );
