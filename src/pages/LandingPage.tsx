@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { BrandMark } from '../components/shared/BrandMark';
 import { HomeFooter } from '../components/home/HomeFooter';
+import { TERMS_ITEMS } from '../data/auth';
 
 type UserType = 'GENERAL' | 'OWNER';
 
@@ -11,7 +12,7 @@ type ConsentState = {
 };
 
 const INITIAL_CONSENT: ConsentState = {
-  service: false,
+  service: true,
   privacy: false,
   marketing: false,
 };
@@ -20,6 +21,9 @@ const APP_PHONES_SRC = `${process.env.PUBLIC_URL ?? ''}/main/app-phones.png`;
 const HERO_IMAGE_SRC = `${process.env.PUBLIC_URL ?? ''}/main/hero-image.png`;
 const HOST_CTA_PICK = `${process.env.PUBLIC_URL ?? ''}/main/host-cta-pick.svg`;
 const HOST_CTA_ARROW = `${process.env.PUBLIC_URL ?? ''}/main/host-cta-arrow.svg`;
+const PRIVACY_TERMS_LINK =
+  'https://bander-co-kr.notion.site/2025-12-08-2c17b25b471a80b388fffb87d23bf566?pvs=74';
+const MARKETING_TERMS_LINK = TERMS_ITEMS.find((item) => item.key === 'marketing')?.href ?? '/terms';
 
 function formatPhone(raw: string): string {
   const digits = raw.replace(/\D/g, '').slice(0, 11);
@@ -72,8 +76,8 @@ export function LandingPage() {
     return () => io.disconnect();
   }, []);
 
-  const allRequiredConsented = consent.service && consent.privacy;
-  const allConsented = consent.service && consent.privacy && consent.marketing;
+  const allRequiredConsented = consent.privacy && consent.marketing;
+  const allConsented = consent.privacy && consent.marketing;
 
   const canSubmit = useMemo(() => {
     return (
@@ -90,7 +94,7 @@ export function LandingPage() {
 
   const toggleAll = () => {
     const next = !allConsented;
-    setConsent({ service: next, privacy: next, marketing: next });
+    setConsent({ service: true, privacy: next, marketing: next });
   };
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -104,34 +108,45 @@ export function LandingPage() {
       } else if (!userType) {
         setError('회원 유형을 선택해주세요.');
       } else if (!allRequiredConsented) {
-        setError('필수 약관에 동의해주세요.');
+        setError('개인정보 수집·이용 및 마케팅 정보 수신에 동의해주세요.');
       }
       return;
     }
 
     const endpoint =
-      process.env.REACT_APP_LANDING_PREREGISTER_URL ?? '/api/v1/landing/pre-register';
+      process.env.REACT_APP_LANDING_PREREGISTER_URL ?? '/launch-api/v1/signups';
 
     setSubmitting(true);
     try {
       const response = await fetch(endpoint, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+        },
         body: JSON.stringify({
           name: name.trim(),
           phone,
           userType,
-          consent,
-          submittedAt: new Date().toISOString(),
+          consent: {
+            ...consent,
+            service: true,
+          },
         }),
         credentials: 'omit',
       });
-      if (!response.ok) {
-        throw new Error(`pre-register endpoint responded ${response.status}`);
+
+      const payload = (await response.json().catch(() => null)) as
+        | { success?: boolean; error?: { message?: string } }
+        | null;
+
+      if (!response.ok || !payload?.success) {
+        setError(payload?.error?.message ?? '사전신청 요청 처리에 실패했습니다. 잠시 후 다시 시도해주세요.');
+        return;
       }
+
       setSubmitted(true);
     } catch {
-      setError('사전신청 전송에 실패했어요. 잠시 후 다시 시도해주세요.');
+      setError('사전신청 요청 처리에 실패했습니다. 잠시 후 다시 시도해주세요.');
     } finally {
       setSubmitting(false);
     }
@@ -143,6 +158,7 @@ export function LandingPage() {
     setUserType(null);
     setConsent(INITIAL_CONSENT);
     setSubmitted(false);
+    setSubmitting(false);
     setError(null);
   };
 
@@ -491,24 +507,15 @@ export function LandingPage() {
                     </label>
                     <label className="landing__consent-item">
                       <input
-                        checked={consent.service}
-                        onChange={(event) => setConsent((prev) => ({ ...prev, service: event.target.checked }))}
-                        type="checkbox"
-                      />
-                      <span>
-                        <span className="landing__consent-tag landing__consent-tag--required">필수</span>
-                        서비스 이용약관 동의
-                      </span>
-                    </label>
-                    <label className="landing__consent-item">
-                      <input
                         checked={consent.privacy}
                         onChange={(event) => setConsent((prev) => ({ ...prev, privacy: event.target.checked }))}
                         type="checkbox"
                       />
                       <span>
                         <span className="landing__consent-tag landing__consent-tag--required">필수</span>
-                        개인정보 수집·이용 동의
+                        <a href={PRIVACY_TERMS_LINK} rel="noreferrer" target="_blank">
+                          개인정보 수집·이용 동의
+                        </a>
                       </span>
                     </label>
                     <label className="landing__consent-item">
@@ -518,8 +525,10 @@ export function LandingPage() {
                         type="checkbox"
                       />
                       <span>
-                        <span className="landing__consent-tag">선택</span>
-                        마케팅 정보 수신 동의
+                        <span className="landing__consent-tag landing__consent-tag--required">필수</span>
+                        <a href={MARKETING_TERMS_LINK} rel="noreferrer" target="_blank">
+                          마케팅 정보 수신 동의
+                        </a>
                       </span>
                     </label>
                   </div>
@@ -536,7 +545,7 @@ export function LandingPage() {
                   disabled={!canSubmit || submitting}
                   type="submit"
                 >
-                  {submitting ? '전송 중…' : '사전신청 완료'}
+                  {submitting ? '신청 중...' : '사전신청 완료'}
                 </button>
               </form>
             )}
