@@ -234,6 +234,42 @@ describe('SearchResultsPage — 업체 탭', () => {
     });
   });
 
+  it('PR-A2: URL 의 capacity/parking/category 가 searchVendors 에 전달된다', async () => {
+    render(
+      <MemoryRouter
+        initialEntries={['/search?q=드럼&capacity=4&parking=true&category=PRACTICE_ROOM']}
+      >
+        <SearchResultsPage />
+      </MemoryRouter>,
+    );
+    await switchToVendorTab();
+
+    expect(mockedSearchVendors).toHaveBeenCalledWith(
+      expect.objectContaining({
+        capacity: 4,
+        parking: true,
+        category: 'PRACTICE_ROOM',
+      }),
+    );
+  });
+
+  it('PR-A2: parking 미지정이면 searchVendors 에 parking 키가 undefined 로만 전달된다', async () => {
+    render(
+      <MemoryRouter initialEntries={['/search?q=드럼']}>
+        <SearchResultsPage />
+      </MemoryRouter>,
+    );
+    await switchToVendorTab();
+
+    // 모든 호출이 parking === undefined (truthy-only 정책: false 도 보내지 않음)
+    expect(mockedSearchVendors).toHaveBeenCalled();
+    for (const [params] of mockedSearchVendors.mock.calls) {
+      expect(params.parking).toBeUndefined();
+      expect(params.capacity).toBeUndefined();
+      expect(params.category).toBeUndefined();
+    }
+  });
+
   it('지도 사용자 조작 후 debounce 350ms 경과 → viewport 재검색 트리거', async () => {
     jest.useFakeTimers('modern');
     try {

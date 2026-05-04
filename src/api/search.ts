@@ -95,6 +95,16 @@ type VendorSearchParams = {
   keywords?: string[];
   /** PR-A1: 객체로 받아서 "swLat,swLng,neLat,neLng" 단일 문자열로 직렬화 */
   bbox?: { swLat: number; swLng: number; neLat: number; neLng: number };
+  /** PR-A2: 백엔드 nested rooms 매핑으로 정확 매치 (capacity/parking/category). */
+  capacity?: number;
+  parking?: boolean;
+  category?: string;
+  /**
+   * PR-A2: 백엔드는 minPrice/maxPrice 도 받지만 FE 가격 필터 UI 가 없어 호출부는
+   * 보내지 않음 — 가격 필터 UI 신설 시 forward-compat 으로 타입에만 포함.
+   */
+  minPrice?: number;
+  maxPrice?: number;
 };
 
 type PostSearchParams = {

@@ -280,7 +280,8 @@ export function SearchResultsPage() {
       setVendorsLoading(true);
       const sf = spaceFiltersRef.current;
       const cleanKeywords = sf.keywords?.map((k) => k.replace(/^#/, '')).filter(Boolean) ?? [];
-      // PR-A1 백엔드 미지원 항목 (category/capacity/parking/price) 은 의도적으로 누락.
+      // PR-A2 머지로 capacity/parking/category vendor 검색 활성화. minPrice/maxPrice 는
+      // SpaceFilterState 에 없어 미사용 — 가격 필터 UI 신설 시 별도 follow-up.
       // sort 는 vendor 전용 union 만 보냄 — space 의 'LATEST' 등은 차단.
       const vendorSort = (VENDOR_SORT_OPTIONS as readonly string[]).includes(sortBy)
         ? (sortBy as 'relevance' | 'popular' | 'latest')
@@ -292,6 +293,10 @@ export function SearchResultsPage() {
         regions: sf.regions?.length ? sf.regions : undefined,
         keywords: cleanKeywords.length ? cleanKeywords : undefined,
         bbox: appliedBounds ?? undefined,
+        capacity: sf.capacity,
+        // parking 은 truthy-only: false/undefined 모두 미전송 (PR-D 정책).
+        parking: sf.parking === true ? true : undefined,
+        category: sf.category,
       })
         .then((res) => {
           if (cancelled) return;
