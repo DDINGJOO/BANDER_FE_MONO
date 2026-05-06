@@ -64,7 +64,7 @@ export function VendorDetailPage() {
         <HomeHeader authenticated={isAuthenticated} onGuestCta={() => navigate('/login')} variant="icon" />
         <div className="vendor-detail__shell vendor-detail__shell--empty">
           <p className="vendor-detail__empty-title">업체를 찾을 수 없습니다.</p>
-          <Link className="vendor-detail__empty-link" to="/search/map">
+          <Link className="vendor-detail__empty-link" to="/search">
             검색으로 돌아가기
           </Link>
         </div>

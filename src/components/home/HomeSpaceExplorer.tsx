@@ -136,7 +136,7 @@ export function HomeSpaceExplorer({
   initialSearchQuery = '',
   onFilterChange,
   resultLimit,
-  searchBasePath = '/search/map',
+  searchBasePath = '/search',
   spaces = [],
   variant = 'section',
 }: HomeSpaceExplorerProps) {

@@ -320,7 +320,7 @@ export function HomeHeader(props: HomeHeaderProps) {
             </div>
           ) : (
             <div className="home-header__search home-header__search--icon">
-              <Link aria-label="공간 검색" className="home-header__search-icon-link" to="/search/map">
+              <Link aria-label="공간 검색" className="home-header__search-icon-link" to="/search">
                 <SearchIcon />
               </Link>
             </div>

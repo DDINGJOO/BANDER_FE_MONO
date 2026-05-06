@@ -98,7 +98,7 @@ function formatPostDateLabel(value: string): string {
 function buildSearchPath(query: string, filters: SpaceFilterState) {
   const params = serializeSearchFilters(filters, query);
   const queryString = params.toString();
-  return queryString ? `/search/map?${queryString}` : '/search/map';
+  return queryString ? `/search?${queryString}` : '/search';
 }
 
 /** viewport 자동 재검색 임계값 — 사용자가 "충분히 움직였다" 라고 판단하는 기준.

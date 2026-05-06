@@ -108,7 +108,7 @@ export function PaymentInfoPage() {
     (value: string) => {
       const q = value.trim();
       if (!q) return;
-      navigate(`/search/map?q=${encodeURIComponent(q)}`);
+      navigate(`/search?q=${encodeURIComponent(q)}`);
     },
     [navigate],
   );

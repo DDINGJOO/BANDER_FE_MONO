@@ -188,9 +188,9 @@ export function MainPage({ previewAuthenticated = false }: { previewAuthenticate
           if (!normalizedValue) {
             return;
           }
-          navigate(`/search/map?q=${encodeURIComponent(normalizedValue)}`);
+          navigate(`/search?q=${encodeURIComponent(normalizedValue)}`);
         }}
-        onSuggestionSelect={(value) => navigate(`/search/map?q=${encodeURIComponent(value)}`)}
+        onSuggestionSelect={(value) => navigate(`/search?q=${encodeURIComponent(value)}`)}
         searchOpen={headerSearchOpen}
         searchQuery={headerSearchQuery}
         searchRef={headerSearchRef}

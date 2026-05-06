@@ -607,7 +607,7 @@ export function CommunityPostDetailPage() {
       if (!query) {
         return;
       }
-      navigate(`/search/map?q=${encodeURIComponent(query)}`);
+      navigate(`/search?q=${encodeURIComponent(query)}`);
     },
     [navigate]
   );

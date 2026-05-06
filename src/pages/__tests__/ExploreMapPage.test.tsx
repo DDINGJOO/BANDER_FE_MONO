@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import {
   getExploreMapMarkers,
   getExploreMapPopularVendors,
@@ -227,7 +227,7 @@ test('exposes a mobile map list toggle for backend vendors', async () => {
   expect(screen.getByRole('button', { name: /지도 안 업체 2곳 접기/ })).toBeInTheDocument();
 });
 
-test('searches inside the map page and recenters the map to the first result marker', async () => {
+test('keeps URL-driven map searches on the map page and recenters to the first result marker', async () => {
   mockedGetExploreMapSpaces.mockResolvedValue({
     hasNext: false,
     items: [
@@ -264,13 +264,10 @@ test('searches inside the map page and recenters the map to the first result mar
   });
 
   render(
-    <MemoryRouter initialEntries={['/search/map']}>
+    <MemoryRouter initialEntries={['/search/map?q=바인드']}>
       <ExploreMapPage />
     </MemoryRouter>,
   );
-
-  fireEvent.change(screen.getByLabelText('지도 검색'), { target: { value: '바인드' } });
-  fireEvent.click(screen.getByRole('button', { name: '검색' }));
 
   await waitFor(() => {
     expect(mockedGetExploreMapSpaces).toHaveBeenLastCalledWith(expect.objectContaining({ q: '바인드' }));
@@ -278,6 +275,22 @@ test('searches inside the map page and recenters the map to the first result mar
   await waitFor(() => {
     expect(screen.getByTestId('explore-map')).toHaveAttribute('data-center', '37.4453311,126.6961342');
   });
+});
+
+test('routes header search on the map page to integrated search', async () => {
+  render(
+    <MemoryRouter initialEntries={['/search/map']}>
+      <Routes>
+        <Route element={<ExploreMapPage />} path="/search/map" />
+        <Route element={<div data-testid="integrated-search-page" />} path="/search" />
+      </Routes>
+    </MemoryRouter>,
+  );
+
+  fireEvent.change(screen.getByLabelText('지도 검색'), { target: { value: '바인드' } });
+  fireEvent.click(screen.getByRole('button', { name: '검색' }));
+
+  expect(await screen.findByTestId('integrated-search-page')).toBeInTheDocument();
 });
 
 test('opens vendor detail beside the map from a list item without full-page navigation', async () => {

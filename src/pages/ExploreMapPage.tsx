@@ -133,7 +133,7 @@ function vendorHeroImage(vendor: VendorDetailDto | null, fallback?: ExploreMapLi
 
 export function ExploreMapPage() {
   const navigate = useNavigate();
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();
   const searchParamString = searchParams.toString();
   const isAuthenticated = Boolean(loadAuthSession());
   const parsedSearch = useMemo(
@@ -167,14 +167,14 @@ export function ExploreMapPage() {
     setSpaceFilters((current) => (JSON.stringify(current) === JSON.stringify(filters) ? current : filters));
   }, []);
 
-  const handleSearchSubmit = (value: string) => {
+  const handleHeaderSearchSubmit = (value: string) => {
     const normalizedValue = value.trim();
     if (!normalizedValue) {
       return;
     }
     const params = serializeSearchFilters(spaceFilters, normalizedValue);
-    setSearchParams(params);
-    setMobileListOpen(true);
+    const queryString = params.toString();
+    navigate(queryString ? `/search?${queryString}` : '/search');
   };
 
   useEffect(() => {
@@ -343,10 +343,10 @@ export function ExploreMapPage() {
           setHeaderSearchOpen(false);
         }}
         onSearchFocus={() => setHeaderSearchOpen(Boolean(headerSearchQuery.trim()))}
-        onSearchSubmit={handleSearchSubmit}
+        onSearchSubmit={handleHeaderSearchSubmit}
         onSuggestionSelect={(value) => {
           setHeaderSearchOpen(false);
-          handleSearchSubmit(value);
+          handleHeaderSearchSubmit(value);
         }}
         searchOpen={headerSearchOpen}
         searchQuery={headerSearchQuery}
