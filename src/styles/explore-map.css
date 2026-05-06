@@ -2,7 +2,9 @@
   background: #fff;
   display: flex;
   flex-direction: column;
+  height: 100vh;
   min-height: 100vh;
+  overflow: hidden;
 }
 
 .explore-map-page__body {
@@ -671,6 +673,11 @@
 }
 
 @media (max-width: 900px) {
+  .explore-map-page {
+    height: auto;
+    overflow: visible;
+  }
+
   .explore-map-page__body {
     flex-direction: column;
   }
