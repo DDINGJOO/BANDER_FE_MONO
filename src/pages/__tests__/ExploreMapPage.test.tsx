@@ -227,6 +227,74 @@ test('exposes a mobile map list toggle for backend vendors', async () => {
   expect(screen.getByRole('button', { name: /지도 안 업체 2곳 접기/ })).toBeInTheDocument();
 });
 
+test('loads the next map list page when the sidebar scroll reaches the bottom', async () => {
+  mockedGetExploreMapSpaces
+    .mockResolvedValueOnce({
+      hasNext: true,
+      items: [
+        {
+          availableRoomCount: 2,
+          bookmarkSaved: false,
+          detailPath: '/vendors/first-studio',
+          imageUrl: 'https://cdn.example.com/first.png',
+          location: '서울 강남구',
+          priceLabel: '10,000원~',
+          priceSuffix: '/60분',
+          rating: '',
+          spaceType: '업체',
+          studio: '2개 공간',
+          tags: ['공간 2개'],
+          title: '첫번째스튜디오',
+        },
+      ],
+      page: 0,
+      size: 20,
+      totalCount: 2,
+    })
+    .mockResolvedValueOnce({
+      hasNext: false,
+      items: [
+        {
+          availableRoomCount: 1,
+          bookmarkSaved: false,
+          detailPath: '/vendors/second-studio',
+          imageUrl: 'https://cdn.example.com/second.png',
+          location: '서울 강남구',
+          priceLabel: '12,000원~',
+          priceSuffix: '/60분',
+          rating: '',
+          spaceType: '업체',
+          studio: '1개 공간',
+          tags: ['공간 1개'],
+          title: '두번째스튜디오',
+        },
+      ],
+      page: 1,
+      size: 20,
+      totalCount: 2,
+    });
+
+  render(
+    <MemoryRouter>
+      <ExploreMapPage />
+    </MemoryRouter>,
+  );
+
+  expect(await screen.findByText('첫번째스튜디오')).toBeInTheDocument();
+
+  const list = screen.getByTestId('explore-map-list');
+  Object.defineProperty(list, 'clientHeight', { configurable: true, value: 500 });
+  Object.defineProperty(list, 'scrollHeight', { configurable: true, value: 1000 });
+  Object.defineProperty(list, 'scrollTop', { configurable: true, value: 260 });
+
+  fireEvent.scroll(list);
+
+  await waitFor(() => {
+    expect(mockedGetExploreMapSpaces).toHaveBeenLastCalledWith(expect.objectContaining({ page: 1, size: 20 }));
+  });
+  expect(await screen.findByText('두번째스튜디오')).toBeInTheDocument();
+});
+
 test('keeps URL-driven map searches on the map page and recenters to the first result marker', async () => {
   mockedGetExploreMapSpaces.mockResolvedValue({
     hasNext: false,

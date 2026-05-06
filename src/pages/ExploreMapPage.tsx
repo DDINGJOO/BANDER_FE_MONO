@@ -23,6 +23,9 @@ import {
 } from '../data/exploreMap';
 import type { ExploreMapMarkerDto } from '../data/schemas/exploreMap';
 
+const EXPLORE_MAP_LIST_PAGE_SIZE = 20;
+const EXPLORE_MAP_LIST_SCROLL_THRESHOLD_PX = 280;
+
 function BookmarkGlyph({ filled }: { filled: boolean }) {
   return (
     <svg aria-hidden fill="none" height={28} viewBox="0 0 28 28" width={28}>
@@ -131,6 +134,12 @@ function vendorHeroImage(vendor: VendorDetailDto | null, fallback?: ExploreMapLi
   return vendor?.primaryImageUrl || vendor?.rooms.find((room) => room.imageUrl)?.imageUrl || fallback?.image || '';
 }
 
+function exploreMapListItemKey(item: ExploreMapListItem) {
+  return item.detailPath && item.detailPath !== '#'
+    ? item.detailPath
+    : `${item.title}|${item.location}|${item.priceLabel}`;
+}
+
 export function ExploreMapPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -150,7 +159,25 @@ export function ExploreMapPage() {
   const [mapCenter, setMapCenter] = useState<{ lat: number; lng: number }>(EXPLORE_MAP_CENTER);
   const [mobileListOpen, setMobileListOpen] = useState(false);
   const [spaceFilters, setSpaceFilters] = useState<SpaceFilterState>(initialSpaceFilters);
+  const normalizedSpaceFilters = useMemo(() => normalizeSpaceFilters(spaceFilters), [spaceFilters]);
+  const exploreMapParams = useMemo(
+    () => buildExploreMapFilterParams(normalizedSpaceFilters, query),
+    [normalizedSpaceFilters, query],
+  );
+  const exploreMapRequestKey = useMemo(
+    () => JSON.stringify({ filters: normalizedSpaceFilters, q: query.trim() }),
+    [normalizedSpaceFilters, query],
+  );
+  const listScrollRef = useRef<HTMLDivElement | null>(null);
+  const listRequestKeyRef = useRef(exploreMapRequestKey);
+  const listLoadingMoreRef = useRef(false);
   const [listItems, setListItems] = useState<ExploreMapListItem[]>([]);
+  const [listPage, setListPage] = useState(0);
+  const [listHasNext, setListHasNext] = useState(false);
+  const [listTotalCount, setListTotalCount] = useState<number | null>(null);
+  const [listLoading, setListLoading] = useState(false);
+  const [listLoadingMore, setListLoadingMore] = useState(false);
+  const [listError, setListError] = useState(false);
   const [mapMarkers, setMapMarkers] = useState<ExploreMapMarker[]>([]);
   const [popularVendors, setPopularVendors] = useState<ExploreMapPopularVendor[]>([]);
   const [savedByPath, setSavedByPath] = useState<Record<string, boolean>>({});
@@ -200,30 +227,118 @@ export function ExploreMapPage() {
 
   useEffect(() => {
     let cancelled = false;
-    const params = buildExploreMapFilterParams(normalizeSpaceFilters(spaceFilters), query);
+    listRequestKeyRef.current = exploreMapRequestKey;
+    listLoadingMoreRef.current = false;
+    setListLoading(true);
+    setListLoadingMore(false);
+    setListError(false);
+    setListHasNext(false);
+
+    const listEl = listScrollRef.current;
+    if (listEl) {
+      listEl.scrollTop = 0;
+    }
 
     Promise.all([
-      getExploreMapSpaces({ ...params, page: 0, size: 20 }).catch(() => null),
-      getExploreMapMarkers(params).catch(() => null),
-      getExploreMapPopularVendors(params).catch(() => null),
+      getExploreMapSpaces({ ...exploreMapParams, page: 0, size: EXPLORE_MAP_LIST_PAGE_SIZE }).catch(() => null),
+      getExploreMapMarkers(exploreMapParams).catch(() => null),
+      getExploreMapPopularVendors(exploreMapParams).catch(() => null),
     ]).then(([spacesResponse, markersResponse, popularVendorsResponse]) => {
-      if (cancelled) {
+      if (cancelled || listRequestKeyRef.current !== exploreMapRequestKey) {
         return;
       }
 
       setListItems((spacesResponse?.items ?? []).map(exploreMapListItemFromDto));
+      setListPage(spacesResponse?.page ?? 0);
+      setListHasNext(Boolean(spacesResponse?.hasNext));
+      setListTotalCount(spacesResponse?.totalCount ?? null);
+      setListError(!spacesResponse);
       const nextMarkers = (markersResponse?.markers ?? []).map(exploreMapMarkerFromDto).filter(isExploreMapMarker);
       setMapMarkers(nextMarkers);
       setPopularVendors(popularVendorsResponse?.vendors ?? []);
       if (query.trim() && nextMarkers.length > 0) {
         setMapCenter({ lat: nextMarkers[0].lat, lng: nextMarkers[0].lng });
       }
+    }).finally(() => {
+      if (!cancelled && listRequestKeyRef.current === exploreMapRequestKey) {
+        setListLoading(false);
+      }
     });
 
     return () => {
       cancelled = true;
     };
-  }, [query, spaceFilters]);
+  }, [exploreMapParams, exploreMapRequestKey, query]);
+
+  const loadNextListPage = useCallback(() => {
+    if (listLoading || listLoadingMoreRef.current || !listHasNext) {
+      return;
+    }
+
+    const requestKey = exploreMapRequestKey;
+    const nextPage = listPage + 1;
+    listLoadingMoreRef.current = true;
+    setListLoadingMore(true);
+    setListError(false);
+
+    getExploreMapSpaces({ ...exploreMapParams, page: nextPage, size: EXPLORE_MAP_LIST_PAGE_SIZE })
+      .then((response) => {
+        if (listRequestKeyRef.current !== requestKey) {
+          return;
+        }
+
+        const nextItems = (response.items ?? []).map(exploreMapListItemFromDto);
+        setListItems((current) => {
+          const seen = new Set(current.map(exploreMapListItemKey));
+          const append = nextItems.filter((item) => {
+            const key = exploreMapListItemKey(item);
+            if (seen.has(key)) {
+              return false;
+            }
+            seen.add(key);
+            return true;
+          });
+          return [...current, ...append];
+        });
+        setListPage(response.page ?? nextPage);
+        setListHasNext(Boolean(response.hasNext));
+        setListTotalCount(response.totalCount ?? null);
+      })
+      .catch(() => {
+        if (listRequestKeyRef.current === requestKey) {
+          setListError(true);
+        }
+      })
+      .finally(() => {
+        if (listRequestKeyRef.current === requestKey) {
+          listLoadingMoreRef.current = false;
+          setListLoadingMore(false);
+        }
+      });
+  }, [exploreMapParams, exploreMapRequestKey, listHasNext, listLoading, listPage]);
+
+  const handleListScroll = useCallback(() => {
+    const el = listScrollRef.current;
+    if (!el) {
+      return;
+    }
+
+    const remaining = el.scrollHeight - el.scrollTop - el.clientHeight;
+    if (remaining <= EXPLORE_MAP_LIST_SCROLL_THRESHOLD_PX) {
+      loadNextListPage();
+    }
+  }, [loadNextListPage]);
+
+  useEffect(() => {
+    const el = listScrollRef.current;
+    if (!el || el.clientHeight <= 0 || listLoading || listLoadingMore || !listHasNext) {
+      return;
+    }
+
+    if (el.scrollHeight <= el.clientHeight + 1) {
+      loadNextListPage();
+    }
+  }, [listHasNext, listItems.length, listLoading, listLoadingMore, loadNextListPage, mobileListOpen]);
 
   useEffect(() => {
     setSavedByPath((current) => {
@@ -298,6 +413,7 @@ export function ExploreMapPage() {
   }, [mapMarkers, selectedVendorSlug]);
 
   const hasListItems = listItems.length > 0;
+  const listCountLabel = listTotalCount ?? listItems.length;
   const hasPopularVendors = popularVendors.length > 0;
   const selectedListItem = selectedVendorSlug
     ? listItems.find((item) => vendorSlugFromDetailPath(item.detailPath) === selectedVendorSlug) ?? null
@@ -370,12 +486,12 @@ export function ExploreMapPage() {
             <button
               aria-controls="explore-map-visible-list"
               aria-expanded={mobileListOpen}
-              aria-label={`지도 안 업체 ${listItems.length}곳 ${mobileListOpen ? '접기' : '목록 보기'}`}
+              aria-label={`지도 안 업체 ${listCountLabel}곳 ${mobileListOpen ? '접기' : '목록 보기'}`}
               className="explore-map-page__mobile-list-toggle"
               onClick={() => setMobileListOpen((open) => !open)}
               type="button"
             >
-              <span>지도 안 업체 {listItems.length}곳</span>
+              <span>지도 안 업체 {listCountLabel}곳</span>
               <span aria-hidden>{mobileListOpen ? '접기' : '목록 보기'}</span>
             </button>
           ) : null}
@@ -383,13 +499,16 @@ export function ExploreMapPage() {
           {hasListItems ? (
             <div
               className={`explore-map-page__list${mobileListOpen ? ' explore-map-page__list--mobile-open' : ''}`}
+              data-testid="explore-map-list"
               id="explore-map-visible-list"
+              onScroll={handleListScroll}
+              ref={listScrollRef}
             >
               {listItems.map((item) => {
                 const saved = savedByPath[item.detailPath] ?? false;
                 const visibleTags = item.tags.filter(Boolean);
                 return (
-                  <div className="explore-map-card" key={item.detailPath}>
+                  <div className="explore-map-card" key={exploreMapListItemKey(item)}>
                     <div className="explore-map-card__row">
                       <button
                         className="explore-map-card__link"
@@ -457,6 +576,14 @@ export function ExploreMapPage() {
                   </div>
                 );
               })}
+              {listLoadingMore ? (
+                <div className="explore-map-page__list-state">더 불러오는 중입니다.</div>
+              ) : null}
+              {listError && !listLoadingMore ? (
+                <button className="explore-map-page__list-retry" onClick={loadNextListPage} type="button">
+                  목록을 다시 불러오기
+                </button>
+              ) : null}
             </div>
           ) : null}
 

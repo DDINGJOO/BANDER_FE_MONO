@@ -43,6 +43,29 @@
   display: none;
 }
 
+.explore-map-page__list-state {
+  color: #8f97a5;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 20px;
+  padding: 18px 0;
+  text-align: center;
+}
+
+.explore-map-page__list-retry {
+  align-self: center;
+  background: #f4f6f9;
+  border: 0;
+  border-radius: 8px;
+  color: #24262c;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  margin: 14px 0 18px;
+  padding: 10px 14px;
+}
+
 .explore-map-card {
   border-bottom: 1px solid #f0f2f5;
   color: inherit;
