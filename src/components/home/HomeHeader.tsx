@@ -258,14 +258,7 @@ export function HomeHeader(props: HomeHeaderProps) {
 
           {bar ? (
             <div className="home-header__search" ref={props.searchRef}>
-              <div
-                className={
-                  authenticated
-                    ? 'home-header__search-field home-header__search-field--authenticated'
-                    : 'home-header__search-field'
-                }
-              >
-                {authenticated ? null : <SearchIcon />}
+              <div className="home-header__search-field home-header__search-field--with-submit">
                 <input
                   className="home-header__search-input"
                   onChange={(event) => {
@@ -353,7 +346,7 @@ export function HomeHeader(props: HomeHeaderProps) {
                 >
                   커뮤니티
                 </Link>
-                <Link to={{ hash: 'spaces', pathname: '/' }}>탐색</Link>
+                <Link to="/search/map">탐색</Link>
                 <Link to={{ hash: 'reviews', pathname: '/' }}>후기</Link>
               </>
             )}
@@ -556,7 +549,7 @@ export function HomeHeader(props: HomeHeaderProps) {
                 >
                   커뮤니티
                 </Link>
-                <Link onClick={() => setMobileMenuOpen(false)} to={authenticated ? '/search/map' : { hash: 'spaces', pathname: '/' }}>
+                <Link onClick={() => setMobileMenuOpen(false)} to="/search/map">
                   탐색
                 </Link>
                 {authenticated ? (
