@@ -19,7 +19,7 @@ spec:
     spec:
       containers:
         - name: nginx
-          image: bander/client-fe:onprem-20260506-123915-search-vendor-list
+          image: bander/client-fe:onprem-20260511-1420-launch-phone-crypto
           imagePullPolicy: Never
           ports:
             - containerPort: 80
@@ -77,6 +77,13 @@ spec:
     - host: bander.co.kr
       http:
         paths:
+          - path: /launch-api
+            pathType: Prefix
+            backend:
+              service:
+                name: launch-signup-service
+                port:
+                  name: http
           - path: /
             pathType: Prefix
             backend:
@@ -87,6 +94,13 @@ spec:
     - host: www.bander.co.kr
       http:
         paths:
+          - path: /launch-api
+            pathType: Prefix
+            backend:
+              service:
+                name: launch-signup-service
+                port:
+                  name: http
           - path: /
             pathType: Prefix
             backend:

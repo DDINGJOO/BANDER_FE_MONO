@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { BrandMark } from '../components/shared/BrandMark';
 import { HomeFooter } from '../components/home/HomeFooter';
 import { TERMS_ITEMS } from '../data/auth';
+import { encryptLaunchSignupPhone } from '../lib/launchPhoneCrypto';
 
 type UserType = 'GENERAL' | 'OWNER';
 
@@ -118,6 +119,7 @@ export function LandingPage() {
 
     setSubmitting(true);
     try {
+      const encryptedPhone = await encryptLaunchSignupPhone(phone);
       const response = await fetch(endpoint, {
         method: 'POST',
         headers: {
@@ -125,7 +127,7 @@ export function LandingPage() {
         },
         body: JSON.stringify({
           name: name.trim(),
-          phone,
+          encryptedPhone,
           userType,
           consent: {
             ...consent,
