@@ -126,27 +126,50 @@ function isBookerPhoneAnswer(answer: ReservationAnswerRequest) {
   ].includes(normalized);
 }
 
+/**
+ * BookingDetail.status 는 booking-service 의 raw DB status (BookingStatus enum 10종) 일 수도,
+ * read-service 의 view-status 5종 (PENDING/CONFIRMED/COMPLETED/CANCELED_USER/CANCELED_VENDOR) 일
+ * 수도 있다. ADR-002 (2026-05-12) 자동 환불 정책 정합성 확인:
+ *   - REFUND_REQUESTED / CANCEL_REQUESTED → "처리 중" 의 PENDING 으로 표시
+ *   - CANCELLED / REFUNDED → 사용자 취소 계열
+ *   - REJECTED → 점주(또는 시스템 자동) 취소 계열
+ */
 function badgeForStatus(status: string) {
-  if (status === 'PENDING') {
+  if (status === 'PENDING' || status === 'PENDING_PAYMENT' || status === 'PENDING_APPROVAL') {
     return { className: 'res-detail__badge res-detail__badge--muted', text: '예약대기' };
   }
-  if (status === 'CONFIRMED') {
+  if (status === 'CONFIRMED' || status === 'PAID') {
     return { className: 'res-detail__badge res-detail__badge--blue', text: '예약확정' };
   }
   if (status === 'COMPLETED') {
     return { className: 'res-detail__badge res-detail__badge--blue', text: '이용완료' };
   }
-  if (status === 'CANCELED_USER') {
+  if (status === 'CANCEL_REQUESTED' || status === 'REFUND_REQUESTED') {
+    return { className: 'res-detail__badge res-detail__badge--muted', text: '환불 처리 중' };
+  }
+  if (status === 'CANCELED_USER' || status === 'CANCELLED' || status === 'REFUNDED') {
     return { className: 'res-detail__badge res-detail__badge--muted', text: '예약취소' };
   }
-  if (status === 'CANCELED_VENDOR') {
+  if (status === 'CANCELED_VENDOR' || status === 'REJECTED') {
     return { className: 'res-detail__badge res-detail__badge--muted', text: '업체예약취소' };
   }
   return { className: 'res-detail__badge res-detail__badge--muted', text: status };
 }
 
+/**
+ * ADR-002: 환불 정책 자동화 — 사용자 측 cancel = 즉시 정책 기반 자동 환불.
+ *   - PENDING / CONFIRMED / PAID : 사용자 취소(환불) 가능
+ *   - COMPLETED (예약 시작 시간 도래) : 환불 불가, 리뷰 작성 가능
+ *   - 그 외 (취소/거절/환불 진행 중) : 액션 없음
+ */
 function reservationAction(status: string): 'cancel' | 'review' | 'none' {
-  if (status === 'PENDING' || status === 'CONFIRMED') {
+  if (
+    status === 'PENDING' ||
+    status === 'PENDING_PAYMENT' ||
+    status === 'PENDING_APPROVAL' ||
+    status === 'CONFIRMED' ||
+    status === 'PAID'
+  ) {
     return 'cancel';
   }
   if (status === 'COMPLETED') {
@@ -497,7 +520,8 @@ export function ReservationDetailPage() {
             quoteId: cancelQuoteId ?? undefined,
           })
             .then(() => {
-              window.alert('예약취소에 성공했습니다.');
+              // ADR-002: 사용자 환불 자동화 — 점주 승인 단계 없이 즉시 환불 완료.
+              window.alert('환불이 완료되었습니다. 영업일 기준 3-5일 내 결제 수단으로 입금됩니다.');
               navigate('/my-reservations');
             })
             .catch((err) => {

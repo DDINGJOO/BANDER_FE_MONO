@@ -266,7 +266,7 @@ export function MyReservationsPage() {
         <div className="my-reservations">
           {cancelToast ? (
             <p className="my-reservations__flash" role="status">
-              취소 요청이 접수되었습니다. 실제 환불은 정책에 따라 처리됩니다.
+              환불이 완료되었습니다. 영업일 기준 3-5일 내 결제 수단으로 입금됩니다.
             </p>
           ) : null}
           <header className="my-reservations__header">
