@@ -18,6 +18,8 @@ export type CouponDownloadItem = {
   terms: readonly string[];
   usageSummary: string | null;
   valueMain: string;
+  /** BE 응답 — 이미 다운로드(claim)한 쿠폰. 모달에서 "보유중" 표시 + 다운로드 버튼 비활성화. */
+  claimed?: boolean;
 };
 
 export const COUPON_ITEMS: readonly CouponDownloadItem[] = [

@@ -13,6 +13,12 @@ export type CouponAvailableItemDto = {
   minPurchaseWon?: number | null;
   validUntilLabel?: string;
   spaceSlug?: string;
+  /**
+   * 현재 사용자가 이미 다운로드(claim)한 쿠폰 여부.
+   * 비로그인 호출이면 항상 false.
+   * status 무관 (USED/EXPIRED 도 true) — perUserLimit 재진입 차단용.
+   */
+  claimed: boolean;
 };
 
 /** GET /api/v1/coupons/available?spaceSlug= */

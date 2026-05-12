@@ -65,6 +65,7 @@ function toCouponViewItem(coupon: CouponAvailableItemDto): CouponDownloadItem {
     terms: coupon.validUntilLabel ? [`기한 : ${coupon.validUntilLabel}까지`] : [],
     usageSummary: coupon.spaceSlug ? '사용가능 : 현재 선택한 룸' : null,
     valueMain: coupon.discountLabel,
+    claimed: coupon.claimed,
   };
 }
 
@@ -118,7 +119,8 @@ export function CouponDownloadModal({
             <p className="space-reservation__coupon-state">다운로드 가능한 쿠폰이 없습니다.</p>
           ) : null}
           {!loading && !errorMessage ? couponItems.map((coupon) => {
-            const downloaded = downloadedCouponIds.includes(coupon.id);
+            // BE 응답 `claimed` (이 사용자가 이미 받은 쿠폰) 와 세션 내 로컬 다운로드 상태를 OR — perUserLimit 재진입 차단.
+            const downloaded = downloadedCouponIds.includes(coupon.id) || coupon.claimed === true;
             const selected = selectedCouponId === coupon.id;
             const actionDone = selectable ? selected : downloaded;
             const actionLabel = selectable

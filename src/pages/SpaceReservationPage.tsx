@@ -20,7 +20,7 @@ import {
   type SpaceAvailabilitySlot,
   type ReservationAnswerRequest,
 } from '../api/bookings';
-import type { SpaceReservationFieldDto } from '../api/spaces';
+import { fetchVendorDetail, type SpaceReservationFieldDto } from '../api/spaces';
 import { useSagaPolling } from '../hooks/useSagaPolling';
 import { isMockMode, getTossPaymentsClientKey } from '../config/publicEnv';
 import { requestTossPayment } from '../utils/tossPayments';
@@ -309,7 +309,7 @@ export function SpaceReservationPage() {
   const navigate = useNavigate();
   const { openGuestGate } = useGuestGate();
   const { slug } = useParams();
-  const { detail } = useSpaceDetail(slug);
+  const { detail, vendorSlug } = useSpaceDetail(slug);
   const [searchParams] = useSearchParams();
   const authSession = loadAuthSession();
   const isAuthenticated = Boolean(authSession);
@@ -503,7 +503,16 @@ export function SpaceReservationPage() {
     const controller = new AbortController();
     setCouponLoading(true);
     setCouponError(null);
-    getAvailableCoupons(slug, { signal: controller.signal })
+    // vendorSlug 가 있으면 owner user id 를 함께 fetch — BE 의 Coupon.issuerId 매칭용.
+    // 실패 시 PLATFORM 쿠폰만 노출 (다른 점주 쿠폰 회귀 차단).
+    const vendorIdPromise = vendorSlug
+      ? fetchVendorDetail(vendorSlug)
+          .then((dto) => dto.ownerUserId ?? null)
+          .catch(() => null)
+      : Promise.resolve<string | null>(null);
+
+    vendorIdPromise
+      .then((vendorId) => getAvailableCoupons(slug, vendorId, { signal: controller.signal }))
       .then((res) => setAvailableCoupons(res.coupons))
       .catch((error) => {
         if (!controller.signal.aborted) {
@@ -516,7 +525,7 @@ export function SpaceReservationPage() {
         }
       });
     return () => controller.abort();
-  }, [slug]);
+  }, [slug, vendorSlug]);
 
   const inferredAvailabilitySlotMinutes = useMemo(
     () => inferAvailabilitySlotMinutes(availabilitySlots),
@@ -636,6 +645,7 @@ export function SpaceReservationPage() {
           id: mockSelectedCoupon.id,
           title: mockSelectedCoupon.subtitle,
           discountLabel: mockSelectedCoupon.valueMain,
+          claimed: false,
         }
       : null);
   const couponDiscount = calculateCouponDiscount(selectedCoupon, subtotalPrice);

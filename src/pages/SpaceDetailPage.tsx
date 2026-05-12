@@ -228,7 +228,16 @@ export function SpaceDetailPage() {
     const controller = new AbortController();
     setCouponLoading(true);
     setCouponError(null);
-    getAvailableCoupons(slug, { signal: controller.signal })
+    // vendorSlug 가 있으면 owner user id 를 함께 fetch — BE 의 Coupon.issuerId 매칭용.
+    // 실패하면 vendorId 없이 호출 → BE 는 PLATFORM 쿠폰만 노출 (다른 점주 쿠폰 회귀 차단).
+    const vendorIdPromise = vendorSlug
+      ? fetchVendorDetail(vendorSlug)
+          .then((dto) => dto.ownerUserId ?? null)
+          .catch(() => null)
+      : Promise.resolve<string | null>(null);
+
+    vendorIdPromise
+      .then((vendorId) => getAvailableCoupons(slug, vendorId, { signal: controller.signal }))
       .then((response) => setAvailableCoupons(response.coupons))
       .catch((error) => {
         if (!controller.signal.aborted) {
@@ -241,7 +250,7 @@ export function SpaceDetailPage() {
         }
       });
     return () => controller.abort();
-  }, [slug]);
+  }, [slug, vendorSlug]);
 
   const handleDownloadCoupon = async (couponId: string) => {
     if (!isAuthenticated) {
