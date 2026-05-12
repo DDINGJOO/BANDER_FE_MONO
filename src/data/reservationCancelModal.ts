@@ -8,8 +8,12 @@ export const RESERVATION_CANCEL_NOTICE_DEFAULT: ReservationCancelNoticeRow[] = [
   { label: '최종 환불금액', value: '20,000원', emphasis: true },
 ];
 
+/**
+ * ADR-002 (2026-05-12) — 자동 환불 정책 적용 안내.
+ * 점주 승인 절차 없이 즉시 정책에 따라 자동 환불 처리됨을 명시.
+ */
 export const RESERVATION_CANCEL_ALERT_DEFAULT =
-  '취소 진행 전 취소 수수료와 총 환불 금액을 확인해 주세요.';
+  '예약 취소 시 환불 정책에 따라 즉시 자동 환불됩니다. 취소 수수료와 환불 금액을 확인해 주세요.';
 
 export const RESERVATION_CANCEL_LEAD_LINES: [string, string] = [
   '지금 예약 취소 시 ',

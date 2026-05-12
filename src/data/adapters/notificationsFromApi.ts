@@ -11,7 +11,15 @@ import type {
 
 const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
 
-/** type → icon. 현재 백엔드 enum은 전부 booking/payment/auth 계열이라 'bell'로 수렴. */
+/**
+ * type → icon. ADR-002 (자동 환불 정책) 적용:
+ *  - BOOKING_REFUND_COMPLETED / REFUND_COMPLETED : 환불 완료 (이전 REFUND_APPROVED 폐기)
+ *  - BOOKING_CANCELLED_BY_VENDOR : 점주 강제 취소
+ *  - BOOKING_AUTO_CANCELLED_BY_SYSTEM : 점주 미응답 시스템 자동 취소
+ *  - 폐기: REFUND_APPROVED, REFUND_REJECTED, BOOKING_REFUND_APPROVED, BOOKING_REFUND_REJECTED
+ *
+ * 현재 백엔드 enum 은 전부 booking/payment/auth 계열이라 'bell' 로 수렴.
+ */
 export function iconForNotificationType(type: string): NotificationIconKindDto {
   if (type.startsWith('BOOKING_')) return 'bell';
   if (type.startsWith('PAYMENT_') || type.startsWith('REFUND_')) return 'bell';
