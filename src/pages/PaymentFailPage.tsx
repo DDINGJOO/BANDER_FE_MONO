@@ -1,11 +1,15 @@
 import React, { useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { cancelSagaPayment } from '../api/bookings';
+import { cancelReservationCheckout, cancelSagaPayment, getReservationCheckout } from '../api/bookings';
 import { HomeHeader } from '../components/home/HomeHeader';
 import { ErrorIcon } from '../components/shared/Icons';
 import { loadAuthSession } from '../data/authSession';
 import { paymentFailureFromSearchParams, roomDetailPathFromPaymentContext } from '../utils/paymentFailure';
 import '../styles/payment-result.css';
+
+function checkoutStepKey(checkoutId: string, step: string) {
+  return `web:${checkoutId}:${step}`;
+}
 
 export function PaymentFailPage() {
   const navigate = useNavigate();
@@ -17,8 +21,31 @@ export function PaymentFailPage() {
   const roomDetailPath = roomDetailPathFromPaymentContext(searchParams);
 
   useEffect(() => {
+    const checkoutId = sessionStorage.getItem('bander_pending_checkout_id');
     const sagaId = sessionStorage.getItem('bander_pending_saga_id');
+    if (checkoutId) {
+      void (async () => {
+        const storedRevision = Number(sessionStorage.getItem('bander_pending_checkout_revision'));
+        const revision = Number.isSafeInteger(storedRevision) && storedRevision > 0
+          ? storedRevision
+          : (await getReservationCheckout(checkoutId)).revision;
+        await cancelReservationCheckout(
+          checkoutId,
+          revision,
+          checkoutStepKey(checkoutId, `fail:${failure.code ?? 'USER_CANCEL'}`),
+        );
+      })().catch(() => {
+        // best-effort cleanup: keep the fail page usable even if rollback request fails
+      }).finally(() => {
+        sessionStorage.removeItem('bander_pending_checkout_id');
+        sessionStorage.removeItem('bander_pending_checkout_revision');
+        sessionStorage.removeItem('bander_pending_saga_id');
+        sessionStorage.removeItem('bander_pending_booking_id');
+      });
+      return;
+    }
     if (!sagaId) {
+      sessionStorage.removeItem('bander_pending_checkout_revision');
       sessionStorage.removeItem('bander_pending_booking_id');
       return;
     }
@@ -31,6 +58,7 @@ export function PaymentFailPage() {
     }).finally(() => {
       sessionStorage.removeItem('bander_pending_saga_id');
       sessionStorage.removeItem('bander_pending_booking_id');
+      sessionStorage.removeItem('bander_pending_checkout_revision');
     });
   }, [failure.code, failure.message]);
 

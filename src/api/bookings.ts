@@ -1,4 +1,4 @@
-import { ApiError, getJson, postJson } from './client';
+import { ApiError, getJson, postJson, requestJson } from './client';
 import { getApiBaseUrl } from '../config/publicEnv';
 
 // --- Types ---
@@ -154,6 +154,108 @@ export type CancelSagaPaymentRequest = {
   errorMessage?: string;
 };
 
+// --- Reservation checkout (payment saga) types ---
+
+export type ReservationCheckoutState =
+  | 'STARTING'
+  | 'SLOT_HELD'
+  | 'BOOKING_MODIFYING'
+  | 'BOOKING_MODIFY_FAILED'
+  | 'COUPON_APPLYING'
+  | 'COUPON_HELD'
+  | 'COUPON_FAILED'
+  | 'PRE_PAYMENT_CHECKING'
+  | 'PRE_PAYMENT_READY'
+  | 'PRE_PAYMENT_CHECK_FAILED'
+  | 'BOOKING_CREATING'
+  | 'BOOKING_READY'
+  | 'PAYMENT_CREATING'
+  | 'PAYMENT_READY'
+  | 'PAYMENT_CONFIRMING'
+  | 'PAYMENT_APPROVED'
+  | 'PAYMENT_FAILED'
+  | 'FINALIZING'
+  | 'COMPLETED'
+  | 'CANCELLING'
+  | 'EXPIRED';
+
+export type ReservationCheckoutItemRef = {
+  itemId: string;
+  quantity?: number;
+};
+
+export type StartReservationCheckoutRequest = {
+  roomId: string;
+  startsAt: string;
+  endsAt: string;
+  items?: ReservationCheckoutItemRef[];
+  basePriceWon?: number;
+  reservationAnswers?: ReservationAnswerRequest[];
+};
+
+export type StartReservationCheckoutResponse = {
+  reservationId: string;
+  sagaId: string;
+  businessDeadlineAt: string;
+};
+
+export type ReservationCheckoutSession = {
+  checkoutId: string;
+  sagaId: string;
+  userId: string;
+  state: ReservationCheckoutState;
+  revision: number;
+  roomId: string;
+  startsAt: string;
+  endsAt: string;
+  basePriceWon: number | null;
+  appliedAmountWon: number | null;
+  businessDeadlineAt: string | null;
+  bookingReservationId: string | null;
+  bookingVersion: number | null;
+  bookingId: number | null;
+  bookingOrderId: string | null;
+  bookingFailureReason: string | null;
+  prePaymentFailureReason: string | null;
+  prePaymentCheckedAt: string | null;
+  prePaymentPointVerifiedAt: string | null;
+  paymentId: number | null;
+  paymentOrderId: string | null;
+  paymentAmountWon: number | null;
+  paymentStartedAt: string | null;
+  paymentMethod: string | null;
+  paymentApprovedAt: string | null;
+  paymentFailureReason: string | null;
+  finalizationStartedAt: string | null;
+  bookingPaidAt: string | null;
+  roomTimeSlotConfirmedAt: string | null;
+  couponConfirmedAt: string | null;
+  pointConfirmedAt: string | null;
+  reservationCompletedAt: string | null;
+  couponState: string | null;
+  couponOwnedId: number | null;
+  pendingCouponOwnedId: number | null;
+  discountAmountWon: number | null;
+  couponFailureReason: string | null;
+};
+
+export type ApplyReservationCouponRequest = {
+  couponOwnedId: number;
+  expectedRevision: number;
+};
+
+export type StartCheckoutStepRequest = {
+  expectedRevision: number;
+};
+
+export type ConfirmReservationPaymentRequest = {
+  paymentKey: string;
+  orderId: string;
+  amount: number;
+  amountWon?: number;
+  expectedRevision: number;
+};
+
 // --- Functions ---
 
 type ApiResponseEnvelope<T> = {
@@ -224,6 +326,90 @@ export function confirmSagaPayment(sagaId: string, req: ConfirmPaymentRequest) {
 
 export function cancelSagaPayment(sagaId: string, req: CancelSagaPaymentRequest = {}) {
   return postJson<ConfirmSagaPaymentResponse>(`/api/v1/orchestrator/sagas/${sagaId}/cancel-payment`, req);
+}
+
+function idempotencyHeaders(idempotencyKey?: string): HeadersInit | undefined {
+  return idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : undefined;
+}
+
+export function startReservationCheckout(req: StartReservationCheckoutRequest) {
+  return postJson<StartReservationCheckoutResponse>('/api/v1/reservations/start', req);
+}
+
+export function getReservationCheckout(checkoutId: string, options?: { signal?: AbortSignal }) {
+  return getJson<ReservationCheckoutSession>(
+    `/api/v1/reservations/${encodeURIComponent(checkoutId)}`,
+    options
+  );
+}
+
+export function applyReservationCoupon(
+  checkoutId: string,
+  req: ApplyReservationCouponRequest,
+  idempotencyKey?: string,
+) {
+  return requestJson<ReservationCheckoutSession>(`/api/v1/reservations/${encodeURIComponent(checkoutId)}/coupon`, {
+    body: JSON.stringify(req),
+    headers: idempotencyHeaders(idempotencyKey),
+    method: 'POST',
+  });
+}
+
+export function startReservationPrePaymentCheck(
+  checkoutId: string,
+  req: StartCheckoutStepRequest,
+  idempotencyKey?: string,
+) {
+  return requestJson<ReservationCheckoutSession>(
+    `/api/v1/reservations/${encodeURIComponent(checkoutId)}/pre-payment-check`,
+    {
+      body: JSON.stringify(req),
+      headers: idempotencyHeaders(idempotencyKey),
+      method: 'POST',
+    }
+  );
+}
+
+export function startReservationPayment(
+  checkoutId: string,
+  req: StartCheckoutStepRequest,
+  idempotencyKey?: string,
+) {
+  return requestJson<ReservationCheckoutSession>(`/api/v1/reservations/${encodeURIComponent(checkoutId)}/payment`, {
+    body: JSON.stringify(req),
+    headers: idempotencyHeaders(idempotencyKey),
+    method: 'POST',
+  });
+}
+
+export function confirmReservationPayment(
+  checkoutId: string,
+  req: ConfirmReservationPaymentRequest,
+  idempotencyKey?: string,
+) {
+  return requestJson<ReservationCheckoutSession>(
+    `/api/v1/reservations/${encodeURIComponent(checkoutId)}/payment/confirm`,
+    {
+      body: JSON.stringify(req),
+      headers: idempotencyHeaders(idempotencyKey),
+      method: 'POST',
+    }
+  );
+}
+
+export function cancelReservationCheckout(
+  checkoutId: string,
+  expectedRevision: number,
+  idempotencyKey?: string,
+) {
+  const query = new URLSearchParams({ expectedRevision: String(expectedRevision) });
+  return requestJson<ReservationCheckoutSession>(
+    `/api/v1/reservations/${encodeURIComponent(checkoutId)}?${query.toString()}`,
+    {
+      headers: idempotencyHeaders(idempotencyKey),
+      method: 'DELETE',
+    }
+  );
 }
 
 export function getBookingDetail(bookingId: number | string) {

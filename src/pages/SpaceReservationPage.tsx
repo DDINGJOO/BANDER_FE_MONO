@@ -13,15 +13,18 @@ import { useCouponDownloads } from '../hooks/useCouponDownloads';
 import { useSpaceDetail } from '../hooks/useSpaceDetail';
 import { getAvailableCoupons } from '../api/coupons';
 import {
-  cancelSagaPayment,
+  applyReservationCoupon,
+  cancelReservationCheckout,
   getSpaceAvailability,
-  createBooking,
-  type BookingCommandResponse,
+  getReservationCheckout,
   type SpaceAvailabilitySlot,
   type ReservationAnswerRequest,
+  type ReservationCheckoutSession,
+  startReservationCheckout,
+  startReservationPayment,
+  startReservationPrePaymentCheck,
 } from '../api/bookings';
 import { fetchVendorDetail, type SpaceReservationFieldDto } from '../api/spaces';
-import { useSagaPolling } from '../hooks/useSagaPolling';
 import { isMockMode, getTossPaymentsClientKey } from '../config/publicEnv';
 import { requestTossPayment } from '../utils/tossPayments';
 import { DEFAULT_PAYMENT_FAILURE, normalizePaymentFailure, type PaymentFailureInfo } from '../utils/paymentFailure';
@@ -106,6 +109,45 @@ function buildPaymentRedirectUrl(path: '/payment/success' | '/payment/fail', par
   }
   url.searchParams.set('date', params.date);
   return url.toString();
+}
+
+const CHECKOUT_POLL_INTERVAL_MS = 800;
+const CHECKOUT_PREPARE_MAX_ATTEMPTS = 90;
+
+const CHECKOUT_FAILURE_STATES = new Set([
+  'BOOKING_MODIFY_FAILED',
+  'COUPON_FAILED',
+  'PRE_PAYMENT_CHECK_FAILED',
+  'PAYMENT_FAILED',
+  'CANCELLING',
+  'EXPIRED',
+]);
+
+function checkoutStepKey(checkoutId: string, step: string) {
+  return `web:${checkoutId}:${step}`;
+}
+
+function delay(ms: number) {
+  return new Promise((resolve) => {
+    window.setTimeout(resolve, ms);
+  });
+}
+
+function checkoutFailure(session: ReservationCheckoutSession, fallback = '예약 처리에 실패했습니다.') {
+  return paymentFlowError(
+    session.state,
+    session.paymentFailureReason ||
+      session.prePaymentFailureReason ||
+      session.bookingFailureReason ||
+      session.couponFailureReason ||
+      fallback,
+  );
+}
+
+function paymentFlowError(code: string, message: string) {
+  const error = new Error(message) as Error & { code: string };
+  error.code = code;
+  return error;
 }
 
 function startOfLocalDay(date = new Date()) {
@@ -329,11 +371,10 @@ export function SpaceReservationPage() {
   const [selectedCouponId, setSelectedCouponId] = useState<string | null>(null);
   const [couponLoading, setCouponLoading] = useState(false);
   const [couponError, setCouponError] = useState<string | null>(null);
-  const { downloadCoupon, downloadedCouponIds, downloadError } = useCouponDownloads();
+  const { downloadCoupon, downloadedCouponIds, downloadError, ownedCoupons, refreshOwnedCoupons } = useCouponDownloads();
   const [paymentResult, setPaymentResult] = useState<PaymentResultState>(null);
   const [paymentFailure, setPaymentFailure] = useState<PaymentFailureInfo>(DEFAULT_PAYMENT_FAILURE);
-  const [sagaId, setSagaId] = useState<string | null>(null);
-  const [sagaPending, setSagaPending] = useState(false);
+  const [checkoutPending, setCheckoutPending] = useState(false);
   // success 가 한번 set 되면 failed 로 덮어쓰기 거부. 토스 SDK 의 redirect-induced
   // reject 와 saga COMPLETED 가 동시에 도착할 때 발생하던 "실패→성공" 깜빡임 차단.
   // null 로의 전환 (모달 닫기) 은 허용. SDK 진짜 오류는 success 가 아직 set 되지
@@ -362,9 +403,6 @@ export function SpaceReservationPage() {
     }, 2500);
     return () => window.clearTimeout(timer);
   }, [paymentResult]);
-  // Guard: once the saga polling response surfaces orderId/amount/customerKey,
-  // we open the Toss SDK exactly once. Polling continues until COMPLETED.
-  const tossLaunchedRef = useRef(false);
   const [canScrollTimelineNext, setCanScrollTimelineNext] = useState(true);
   const [canScrollTimelinePrev, setCanScrollTimelinePrev] = useState(false);
   const [selectedOptionCounts, setSelectedOptionCounts] = useState<Record<string, number>>({
@@ -691,7 +729,8 @@ export function SpaceReservationPage() {
     requiredAgreementsChecked &&
     requiredReservationFieldsFilled &&
     selectedTimes.length > 0 &&
-    (isMockMode() || Boolean(roomId));
+    (isMockMode() || Boolean(roomId)) &&
+    !checkoutPending;
   const modalRoot = typeof document !== 'undefined' ? document.body : null;
   const couponCount = isMockMode() ? COUPON_ITEMS.length : availableCoupons.length;
 
@@ -832,6 +871,56 @@ export function SpaceReservationPage() {
     }, 220);
   };
 
+  const buildReservationItemPayload = () =>
+    RESERVATION_OPTION_ITEMS
+      .map((item) => ({
+        itemId: item.key,
+        quantity: selectedOptionCounts[item.key] ?? 0,
+      }))
+      .filter((item) => item.quantity > 0);
+
+  const numericOwnedCouponId = (ownedCouponId?: string | null) => {
+    const value = Number(ownedCouponId);
+    return Number.isSafeInteger(value) && value > 0 ? value : null;
+  };
+
+  const resolveSelectedCouponOwnedId = async () => {
+    if (!selectedCouponId) {
+      return null;
+    }
+    const ownedFromState = numericOwnedCouponId(
+      ownedCoupons.find((coupon) => coupon.couponId === selectedCouponId)?.id
+    );
+    if (ownedFromState) {
+      return ownedFromState;
+    }
+    const claimedId = numericOwnedCouponId(await downloadCoupon(selectedCouponId));
+    if (claimedId) {
+      return claimedId;
+    }
+    const refreshed = await refreshOwnedCoupons();
+    return numericOwnedCouponId(refreshed.find((coupon) => coupon.couponId === selectedCouponId)?.id);
+  };
+
+  const waitForCheckoutSession = async (
+    checkoutId: string,
+    isReady: (session: ReservationCheckoutSession) => boolean,
+    timeoutMessage: string,
+    maxAttempts = CHECKOUT_PREPARE_MAX_ATTEMPTS,
+  ) => {
+    for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+      const session = await getReservationCheckout(checkoutId);
+      if (CHECKOUT_FAILURE_STATES.has(session.state)) {
+        throw checkoutFailure(session);
+      }
+      if (isReady(session)) {
+        return session;
+      }
+      await delay(CHECKOUT_POLL_INTERVAL_MS);
+    }
+    throw paymentFlowError('PAYMENT_TIMEOUT', timeoutMessage);
+  };
+
   const handlePaymentSubmit = async () => {
     if (!canSubmitPayment || selectedSlotDetails.length === 0) return;
 
@@ -844,163 +933,127 @@ export function SpaceReservationPage() {
       setSelectedTimes((current) => current.filter((label) => !isReservationSlotInPast(dateParam, label)));
       return;
     }
+    if (couponMinPurchaseWarning) {
+      showPaymentFailure({ code: 'COUPON_MIN_PURCHASE', message: couponMinPurchaseWarning });
+      return;
+    }
+    if (totalPrice <= 0) {
+      showPaymentFailure({
+        code: 'BELOW_MINIMUM_AMOUNT',
+        message: '0원 결제는 아직 지원하지 않습니다. 쿠폰을 변경한 뒤 다시 시도해주세요.',
+      });
+      return;
+    }
+
     const firstSlot = selectedSlotDetails[0];
     const lastSlot = selectedSlotDetails[selectedSlotDetails.length - 1];
     const startsAt = slotLabelToIso(dateParam, firstSlot.label);
     const endsAt = slotLabelToIso(dateParam, lastSlot.endLabel);
+    let checkoutId: string | null = null;
+    let latestSession: ReservationCheckoutSession | null = null;
 
+    setCheckoutPending(true);
     try {
-      const result = await createBooking({
+      const started = await startReservationCheckout({
         roomId: roomId ?? '',
         startsAt,
         endsAt,
-        couponId: selectedCouponId ?? undefined,
-        totalPrice: subtotalPrice,
+        items: buildReservationItemPayload(),
+        basePriceWon: subtotalPrice,
         reservationAnswers: buildReservationAnswerPayload(),
       });
-
-      if (result.kind === 'saga') {
-        // canary path: orchestrator returned 202 + sagaId. Polling handles the rest.
-        tossLaunchedRef.current = false;
-        sessionStorage.setItem('bander_pending_saga_id', result.saga.sagaId);
-        setSagaId(result.saga.sagaId);
-        setSagaPending(true);
-        return;
-      }
-
-      await proceedWithLegacyBooking(result.booking);
-    } catch (error) {
-      // saga lane 으로 갔다가 후처리 단계에서 throw 시 saga 는 이미 background 에서
-      // 진행 중일 수 있음. saga COMPLETED 가 도착해 success 로 set 된 뒤 이 catch 가
-      // failed 로 덮어쓰면 깜빡임 발생. setPaymentResultSafe 로 success-우선 guard 적용.
-      showPaymentFailure(error, '예약을 생성하지 못했습니다. 입력한 예약 정보를 다시 확인해주세요.');
-    }
-  };
-
-  const proceedWithLegacyBooking = async (booking: BookingCommandResponse) => {
-    const paidAmount = Number(booking.paidAmount ?? booking.totalPrice);
-
-    if (paidAmount <= 0) {
-      setPaymentResult('success');
-      return;
-    }
-
-    const clientKey = getTossPaymentsClientKey();
-    if (!clientKey || !booking.orderId) {
-      showPaymentFailure({ code: 'PAYMENT_CONFIG_MISSING' });
-      return;
-    }
-
-    sessionStorage.setItem('bander_pending_booking_id', booking.bookingId);
-    sessionStorage.removeItem('bander_pending_saga_id');
-    sessionStorage.setItem('bander_pending_room_slug', slug ?? '');
-    sessionStorage.setItem('bander_pending_room_id', roomId ?? '');
-
-    try {
-      await requestTossPayment({
-        clientKey,
-        orderId: booking.orderId,
-        orderName: reservationSummary.title + ' 예약',
-        amount: paidAmount,
-        successUrl: buildPaymentRedirectUrl('/payment/success', { date: dateParam, roomId, slug }),
-        failUrl: buildPaymentRedirectUrl('/payment/fail', { date: dateParam, roomId, slug }),
-      });
-    } catch (error) {
-      showPaymentFailure(error);
-    }
-  };
-
-  const sagaState = useSagaPolling(sagaPending ? sagaId : null);
-
-  useEffect(() => {
-    if (!sagaPending) return;
-
-    // PR-2.8a: when the saga polling response first exposes orderId + amount,
-    // launch the Toss SDK once. paymentId is not required on the client path;
-    // waiting for it can deadlock the UI if the backend only surfaces orderId/customerKey first.
-    const data = sagaState.data;
-    if (data?.bookingId) {
-      sessionStorage.setItem('bander_pending_booking_id', data.bookingId);
-    }
-    if (
-      !tossLaunchedRef.current &&
-      data?.orderId &&
-      typeof data.amount === 'number' &&
-      data.amount > 0
-    ) {
-      tossLaunchedRef.current = true;
-      const clientKey = getTossPaymentsClientKey();
-      if (!clientKey) {
-        // saga 가 이미 진행되어 server-side 에서 결제 완료된 후 polling 의 다음 tick
-        // 에서 success 가 set 될 가능성. setPaymentResultSafe 로 깜빡임 방지.
-        setSagaPending(false);
-        showPaymentFailure({ code: 'PAYMENT_CONFIG_MISSING' });
-        return;
-      }
+      checkoutId = started.reservationId;
+      sessionStorage.setItem('bander_pending_checkout_id', checkoutId);
+      sessionStorage.removeItem('bander_pending_booking_id');
+      sessionStorage.removeItem('bander_pending_saga_id');
       sessionStorage.setItem('bander_pending_room_slug', slug ?? '');
       sessionStorage.setItem('bander_pending_room_id', roomId ?? '');
-      void requestTossPayment({
+
+      latestSession = await waitForCheckoutSession(
+        checkoutId,
+        (session) => session.state !== 'STARTING' && Boolean(session.bookingReservationId),
+        '예약 시간이 확정되지 않았습니다. 잠시 후 다시 시도해주세요.',
+      );
+
+      if (selectedCouponId) {
+        const couponOwnedId = await resolveSelectedCouponOwnedId();
+        if (!couponOwnedId) {
+          throw paymentFlowError('COUPON_REQUIRED', '선택한 쿠폰을 확인하지 못했습니다. 쿠폰을 다시 선택해주세요.');
+        }
+        latestSession = await applyReservationCoupon(
+          checkoutId,
+          { couponOwnedId, expectedRevision: latestSession.revision },
+          checkoutStepKey(checkoutId, 'coupon-apply'),
+        );
+        latestSession = await waitForCheckoutSession(
+          checkoutId,
+          (session) => session.couponOwnedId === couponOwnedId && session.couponState === 'HELD',
+          '쿠폰 적용이 지연되고 있습니다. 잠시 후 다시 시도해주세요.',
+        );
+      }
+
+      latestSession = await startReservationPrePaymentCheck(
+        checkoutId,
+        { expectedRevision: latestSession.revision },
+        checkoutStepKey(checkoutId, 'pre-payment-check'),
+      );
+      latestSession = await waitForCheckoutSession(
+        checkoutId,
+        (session) => session.state === 'PRE_PAYMENT_READY',
+        '결제 전 예약 검증이 지연되고 있습니다. 잠시 후 다시 시도해주세요.',
+      );
+
+      latestSession = await startReservationPayment(
+        checkoutId,
+        { expectedRevision: latestSession.revision },
+        checkoutStepKey(checkoutId, 'booking-create'),
+      );
+      latestSession = await waitForCheckoutSession(
+        checkoutId,
+        (session) => ['BOOKING_READY', 'PAYMENT_CREATING', 'PAYMENT_READY'].includes(session.state),
+        '예약 생성이 지연되고 있습니다. 잠시 후 다시 시도해주세요.',
+      );
+
+      if (latestSession.state === 'BOOKING_READY') {
+        latestSession = await startReservationPayment(
+          checkoutId,
+          { expectedRevision: latestSession.revision },
+          checkoutStepKey(checkoutId, 'payment-create'),
+        );
+      }
+      latestSession = await waitForCheckoutSession(
+        checkoutId,
+        (session) => session.state === 'PAYMENT_READY' && Boolean(session.paymentOrderId) && Boolean(session.paymentAmountWon),
+        '결제 준비가 지연되고 있습니다. 잠시 후 다시 시도해주세요.',
+      );
+
+      const clientKey = getTossPaymentsClientKey();
+      if (!clientKey || !latestSession.paymentOrderId || !latestSession.paymentAmountWon) {
+        throw paymentFlowError('PAYMENT_CONFIG_MISSING', '결제 설정이 아직 준비되지 않았습니다. 관리자에게 문의해주세요.');
+      }
+
+      sessionStorage.setItem('bander_pending_checkout_revision', String(latestSession.revision));
+      await requestTossPayment({
         clientKey,
-        orderId: data.orderId,
+        orderId: latestSession.paymentOrderId,
         orderName: reservationSummary.title + ' 예약',
-        amount: data.amount,
-        customerKey: data.customerKey,
+        amount: latestSession.paymentAmountWon,
         successUrl: buildPaymentRedirectUrl('/payment/success', { date: dateParam, roomId, slug }),
         failUrl: buildPaymentRedirectUrl('/payment/fail', { date: dateParam, roomId, slug }),
-      }).catch((err) => {
-        // 토스 SDK reject 는 두 가지 흐름이 섞임:
-        //   (1) 결제 완료 후 successUrl 로 redirect 직전 (server-side saga 가 곧
-        //       COMPLETED 로 진행됨) — 여기서 failed 를 set 하면 redirect 직전에
-        //       "실패" 가 잠깐 보이고 곧 success 가 덮어써 깜빡임 발생.
-        //   (2) 진짜 오류 (USER_CANCEL / SDK init 실패 / network down 등) — 이
-        //       경우 saga 는 widget 결과를 기다리다가 timeout(15분) 까지 무한
-        //       대기. 여기서 failed 를 set 하지 않으면 사용자는 빈 화면.
-        // 두 흐름 모두 안전하게 처리하기 위해 (a) failed 를 set 하되 (b) 아래
-        // setPaymentResultSafe 의 success-우선 guard 가 깜빡임을 흡수한다 —
-        // saga 가 먼저 COMPLETED 를 받아 success 가 set 됐다면 이 failed 는 거부됨.
-        // eslint-disable-next-line no-console
-        console.warn('[toss] requestPayment rejected', err);
-        if (sagaId) {
-          void cancelSagaPayment(sagaId, {
-            errorCode: 'USER_CANCEL',
-            errorMessage: err instanceof Error ? err.message : 'payment request cancelled',
-          }).catch(() => {
-            // best-effort compensation: UI should still unblock even if rollback call fails
-          });
-        }
-        sessionStorage.removeItem('bander_pending_saga_id');
-        sessionStorage.removeItem('bander_pending_booking_id');
-        setSagaPending(false);
-        showPaymentFailure(err);
       });
-    }
-
-    if (sagaState.timedOut) {
-      setSagaPending(false);
-      showPaymentFailure({ code: 'PAYMENT_TIMEOUT' });
-      return;
-    }
-    if (sagaState.status === 'COMPLETED') {
-      setSagaPending(false);
-      if (data?.bookingId) {
-        sessionStorage.setItem('bander_pending_booking_id', data.bookingId);
+    } catch (error) {
+      if (checkoutId && latestSession) {
+        void cancelReservationCheckout(
+          checkoutId,
+          latestSession.revision,
+          checkoutStepKey(checkoutId, 'client-abort'),
+        ).catch(() => undefined);
       }
-      sessionStorage.removeItem('bander_pending_saga_id');
-      // orchestrator path completes payment server-side via PaymentService;
-      // surface success directly without driving toss-payments client SDK.
-      setPaymentResult('success');
-      return;
+      showPaymentFailure(error, '예약을 생성하지 못했습니다. 입력한 예약 정보를 다시 확인해주세요.');
+    } finally {
+      setCheckoutPending(false);
     }
-    if (sagaState.status === 'FAILED') {
-      setSagaPending(false);
-      showPaymentFailure({ code: data?.errorCode ?? 'PROVIDER_ERROR' });
-      return;
-    }
-    if (sagaState.status === 'COMPENSATED') {
-      setSagaPending(false);
-      showPaymentFailure({ code: data?.errorCode ?? 'USER_CANCEL' });
-    }
-  }, [dateParam, roomId, sagaId, sagaPending, sagaState.status, sagaState.timedOut, sagaState.data, reservationSummary.title, showPaymentFailure, slug]);
+  };
 
   const handleDownloadCoupon = async (couponId: string) => {
     if (!isAuthenticated) {
@@ -1469,18 +1522,14 @@ export function SpaceReservationPage() {
         title={`적용 가능 쿠폰 ${couponCount}`}
       />
 
-      {sagaPending && modalRoot
+      {checkoutPending && modalRoot
         ? createPortal(
             <div className="space-reservation__modal" role="dialog" aria-live="polite">
               <div className="space-reservation__modal-backdrop" />
               <div className="space-reservation__result-dialog">
-                <h2>
-                  {sagaState.status === 'COMPENSATING' ? '취소 처리 중...' : '결제 준비 중...'}
-                </h2>
+                <h2>결제 준비 중...</h2>
                 <p className="space-reservation__result-desc">
-                  {sagaState.status === 'COMPENSATING'
-                    ? '예약을 안전하게 취소하고 있습니다.'
-                    : '잠시만 기다려주세요. 예약을 처리하고 있습니다.'}
+                  잠시만 기다려주세요. 예약을 처리하고 있습니다.
                 </p>
               </div>
             </div>,
@@ -1489,11 +1538,11 @@ export function SpaceReservationPage() {
         : null}
 
       {/* 결과 모달 mount 조건:
-          1. sagaPending=true 인 동안 차단 (saga 진행 중 결과 모달 X)
+          1. checkoutPending=true 인 동안 차단 (checkout 진행 중 결과 모달 X)
           2. paymentResultDisplayed 사용. paymentResult 의 2.5s failure debounce 값.
              failed 가 먼저, success 가 늦게 도착해도 최종값만 mount 되어
              깜빡임 흡수. */}
-      {paymentResultDisplayed && !sagaPending && modalRoot
+      {paymentResultDisplayed && !checkoutPending && modalRoot
         ? createPortal(
             <div className="space-reservation__modal">
               <div className="space-reservation__modal-backdrop" onClick={() => setPaymentResult(null)} />

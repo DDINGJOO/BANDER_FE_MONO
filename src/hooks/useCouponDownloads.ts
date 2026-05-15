@@ -36,15 +36,16 @@ export function useCouponDownloads() {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(downloadedCouponIds));
   }, [downloadedCouponIds]);
 
-  const refreshOwnedCoupons = useCallback(async (options?: { signal?: AbortSignal }) => {
+  const refreshOwnedCoupons = useCallback(async (options?: { signal?: AbortSignal }): Promise<OwnedCouponItemDto[]> => {
     if (isMockMode() || !loadAuthSession()) {
-      return;
+      return [];
     }
     setLoadingOwnedCoupons(true);
     try {
       const response = await getMyCoupons(options);
       setOwnedCoupons(response.items);
       setDownloadedCouponIds(response.items.map((item) => item.couponId));
+      return response.items;
     } finally {
       setLoadingOwnedCoupons(false);
     }
@@ -56,22 +57,23 @@ export function useCouponDownloads() {
     return () => controller.abort();
   }, [refreshOwnedCoupons]);
 
-  const downloadCoupon = useCallback(async (id: string) => {
+  const downloadCoupon = useCallback(async (id: string): Promise<string | null> => {
     setDownloadError(null);
     if (isMockMode()) {
       setDownloadedCouponIds((prev) => (prev.includes(id) ? prev : [...prev, id]));
       showToast({ message: '쿠폰을 받았어요.', type: 'success' });
-      return;
+      return id;
     }
     try {
-      await claimCoupon(id);
+      const claimed = await claimCoupon(id);
       await refreshOwnedCoupons();
       showToast({ message: '쿠폰을 받았어요.', type: 'success' });
+      return claimed.ownedCouponId;
     } catch (error) {
       if (error instanceof ApiError && error.code === 'COUPON-002') {
-        await refreshOwnedCoupons();
+        const items = await refreshOwnedCoupons();
         showToast({ message: error.message || '이미 발급된 쿠폰입니다.', type: 'info' });
-        return;
+        return items.find((item) => item.couponId === id)?.id ?? null;
       }
       const message = error instanceof Error ? error.message : '쿠폰 다운로드에 실패했습니다.';
       setDownloadError(message);

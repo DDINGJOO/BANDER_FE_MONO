@@ -1,5 +1,10 @@
 import { ApiError } from './client';
-import { createBooking } from './bookings';
+import {
+  applyReservationCoupon,
+  cancelReservationCheckout,
+  createBooking,
+  startReservationCheckout,
+} from './bookings';
 
 describe('createBooking discriminated union', () => {
   const originalFetch = global.fetch;
@@ -94,5 +99,85 @@ describe('createBooking discriminated union', () => {
     await expect(
       createBooking({ roomId: 'r-1', startsAt: 's', endsAt: 'e' }),
     ).rejects.toBeInstanceOf(ApiError);
+  });
+
+  it('starts reservation checkout through the public reservation gateway path', async () => {
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse(200, {
+        success: true,
+        data: {
+          reservationId: 'checkout-1',
+          sagaId: 'saga-1',
+          businessDeadlineAt: '2026-05-15T10:30:00+09:00',
+        },
+      }),
+    );
+
+    const result = await startReservationCheckout({
+      roomId: '101',
+      startsAt: '2026-05-15T10:00:00+09:00',
+      endsAt: '2026-05-15T11:00:00+09:00',
+      basePriceWon: 10000,
+    });
+
+    expect(result.reservationId).toBe('checkout-1');
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining('/api/v1/reservations/start'),
+      expect.objectContaining({
+        body: expect.stringContaining('"basePriceWon":10000'),
+        method: 'POST',
+      }),
+    );
+  });
+
+  it('applies reservation coupon with an idempotency key', async () => {
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse(200, {
+        success: true,
+        data: {
+          checkoutId: 'checkout-1',
+          sagaId: 'saga-1',
+          userId: '1',
+          state: 'COUPON_APPLYING',
+          revision: 3,
+          roomId: '101',
+          startsAt: '2026-05-15T10:00:00+09:00',
+          endsAt: '2026-05-15T11:00:00+09:00',
+        },
+      }),
+    );
+
+    await applyReservationCoupon('checkout-1', { couponOwnedId: 77, expectedRevision: 2 }, 'idem-coupon');
+
+    const [, init] = fetchMock.mock.calls[0];
+    expect(fetchMock.mock.calls[0][0]).toContain('/api/v1/reservations/checkout-1/coupon');
+    expect((init as RequestInit).method).toBe('POST');
+    expect((init as RequestInit).body).toBe(JSON.stringify({ couponOwnedId: 77, expectedRevision: 2 }));
+    expect(new Headers((init as RequestInit).headers).get('Idempotency-Key')).toBe('idem-coupon');
+  });
+
+  it('cancels reservation checkout with expected revision and idempotency key', async () => {
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse(200, {
+        success: true,
+        data: {
+          checkoutId: 'checkout-1',
+          sagaId: 'saga-1',
+          userId: '1',
+          state: 'CANCELLING',
+          revision: 4,
+          roomId: '101',
+          startsAt: '2026-05-15T10:00:00+09:00',
+          endsAt: '2026-05-15T11:00:00+09:00',
+        },
+      }),
+    );
+
+    await cancelReservationCheckout('checkout-1', 3, 'idem-cancel');
+
+    const [, init] = fetchMock.mock.calls[0];
+    expect(fetchMock.mock.calls[0][0]).toContain('/api/v1/reservations/checkout-1?expectedRevision=3');
+    expect((init as RequestInit).method).toBe('DELETE');
+    expect(new Headers((init as RequestInit).headers).get('Idempotency-Key')).toBe('idem-cancel');
   });
 });

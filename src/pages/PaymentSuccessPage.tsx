@@ -1,6 +1,13 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { confirmPayment, confirmSagaPayment, getSagaStatus } from '../api/bookings';
+import {
+  confirmPayment,
+  confirmReservationPayment,
+  confirmSagaPayment,
+  getReservationCheckout,
+  getSagaStatus,
+  type ReservationCheckoutSession,
+} from '../api/bookings';
 import { HomeHeader } from '../components/home/HomeHeader';
 import { ErrorIcon, SuccessIcon } from '../components/shared/Icons';
 import { loadAuthSession } from '../data/authSession';
@@ -13,6 +20,33 @@ import {
 import '../styles/payment-result.css';
 
 type ResultState = 'loading' | 'success' | 'error';
+
+const CHECKOUT_CONFIRM_POLL_ATTEMPTS = 360;
+const CHECKOUT_CONFIRM_POLL_INTERVAL_MS = 1000;
+const CHECKOUT_FAILURE_STATES = new Set([
+  'BOOKING_MODIFY_FAILED',
+  'COUPON_FAILED',
+  'PRE_PAYMENT_CHECK_FAILED',
+  'PAYMENT_FAILED',
+  'CANCELLING',
+  'EXPIRED',
+]);
+
+function checkoutStepKey(checkoutId: string, step: string) {
+  return `web:${checkoutId}:${step}`;
+}
+
+function checkoutFailure(session: ReservationCheckoutSession, fallback = '예약 확정에 실패했습니다.') {
+  return normalizePaymentFailure({
+    code: session.state,
+    message:
+      session.paymentFailureReason ||
+      session.prePaymentFailureReason ||
+      session.bookingFailureReason ||
+      session.couponFailureReason ||
+      fallback,
+  }, fallback);
+}
 
 export function PaymentSuccessPage() {
   const navigate = useNavigate();
@@ -38,6 +72,8 @@ export function PaymentSuccessPage() {
     const showSuccess = () => {
       setResultState('success');
       sessionStorage.setItem('bander_last_payment_success_order_id', orderId);
+      sessionStorage.removeItem('bander_pending_checkout_id');
+      sessionStorage.removeItem('bander_pending_checkout_revision');
       sessionStorage.removeItem('bander_pending_booking_id');
       sessionStorage.removeItem('bander_pending_saga_id');
     };
@@ -55,10 +91,33 @@ export function PaymentSuccessPage() {
 
     const bookingId = sessionStorage.getItem('bander_pending_booking_id');
     const sagaId = sessionStorage.getItem('bander_pending_saga_id');
-    if ((!bookingId && !sagaId) || !paymentKey || !orderId || !amount) {
+    const checkoutId = sessionStorage.getItem('bander_pending_checkout_id');
+    if ((!checkoutId && !bookingId && !sagaId) || !paymentKey || !orderId || !amount) {
       window.setTimeout(() => showError('결제 정보가 올바르지 않습니다.'), 1000);
       return;
     }
+
+    const waitForCheckoutCompletion = async (
+      id: string,
+    ): Promise<{ ok: true } | { ok: false; failure: PaymentFailureInfo }> => {
+      for (let attempt = 0; attempt < CHECKOUT_CONFIRM_POLL_ATTEMPTS; attempt += 1) {
+        await delay(attempt === 0 ? 500 : CHECKOUT_CONFIRM_POLL_INTERVAL_MS);
+        const session = await getReservationCheckout(id);
+        if (session.state === 'COMPLETED') {
+          return { ok: true };
+        }
+        if (CHECKOUT_FAILURE_STATES.has(session.state)) {
+          return { ok: false, failure: checkoutFailure(session) };
+        }
+      }
+      return {
+        ok: false,
+        failure: normalizePaymentFailure(
+          { code: 'PAYMENT_TIMEOUT' },
+          '예약 확정이 지연되고 있습니다. 잠시 후 예약현황에서 확인해주세요.',
+        ),
+      };
+    };
 
     const waitForSagaCompletion = async (id: string): Promise<{ ok: true } | { ok: false; failure: PaymentFailureInfo }> => {
       for (let attempt = 0; attempt < 30; attempt += 1) {
@@ -82,6 +141,33 @@ export function PaymentSuccessPage() {
 
     const confirmOnce = async (): Promise<{ ok: true } | { ok: false; failure: PaymentFailureInfo }> => {
       try {
+        if (checkoutId) {
+          const amountWon = Number(amount);
+          if (!Number.isFinite(amountWon) || amountWon <= 0) {
+            return {
+              ok: false,
+              failure: normalizePaymentFailure({ code: 'INVALID_REQUEST' }, '결제 금액이 올바르지 않습니다.'),
+            };
+          }
+          const current = await getReservationCheckout(checkoutId);
+          if (current.state === 'COMPLETED') {
+            return { ok: true };
+          }
+          if (['PAYMENT_CONFIRMING', 'PAYMENT_APPROVED', 'FINALIZING'].includes(current.state)) {
+            return await waitForCheckoutCompletion(checkoutId);
+          }
+          await confirmReservationPayment(
+            checkoutId,
+            {
+              paymentKey,
+              orderId,
+              amount: amountWon,
+              expectedRevision: current.revision,
+            },
+            checkoutStepKey(checkoutId, `confirm:${orderId}`),
+          );
+          return await waitForCheckoutCompletion(checkoutId);
+        }
         if (sagaId) {
           await confirmSagaPayment(sagaId, { paymentKey, orderId, amount });
           return await waitForSagaCompletion(sagaId);
@@ -90,9 +176,20 @@ export function PaymentSuccessPage() {
         return { ok: true };
       } catch (err) {
         const failure = normalizePaymentFailure(err, '결제 확인에 실패했습니다.');
-        return isPaymentAlreadyConfirmed(failure)
-          ? { ok: true }
-          : { ok: false, failure };
+        if (checkoutId) {
+          try {
+            const session = await getReservationCheckout(checkoutId);
+            if (session.state === 'COMPLETED') {
+              return { ok: true };
+            }
+            if (['PAYMENT_CONFIRMING', 'PAYMENT_APPROVED', 'FINALIZING'].includes(session.state)) {
+              return await waitForCheckoutCompletion(checkoutId);
+            }
+          } catch {
+            // keep the original confirm failure below
+          }
+        }
+        return isPaymentAlreadyConfirmed(failure) ? { ok: true } : { ok: false, failure };
       }
     };
 
