@@ -147,12 +147,12 @@ describe('createBooking discriminated union', () => {
       }),
     );
 
-    await applyReservationCoupon('checkout-1', { couponOwnedId: 77, expectedRevision: 2 }, 'idem-coupon');
+    await applyReservationCoupon('checkout-1', { couponOwnedId: '9007199254740993', expectedRevision: 2 }, 'idem-coupon');
 
     const [, init] = fetchMock.mock.calls[0];
     expect(fetchMock.mock.calls[0][0]).toContain('/api/v1/reservations/checkout-1/coupon');
     expect((init as RequestInit).method).toBe('POST');
-    expect((init as RequestInit).body).toBe(JSON.stringify({ couponOwnedId: 77, expectedRevision: 2 }));
+    expect((init as RequestInit).body).toBe(JSON.stringify({ couponOwnedId: '9007199254740993', expectedRevision: 2 }));
     expect(new Headers((init as RequestInit).headers).get('Idempotency-Key')).toBe('idem-coupon');
   });
 

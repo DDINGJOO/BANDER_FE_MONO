@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { BrandMark } from '../components/shared/BrandMark';
 import { HomeFooter } from '../components/home/HomeFooter';
 import { TERMS_ITEMS } from '../data/auth';
-import { encryptLaunchSignupPhone } from '../lib/launchPhoneCrypto';
+import { encryptLaunchSignupPersonalData } from '../lib/launchPhoneCrypto';
 
 type UserType = 'GENERAL' | 'OWNER';
 
@@ -33,8 +33,8 @@ function formatPhone(raw: string): string {
   return `${digits.slice(0, 3)}-${digits.slice(3, 7)}-${digits.slice(7)}`;
 }
 
-function isValidPhone(formatted: string): boolean {
-  return /^010-\d{4}-\d{4}$/.test(formatted);
+function isValidPhone(value: string): boolean {
+  return /^010\d{8}$/.test(value.replace(/\D/g, ''));
 }
 
 export function LandingPage() {
@@ -105,7 +105,7 @@ export function LandingPage() {
       if (name.trim().length < 2) {
         setError('이름을 2자 이상 입력해주세요.');
       } else if (!isValidPhone(phone)) {
-        setError('전화번호 형식을 확인해주세요. (010-0000-0000)');
+        setError('전화번호 형식을 확인해주세요. (01000000000 또는 010-0000-0000)');
       } else if (!userType) {
         setError('회원 유형을 선택해주세요.');
       } else if (!allRequiredConsented) {
@@ -119,14 +119,17 @@ export function LandingPage() {
 
     setSubmitting(true);
     try {
-      const encryptedPhone = await encryptLaunchSignupPhone(phone);
+      const [encryptedName, encryptedPhone] = await Promise.all([
+        encryptLaunchSignupPersonalData(name.trim()),
+        encryptLaunchSignupPersonalData(phone),
+      ]);
       const response = await fetch(endpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          name: name.trim(),
+          encryptedName,
           encryptedPhone,
           userType,
           consent: {
@@ -408,11 +411,10 @@ export function LandingPage() {
                 먼저 만나보고 싶다면
               </h2>
               <p className="landing__apply-desc">
-                정식 오픈 시 가장 먼저 알려드리고, 사전신청자 전용 혜택을 보내드릴게요.
+                정식 오픈 시 가장 먼저 알려드리고, 베타 안내를 순차적으로 보내드릴게요.
               </p>
               <ul className="landing__apply-perks">
                 <li>오픈 알림 SMS</li>
-                <li>사전신청자 전용 쿠폰</li>
                 <li>관리자 베타 우선 초대</li>
               </ul>
               <img
@@ -467,7 +469,7 @@ export function LandingPage() {
                     type="tel"
                     value={phone}
                   />
-                  <p className="landing__hint">오픈 알림과 사전신청 쿠폰 발송에 사용돼요.</p>
+                  <p className="landing__hint">오픈 알림과 베타 안내 발송에 사용돼요.</p>
                 </div>
 
                 <div className="landing__field">
@@ -590,7 +592,7 @@ export function LandingPage() {
             <details className="landing__faq-item" data-reveal>
               <summary>입력한 개인정보는 어떻게 사용되나요?</summary>
               <p>
-                오픈 알림과 사전신청자 쿠폰 발송 목적으로만 사용되며, 정식
+                오픈 알림과 베타 안내 발송 목적으로만 사용되며, 정식
                 오픈 후 6개월 내 안전하게 파기합니다.
               </p>
             </details>

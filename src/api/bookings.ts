@@ -233,14 +233,14 @@ export type ReservationCheckoutSession = {
   pointConfirmedAt: string | null;
   reservationCompletedAt: string | null;
   couponState: string | null;
-  couponOwnedId: number | null;
-  pendingCouponOwnedId: number | null;
+  couponOwnedId: string | number | null;
+  pendingCouponOwnedId: string | number | null;
   discountAmountWon: number | null;
   couponFailureReason: string | null;
 };
 
 export type ApplyReservationCouponRequest = {
-  couponOwnedId: number;
+  couponOwnedId: string;
   expectedRevision: number;
 };
 

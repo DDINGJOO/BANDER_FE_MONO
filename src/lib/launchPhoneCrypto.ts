@@ -1,4 +1,8 @@
-const PHONE_PUBLIC_KEY = (process.env.REACT_APP_LANDING_PHONE_PUBLIC_KEY ?? '').trim();
+const PERSONAL_DATA_PUBLIC_KEY = (
+  process.env.REACT_APP_LANDING_PERSONAL_DATA_PUBLIC_KEY ??
+  process.env.REACT_APP_LANDING_PHONE_PUBLIC_KEY ??
+  ''
+).trim();
 
 function base64ToBytes(value: string): Uint8Array {
   const binary = window.atob(value);
@@ -18,9 +22,9 @@ function bytesToBase64(value: ArrayBuffer): string {
   return window.btoa(binary);
 }
 
-export async function encryptLaunchSignupPhone(phone: string): Promise<string> {
-  if (!PHONE_PUBLIC_KEY) {
-    throw new Error('landing phone public key is not configured');
+export async function encryptLaunchSignupPersonalData(value: string): Promise<string> {
+  if (!PERSONAL_DATA_PUBLIC_KEY) {
+    throw new Error('landing personal data public key is not configured');
   }
   if (!window.crypto?.subtle) {
     throw new Error('secure browser crypto is not available');
@@ -28,7 +32,7 @@ export async function encryptLaunchSignupPhone(phone: string): Promise<string> {
 
   const key = await window.crypto.subtle.importKey(
     'spki',
-    base64ToBytes(PHONE_PUBLIC_KEY),
+    base64ToBytes(PERSONAL_DATA_PUBLIC_KEY),
     {
       name: 'RSA-OAEP',
       hash: 'SHA-256',
@@ -40,8 +44,12 @@ export async function encryptLaunchSignupPhone(phone: string): Promise<string> {
   const encrypted = await window.crypto.subtle.encrypt(
     { name: 'RSA-OAEP' },
     key,
-    new TextEncoder().encode(phone)
+    new TextEncoder().encode(value)
   );
 
   return bytesToBase64(encrypted);
+}
+
+export function encryptLaunchSignupPhone(phone: string): Promise<string> {
+  return encryptLaunchSignupPersonalData(phone);
 }

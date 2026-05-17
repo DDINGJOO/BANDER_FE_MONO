@@ -550,7 +550,7 @@ export function SpaceReservationPage() {
       : Promise.resolve<string | null>(null);
 
     vendorIdPromise
-      .then((vendorId) => getAvailableCoupons(slug, vendorId, { signal: controller.signal }))
+      .then((vendorId) => getAvailableCoupons(slug, vendorId, { roomId, signal: controller.signal }))
       .then((res) => setAvailableCoupons(res.coupons))
       .catch((error) => {
         if (!controller.signal.aborted) {
@@ -563,7 +563,7 @@ export function SpaceReservationPage() {
         }
       });
     return () => controller.abort();
-  }, [slug, vendorSlug]);
+  }, [slug, vendorSlug, roomId]);
 
   const inferredAvailabilitySlotMinutes = useMemo(
     () => inferAvailabilitySlotMinutes(availabilitySlots),
@@ -879,27 +879,27 @@ export function SpaceReservationPage() {
       }))
       .filter((item) => item.quantity > 0);
 
-  const numericOwnedCouponId = (ownedCouponId?: string | null) => {
-    const value = Number(ownedCouponId);
-    return Number.isSafeInteger(value) && value > 0 ? value : null;
+  const normalizeOwnedCouponId = (ownedCouponId?: string | number | null) => {
+    const value = String(ownedCouponId ?? '').trim();
+    return /^\d+$/.test(value) && value !== '0' ? value : null;
   };
 
   const resolveSelectedCouponOwnedId = async () => {
     if (!selectedCouponId) {
       return null;
     }
-    const ownedFromState = numericOwnedCouponId(
+    const ownedFromState = normalizeOwnedCouponId(
       ownedCoupons.find((coupon) => coupon.couponId === selectedCouponId)?.id
     );
     if (ownedFromState) {
       return ownedFromState;
     }
-    const claimedId = numericOwnedCouponId(await downloadCoupon(selectedCouponId));
+    const claimedId = normalizeOwnedCouponId(await downloadCoupon(selectedCouponId));
     if (claimedId) {
       return claimedId;
     }
     const refreshed = await refreshOwnedCoupons();
-    return numericOwnedCouponId(refreshed.find((coupon) => coupon.couponId === selectedCouponId)?.id);
+    return normalizeOwnedCouponId(refreshed.find((coupon) => coupon.couponId === selectedCouponId)?.id);
   };
 
   const waitForCheckoutSession = async (
@@ -987,7 +987,7 @@ export function SpaceReservationPage() {
         );
         latestSession = await waitForCheckoutSession(
           checkoutId,
-          (session) => session.couponOwnedId === couponOwnedId && session.couponState === 'HELD',
+          (session) => normalizeOwnedCouponId(session.couponOwnedId) === couponOwnedId && session.couponState === 'HELD',
           '쿠폰 적용이 지연되고 있습니다. 잠시 후 다시 시도해주세요.',
         );
       }

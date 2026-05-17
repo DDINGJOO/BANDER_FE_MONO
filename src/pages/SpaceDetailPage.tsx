@@ -176,6 +176,8 @@ export function SpaceDetailPage() {
   const basicSectionRef = useRef<HTMLElement | null>(null);
   const detailSectionRef = useRef<HTMLElement | null>(null);
   const reviewsSectionRef = useRef<HTMLElement | null>(null);
+  const detailRoomId =
+    detail && 'id' in detail && typeof detail.id === 'string' ? detail.id : null;
 
   useEffect(() => {
     if (!isAuthenticated || isMockMode()) {
@@ -237,7 +239,7 @@ export function SpaceDetailPage() {
       : Promise.resolve<string | null>(null);
 
     vendorIdPromise
-      .then((vendorId) => getAvailableCoupons(slug, vendorId, { signal: controller.signal }))
+      .then((vendorId) => getAvailableCoupons(slug, vendorId, { roomId: detailRoomId, signal: controller.signal }))
       .then((response) => setAvailableCoupons(response.coupons))
       .catch((error) => {
         if (!controller.signal.aborted) {
@@ -250,7 +252,7 @@ export function SpaceDetailPage() {
         }
       });
     return () => controller.abort();
-  }, [slug, vendorSlug]);
+  }, [slug, vendorSlug, detailRoomId]);
 
   const handleDownloadCoupon = async (couponId: string) => {
     if (!isAuthenticated) {
@@ -295,8 +297,6 @@ export function SpaceDetailPage() {
   const canMoveCalendarPrev =
     calendarMonth.year > today.getFullYear() ||
     (calendarMonth.year === today.getFullYear() && calendarMonth.month > today.getMonth());
-  const detailRoomId =
-    detail && 'id' in detail && typeof detail.id === 'string' ? detail.id : null;
   const detailReservationUnit = detail as {
     priceSuffix?: string | null;
     priceTeaserSuffix?: string | null;
