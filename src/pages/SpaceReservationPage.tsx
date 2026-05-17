@@ -884,6 +884,19 @@ export function SpaceReservationPage() {
     return /^\d+$/.test(value) && value !== '0' ? value : null;
   };
 
+  const isHeldCouponSession = (session: ReservationCheckoutSession, couponOwnedId: string) => {
+    if (session.couponState !== 'HELD') {
+      return false;
+    }
+    const normalized = normalizeOwnedCouponId(session.couponOwnedId);
+    if (normalized === couponOwnedId) {
+      return true;
+    }
+    return typeof session.couponOwnedId === 'number'
+      && !Number.isSafeInteger(session.couponOwnedId)
+      && normalized !== null;
+  };
+
   const resolveSelectedCouponOwnedId = async () => {
     if (!selectedCouponId) {
       return null;
@@ -987,7 +1000,7 @@ export function SpaceReservationPage() {
         );
         latestSession = await waitForCheckoutSession(
           checkoutId,
-          (session) => normalizeOwnedCouponId(session.couponOwnedId) === couponOwnedId && session.couponState === 'HELD',
+          (session) => isHeldCouponSession(session, couponOwnedId),
           '쿠폰 적용이 지연되고 있습니다. 잠시 후 다시 시도해주세요.',
         );
       }
