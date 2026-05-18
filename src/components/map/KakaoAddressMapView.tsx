@@ -64,6 +64,10 @@ type KakaoWindow = Window & {
 
 type Props = {
   address: string;
+  center?: {
+    lat: number | null;
+    lng: number | null;
+  } | null;
   className?: string;
   level?: number;
   markerTitle?: string;
@@ -112,6 +116,7 @@ function searchAddress(
 
 export function KakaoAddressMapView({
   address,
+  center,
   className,
   level = 4,
   markerTitle,
@@ -125,13 +130,19 @@ export function KakaoAddressMapView({
   useEffect(() => {
     let mounted = true;
     const normalizedAddress = address.trim();
+    const centerLat = center?.lat ?? null;
+    const centerLng = center?.lng ?? null;
+    const hasCenter = typeof centerLat === 'number'
+      && Number.isFinite(centerLat)
+      && typeof centerLng === 'number'
+      && Number.isFinite(centerLng);
 
     markerRef.current?.setMap(null);
     markerRef.current = null;
     mapRef.current = null;
     setErrorMessage(null);
 
-    if (!normalizedAddress) {
+    if (!normalizedAddress && !hasCenter) {
       setErrorMessage('주소 정보가 없습니다.');
       return () => {
         mounted = false;
@@ -146,6 +157,33 @@ export function KakaoAddressMapView({
         }
 
         const kakaoMaps = (window as KakaoWindow).kakao?.maps;
+        if (!kakaoMaps) {
+          setErrorMessage('카카오맵을 불러오지 못했습니다.');
+          return;
+        }
+        if (hasCenter) {
+          const position = new kakaoMaps.LatLng(centerLat, centerLng);
+          const map = new kakaoMaps.Map(mapContainerRef.current, { center: position, level });
+          const marker = new kakaoMaps.Marker({
+            image: markerImage(kakaoMaps),
+            map,
+            position,
+            title: markerTitle ?? normalizedAddress,
+            zIndex: 10,
+          });
+
+          mapRef.current = map;
+          markerRef.current = marker;
+          requestAnimationFrame(() => {
+            if (!mounted || !mapContainerRef.current) {
+              return;
+            }
+            map.relayout?.();
+            map.setCenter(position);
+          });
+          return;
+        }
+
         const services = kakaoMaps?.services;
         if (!kakaoMaps || !services?.Geocoder || !services.Status) {
           setErrorMessage('카카오 주소 검색 서비스를 불러오지 못했습니다.');
@@ -207,7 +245,7 @@ export function KakaoAddressMapView({
       markerRef.current = null;
       mapRef.current = null;
     };
-  }, [address, level, markerTitle]);
+  }, [address, center?.lat, center?.lng, level, markerTitle]);
 
   if (errorMessage) {
     return (

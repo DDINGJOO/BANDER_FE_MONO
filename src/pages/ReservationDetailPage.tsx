@@ -27,7 +27,13 @@ import {
   type BookingDetailResponse,
   type ReservationAnswerRequest,
 } from '../api/bookings';
+import { fetchStudioSpaceDetail } from '../api/spaces';
 import type { ReservationCancelNoticeRow } from '../components/reservations/ReservationCancelModal';
+
+type MapCoordinate = {
+  lat: number;
+  lng: number;
+};
 
 function ChatGlyph20() {
   return (
@@ -127,6 +133,10 @@ function isBookerPhoneAnswer(answer: ReservationAnswerRequest) {
   ].includes(normalized);
 }
 
+function joinStudioAddress(roadAddress?: string | null, detailAddress?: string | null) {
+  return [roadAddress?.trim(), detailAddress?.trim()].filter(Boolean).join(' ');
+}
+
 /**
  * BookingDetail.status 는 booking-service 의 raw DB status (BookingStatus enum 10종) 일 수도,
  * read-service 의 view-status (PENDING/CONFIRMED/COMPLETED/CANCELED_USER/CANCELED_VENDOR 등) 일
@@ -198,6 +208,8 @@ export function ReservationDetailPage() {
   const [isCancelling, setIsCancelling] = useState(false);
   const [detail, setDetail] = useState<BookingDetailResponse | null>(null);
   const [hasReview, setHasReview] = useState(false);
+  const [studioMapCenter, setStudioMapCenter] = useState<MapCoordinate | null>(null);
+  const [studioMapAddress, setStudioMapAddress] = useState<string | null>(null);
 
   const filteredSuggestions = HEADER_SEARCH_KEYWORD_SUGGESTIONS.filter((item) =>
     item.toLowerCase().includes(headerSearchQuery.toLowerCase()),
@@ -225,6 +237,8 @@ export function ReservationDetailPage() {
   useEffect(() => {
     if (!bookingId) return;
     setHasReview(false);
+    setStudioMapCenter(null);
+    setStudioMapAddress(null);
     getBookingDetail(bookingId)
       .then(setDetail)
       .catch(() => undefined);
@@ -235,14 +249,49 @@ export function ReservationDetailPage() {
       .catch(() => undefined);
   }, [bookingId]);
 
+  useEffect(() => {
+    const studioId = detail?.studioId?.trim();
+    if (!studioId) {
+      setStudioMapCenter(null);
+      setStudioMapAddress(null);
+      return;
+    }
+
+    let mounted = true;
+    fetchStudioSpaceDetail(studioId)
+      .then((studio) => {
+        if (!mounted) return;
+        const address = studio.address;
+        const lat = address?.latitude;
+        const lng = address?.longitude;
+        setStudioMapAddress(joinStudioAddress(address?.roadAddress, address?.detailAddress) || null);
+        setStudioMapCenter(
+          typeof lat === 'number' && Number.isFinite(lat)
+            && typeof lng === 'number' && Number.isFinite(lng)
+            ? { lat, lng }
+            : null
+        );
+      })
+      .catch(() => {
+        if (!mounted) return;
+        setStudioMapCenter(null);
+        setStudioMapAddress(null);
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, [detail?.studioId]);
+
   if (!detail) {
     return null;
   }
 
   const badge = badgeForStatus(detail.status);
   const action = reservationAction(detail.status);
-  const hasStudioAddress = Boolean(detail.studioAddress?.trim());
-  const studioAddress = detail.studioAddress?.trim() || '주소 정보 없음';
+  const studioAddress = studioMapAddress || detail.studioAddress?.trim() || '주소 정보 없음';
+  const mapAddress = studioMapAddress || detail.studioAddress?.trim() || '';
+  const hasStudioAddress = studioAddress !== '주소 정보 없음';
   const reservationAnswers = (detail.reservationAnswers ?? [])
     .filter((answer) => answer.value?.trim())
     .filter((answer) => !isBookerNameAnswer(answer))
@@ -392,7 +441,8 @@ export function ReservationDetailPage() {
             <h2 className="res-detail__section-title">위치 정보</h2>
             <div className="res-detail__map-wrap">
               <KakaoAddressMapView
-                address={hasStudioAddress ? studioAddress : ''}
+                address={mapAddress}
+                center={studioMapCenter}
                 className="res-detail__map"
                 level={3}
                 markerTitle={detail.studioName || detail.roomName}

@@ -169,3 +169,18 @@ export type SpaceDetailDto = {
 export function fetchSpaceDetail(slug: string) {
   return getJson<SpaceDetailDto>(`/api/v1/spaces/slug/${encodeURIComponent(slug)}`);
 }
+
+export type StudioSpaceDetailDto = {
+  id: string;
+  name: string;
+  address: {
+    roadAddress: string | null;
+    detailAddress: string | null;
+    latitude: number | null;
+    longitude: number | null;
+  } | null;
+};
+
+export function fetchStudioSpaceDetail(studioId: string) {
+  return getJson<StudioSpaceDetailDto>(`/api/v1/spaces/${encodeURIComponent(studioId)}`);
+}
