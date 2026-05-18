@@ -20,18 +20,30 @@ export const RESERVATION_CANCEL_LEAD_LINES: [string, string] = [
   '취소 수수료 0원이 발생합니다.',
 ];
 
+function formatWon(value: number | undefined) {
+  return `${(value ?? 0).toLocaleString()}원`;
+}
+
+function originalAmountOf(estimate: RefundEstimateResponse) {
+  return estimate.originalAmount ?? estimate.totalPrice ?? 0;
+}
+
+function refundRateOf(estimate: RefundEstimateResponse) {
+  return estimate.refundRate ?? estimate.refundRatePercent ?? 0;
+}
+
 export function buildCancelNoticeRows(estimate: RefundEstimateResponse): ReservationCancelNoticeRow[] {
   return [
-    { label: '결제 금액', value: `${estimate.totalPrice.toLocaleString()}원` },
-    { label: '취소 수수료', value: `${estimate.cancellationFee.toLocaleString()}원` },
-    { label: '환불 비율', value: `${estimate.refundRatePercent}%` },
-    { label: '최종 환불금액', value: `${estimate.refundAmount.toLocaleString()}원`, emphasis: true },
+    { label: '결제 금액', value: formatWon(originalAmountOf(estimate)) },
+    { label: '취소 수수료', value: formatWon(estimate.cancellationFee) },
+    { label: '환불 비율', value: `${refundRateOf(estimate)}%` },
+    { label: '최종 환불금액', value: formatWon(estimate.refundAmount), emphasis: true },
   ];
 }
 
 export function buildCancelLeadLines(estimate: RefundEstimateResponse): [string, string] {
   return [
     '지금 예약 취소 시 ',
-    `취소 수수료 ${estimate.cancellationFee.toLocaleString()}원이 발생합니다.`,
+    `취소 수수료 ${formatWon(estimate.cancellationFee)}이 발생합니다.`,
   ];
 }

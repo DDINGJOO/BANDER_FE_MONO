@@ -103,8 +103,10 @@ export type CursorPageResponse<T> = {
 
 export type RefundEstimateResponse = {
   bookingId: string;
-  totalPrice: number;
-  refundRatePercent: number;
+  originalAmount?: number;
+  refundRate?: number;
+  totalPrice?: number;
+  refundRatePercent?: number;
   cancellationFee: number;
   refundAmount: number;
   cancellable: boolean;
