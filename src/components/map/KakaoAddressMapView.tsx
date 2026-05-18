@@ -80,6 +80,36 @@ function markerImage(maps: KakaoMapsNs): KakaoMarkerImage {
   );
 }
 
+function addressSearchCandidates(address: string) {
+  const candidates = [address];
+  const withoutFloor = address
+    .replace(/\s+(?:지하\s*)?\d+\s*층(?:\s*\d+\s*호)?\s*$/u, '')
+    .replace(/\s+(?:B|b)\d+(?:\s*층)?(?:\s*\d+\s*호)?\s*$/u, '')
+    .trim();
+  if (withoutFloor && withoutFloor !== address) {
+    candidates.push(withoutFloor);
+  }
+
+  const roadMatch = address.match(/^(.+?(?:로|길)\s*\d+(?:-\d+)?)/u);
+  const roadAddress = roadMatch?.[1]?.trim();
+  if (roadAddress && !candidates.includes(roadAddress)) {
+    candidates.push(roadAddress);
+  }
+  return candidates;
+}
+
+function searchAddress(
+  geocoder: InstanceType<NonNullable<KakaoMapsNs['services']>['Geocoder']>,
+  okStatus: string,
+  address: string,
+) {
+  return new Promise<KakaoAddressResult[]>((resolve) => {
+    geocoder.addressSearch(address, (result, status) => {
+      resolve(status === okStatus ? result : []);
+    });
+  });
+}
+
 export function KakaoAddressMapView({
   address,
   className,
@@ -123,38 +153,46 @@ export function KakaoAddressMapView({
         }
 
         const geocoder = new services.Geocoder();
-        geocoder.addressSearch(normalizedAddress, (result, status) => {
+        let result: KakaoAddressResult[] = [];
+        for (const candidate of addressSearchCandidates(normalizedAddress)) {
+          result = await searchAddress(geocoder, services.Status.OK, candidate);
+          if (result.length > 0) {
+            break;
+          }
+        }
+        if (!mounted || !mapContainerRef.current) {
+          return;
+        }
+        if (result.length === 0) {
+          setErrorMessage('주소를 지도에서 찾지 못했습니다.');
+          return;
+        }
+
+        const lat = Number(result[0].y);
+        const lng = Number(result[0].x);
+        if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+          setErrorMessage('지도 좌표를 해석하지 못했습니다.');
+          return;
+        }
+
+        const position = new kakaoMaps.LatLng(lat, lng);
+        const map = new kakaoMaps.Map(mapContainerRef.current, { center: position, level });
+        const marker = new kakaoMaps.Marker({
+          image: markerImage(kakaoMaps),
+          map,
+          position,
+          title: markerTitle ?? normalizedAddress,
+          zIndex: 10,
+        });
+
+        mapRef.current = map;
+        markerRef.current = marker;
+        requestAnimationFrame(() => {
           if (!mounted || !mapContainerRef.current) {
             return;
           }
-          if (status !== services.Status.OK || result.length === 0) {
-            setErrorMessage('주소를 지도에서 찾지 못했습니다.');
-            return;
-          }
-
-          const lat = Number(result[0].y);
-          const lng = Number(result[0].x);
-          if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
-            setErrorMessage('지도 좌표를 해석하지 못했습니다.');
-            return;
-          }
-
-          const position = new kakaoMaps.LatLng(lat, lng);
-          const map = new kakaoMaps.Map(mapContainerRef.current, { center: position, level });
-          const marker = new kakaoMaps.Marker({
-            image: markerImage(kakaoMaps),
-            map,
-            position,
-            title: markerTitle ?? normalizedAddress,
-            zIndex: 10,
-          });
-
-          mapRef.current = map;
-          markerRef.current = marker;
-          requestAnimationFrame(() => {
-            map.relayout?.();
-            map.setCenter(position);
-          });
+          map.relayout?.();
+          map.setCenter(position);
         });
       } catch (error) {
         setErrorMessage(error instanceof Error ? error.message : '카카오맵 초기화에 실패했습니다.');
