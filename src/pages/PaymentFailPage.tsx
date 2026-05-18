@@ -11,6 +11,12 @@ function checkoutStepKey(checkoutId: string, step: string) {
   return `web:${checkoutId}:${step}`;
 }
 
+const CHECKOUT_CANCEL_TERMINAL_STATES = new Set([
+  'CANCELLING',
+  'COMPLETED',
+  'EXPIRED',
+]);
+
 export function PaymentFailPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -26,14 +32,31 @@ export function PaymentFailPage() {
     if (checkoutId) {
       void (async () => {
         const storedRevision = Number(sessionStorage.getItem('bander_pending_checkout_revision'));
-        const revision = Number.isSafeInteger(storedRevision) && storedRevision > 0
+        let revision = Number.isSafeInteger(storedRevision) && storedRevision > 0
           ? storedRevision
-          : (await getReservationCheckout(checkoutId)).revision;
-        await cancelReservationCheckout(
-          checkoutId,
-          revision,
-          checkoutStepKey(checkoutId, `fail:${failure.code ?? 'USER_CANCEL'}`),
-        );
+          : null;
+        try {
+          const current = await getReservationCheckout(checkoutId);
+          if (CHECKOUT_CANCEL_TERMINAL_STATES.has(current.state)) {
+            return;
+          }
+          revision = current.revision;
+        } catch (error) {
+          // best-effort cleanup: fall back to the stored revision captured before redirect
+        }
+        if (revision === null) {
+          return;
+        }
+        const idempotencyKey = checkoutStepKey(checkoutId, `fail:${failure.code ?? 'USER_CANCEL'}`);
+        try {
+          await cancelReservationCheckout(checkoutId, revision, idempotencyKey);
+        } catch (error) {
+          const refreshed = await getReservationCheckout(checkoutId);
+          if (CHECKOUT_CANCEL_TERMINAL_STATES.has(refreshed.state)) {
+            return;
+          }
+          await cancelReservationCheckout(checkoutId, refreshed.revision, idempotencyKey);
+        }
       })().catch(() => {
         // best-effort cleanup: keep the fail page usable even if rollback request fails
       }).finally(() => {

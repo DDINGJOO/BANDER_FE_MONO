@@ -137,6 +137,12 @@ const CHECKOUT_FAILURE_STATES = new Set([
   'EXPIRED',
 ]);
 
+const CHECKOUT_CANCEL_TERMINAL_STATES = new Set([
+  'CANCELLING',
+  'COMPLETED',
+  'EXPIRED',
+]);
+
 function checkoutStepKey(checkoutId: string, step: string) {
   return `web:${checkoutId}:${step}`;
 }
@@ -156,6 +162,57 @@ function checkoutFailure(session: ReservationCheckoutSession, fallback = '예약
       session.couponFailureReason ||
       fallback,
   );
+}
+
+function clearPendingCheckoutSession() {
+  sessionStorage.removeItem('bander_pending_checkout_id');
+  sessionStorage.removeItem('bander_pending_checkout_revision');
+  sessionStorage.removeItem('bander_pending_saga_id');
+  sessionStorage.removeItem('bander_pending_booking_id');
+}
+
+async function cancelCheckoutBestEffort(
+  checkoutId: string,
+  lastKnownRevision: number | null | undefined,
+  idempotencyKey: string,
+) {
+  let revision: number | null = typeof lastKnownRevision === 'number'
+    && Number.isSafeInteger(lastKnownRevision)
+    && lastKnownRevision > 0
+    ? lastKnownRevision
+    : null;
+  let currentSession: ReservationCheckoutSession | null = null;
+
+  try {
+    currentSession = await getReservationCheckout(checkoutId);
+    revision = currentSession.revision;
+  } catch (error) {
+    // best-effort cleanup: fall back to the last revision captured before Toss opened
+  }
+
+  if (currentSession && CHECKOUT_CANCEL_TERMINAL_STATES.has(currentSession.state)) {
+    return;
+  }
+  if (revision === null) {
+    return;
+  }
+
+  try {
+    await cancelReservationCheckout(checkoutId, revision, idempotencyKey);
+    return;
+  } catch (error) {
+    // The checkout may have advanced while Toss was closing. Refresh once and retry with the latest revision.
+  }
+
+  try {
+    const refreshed = await getReservationCheckout(checkoutId);
+    if (CHECKOUT_CANCEL_TERMINAL_STATES.has(refreshed.state)) {
+      return;
+    }
+    await cancelReservationCheckout(checkoutId, refreshed.revision, idempotencyKey);
+  } catch (error) {
+    // best-effort cleanup: the server deadline/compensation path will reconcile stale sessions
+  }
 }
 
 function paymentFlowError(code: string, message: string) {
@@ -1122,12 +1179,13 @@ export function SpaceReservationPage() {
         failUrl: buildPaymentRedirectUrl('/payment/fail', { date: dateParam, roomId, slug }),
       });
     } catch (error) {
-      if (checkoutId && latestSession) {
-        void cancelReservationCheckout(
+      if (checkoutId) {
+        await cancelCheckoutBestEffort(
           checkoutId,
-          latestSession.revision,
+          latestSession?.revision,
           checkoutStepKey(checkoutId, 'client-abort'),
-        ).catch(() => undefined);
+        );
+        clearPendingCheckoutSession();
       }
       showPaymentFailure(error, '예약을 생성하지 못했습니다. 입력한 예약 정보를 다시 확인해주세요.');
     } finally {
