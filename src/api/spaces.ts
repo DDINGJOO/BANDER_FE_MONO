@@ -114,6 +114,15 @@ export type SpaceReservationFieldDto = {
   options?: string[];
 };
 
+export type SpaceOptionItemDto = {
+  id: string;
+  name: string;
+  description?: string | null;
+  priceWon: number;
+  imageUrl?: string | null;
+  sortOrder?: number | null;
+};
+
 export type SpaceDetailDto = {
   id: string;
   studioId: string | null;
@@ -132,6 +141,7 @@ export type SpaceDetailDto = {
   priceLabel: string;
   priceSuffix: string;
   pricingLines: SpacePricingLineDto[];
+  options: SpaceOptionItemDto[];
   hashTags: string[];
   operatingSummary: string | null;
   operatingWeek: SpaceOperatingDayDto[];

@@ -104,8 +104,10 @@ export type SpaceAvailabilityResponseDto = {
 export type SpaceOptionItemDto = {
   id: string;
   name: string;
+  description?: string | null;
   priceWon: number;
-  imageUrl?: string;
+  imageUrl?: string | null;
+  sortOrder?: number | null;
 };
 
 /** GET /api/v1/spaces/{slug}/options */

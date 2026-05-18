@@ -24,7 +24,7 @@ import {
   startReservationPayment,
   startReservationPrePaymentCheck,
 } from '../api/bookings';
-import { fetchVendorDetail, type SpaceReservationFieldDto } from '../api/spaces';
+import { fetchVendorDetail, type SpaceOptionItemDto, type SpaceReservationFieldDto } from '../api/spaces';
 import { isMockMode, getTossPaymentsClientKey } from '../config/publicEnv';
 import { requestTossPayment } from '../utils/tossPayments';
 import { DEFAULT_PAYMENT_FAILURE, normalizePaymentFailure, type PaymentFailureInfo } from '../utils/paymentFailure';
@@ -42,40 +42,54 @@ function ReservationCalendarIcon() {
   );
 }
 
-const RESERVATION_OPTION_ITEMS = [
+type ReservationOptionItem = {
+  id: string;
+  description: string;
+  image: string | null;
+  name: string;
+  price: number;
+  short: string;
+  sortOrder: number;
+};
+
+const MOCK_RESERVATION_OPTION_ITEMS: ReservationOptionItem[] = [
   {
     description: '전기기타/통기타 연주를 위한 앰프 및 연결 장비 포함',
     image: 'https://www.figma.com/api/mcp/asset/2152f27f-4cd4-4695-a95b-6076e68a52b6',
-    key: 'guitar',
+    id: 'guitar',
     name: 'Guitar 추가',
     price: 5000,
     short: 'G',
+    sortOrder: 0,
   },
   {
     description: '디지털 피아노 또는 업라이트 피아노 제공',
     image: 'https://www.figma.com/api/mcp/asset/301cf9d3-9402-406f-ade5-b92614d097e2',
-    key: 'piano',
+    id: 'piano',
     name: 'Piano 추가',
     price: 5000,
     short: 'P',
+    sortOrder: 1,
   },
   {
     description: '기본 드럼 세트 및 스틱 제공',
     image: 'https://www.figma.com/api/mcp/asset/be44b331-d4e4-415d-9db3-9612b555e594',
-    key: 'drum',
+    id: 'drum',
     name: 'Drum 추가',
     price: 5000,
     short: 'D',
+    sortOrder: 2,
   },
   {
     description: '인원은 최대 4명까지 추가 가능',
     image: '',
-    key: 'people',
+    id: 'people',
     name: '인원 추가',
     price: 5000,
     short: '인',
+    sortOrder: 3,
   },
-] as const;
+];
 
 type PaymentResultState = 'failed' | 'success' | null;
 type AvailabilityStatus = 'idle' | 'loading' | 'loaded' | 'failed';
@@ -405,12 +419,7 @@ export function SpaceReservationPage() {
   }, [paymentResult]);
   const [canScrollTimelineNext, setCanScrollTimelineNext] = useState(true);
   const [canScrollTimelinePrev, setCanScrollTimelinePrev] = useState(false);
-  const [selectedOptionCounts, setSelectedOptionCounts] = useState<Record<string, number>>({
-    drum: 0,
-    guitar: 0,
-    people: 0,
-    piano: 0,
-  });
+  const [selectedOptionCounts, setSelectedOptionCounts] = useState<Record<string, number>>({});
   const [availabilitySlots, setAvailabilitySlots] = useState<SpaceAvailabilitySlot[]>([]);
   const [availabilityStatus, setAvailabilityStatus] = useState<AvailabilityStatus>('idle');
   const [reservationBookerName, setReservationBookerName] = useState('');
@@ -438,6 +447,51 @@ export function SpaceReservationPage() {
       .slice()
       .sort((a, b) => a.sortOrder - b.sortOrder);
   }, [detail]);
+
+  const reservationOptionItems = useMemo<ReservationOptionItem[]>(() => {
+    if (isMockMode()) {
+      return MOCK_RESERVATION_OPTION_ITEMS;
+    }
+
+    const rawOptions = ((detail as { options?: SpaceOptionItemDto[] } | null)?.options ?? []);
+    return rawOptions
+      .map((option, index): ReservationOptionItem | null => {
+        const id = String(option.id ?? '').trim();
+        if (!id) {
+          return null;
+        }
+        const name = option.name?.trim() || '상품 옵션';
+        const price = Number(option.priceWon);
+        return {
+          id,
+          description: option.description?.trim() ?? '',
+          image: option.imageUrl?.trim() || null,
+          name,
+          price: Number.isFinite(price) ? price : 0,
+          short: name.charAt(0) || '옵',
+          sortOrder: option.sortOrder ?? index,
+        };
+      })
+      .filter((item): item is ReservationOptionItem => item !== null)
+      .sort((a, b) => a.sortOrder - b.sortOrder);
+  }, [detail]);
+
+  useEffect(() => {
+    const validOptionIds = new Set(reservationOptionItems.map((item) => item.id));
+    setSelectedOptionCounts((current) => {
+      const next: Record<string, number> = {};
+      Object.entries(current).forEach(([optionId, quantity]) => {
+        if (validOptionIds.has(optionId) && quantity > 0) {
+          next[optionId] = quantity;
+        }
+      });
+      const currentKeys = Object.keys(current);
+      const nextKeys = Object.keys(next);
+      const unchanged = currentKeys.length === nextKeys.length
+        && nextKeys.every((key) => current[key] === next[key]);
+      return unchanged ? current : next;
+    });
+  }, [reservationOptionItems]);
 
   useEffect(() => {
     setReservationAnswers((current) => {
@@ -669,8 +723,8 @@ export function SpaceReservationPage() {
     .filter((slot) => selectedTimes.includes(slot.label))
     .sort((a, b) => a.startMinutes - b.startMinutes);
   const basePrice = selectedSlotDetails.reduce((sum, slot) => sum + slot.price, 0) || fallbackSlotPrice;
-  const optionTotal = RESERVATION_OPTION_ITEMS.reduce(
-    (sum, item) => sum + item.price * (selectedOptionCounts[item.key] ?? 0),
+  const optionTotal = reservationOptionItems.reduce(
+    (sum, item) => sum + item.price * (selectedOptionCounts[item.id] ?? 0),
     0
   );
   const subtotalPrice = basePrice + optionTotal;
@@ -708,13 +762,13 @@ export function SpaceReservationPage() {
 
     return `${first.label} ~ ${last.endLabel} (총 ${totalHours}시간)`;
   })();
-  const selectedOptionSummary = RESERVATION_OPTION_ITEMS.filter(
-    (item) => selectedOptionCounts[item.key] > 0
+  const selectedOptionSummary = reservationOptionItems.filter(
+    (item) => selectedOptionCounts[item.id] > 0
   )
-    .map((item) => `${item.name} X ${selectedOptionCounts[item.key]}`)
+    .map((item) => `${item.name} X ${selectedOptionCounts[item.id]}`)
     .join(', ');
-  const hasSelectedOptions = RESERVATION_OPTION_ITEMS.some(
-    (item) => (selectedOptionCounts[item.key] ?? 0) > 0
+  const hasSelectedOptions = reservationOptionItems.some(
+    (item) => (selectedOptionCounts[item.id] ?? 0) > 0
   );
   const requiredAgreementsChecked =
     agreements.collection && agreements.thirdParty && agreements.paymentAgency;
@@ -872,12 +926,25 @@ export function SpaceReservationPage() {
   };
 
   const buildReservationItemPayload = () =>
-    RESERVATION_OPTION_ITEMS
-      .map((item) => ({
-        itemId: item.key,
-        quantity: selectedOptionCounts[item.key] ?? 0,
-      }))
-      .filter((item) => item.quantity > 0);
+    reservationOptionItems
+      .map((item) => {
+        const quantity = selectedOptionCounts[item.id] ?? 0;
+        if (quantity <= 0) {
+          return null;
+        }
+        const itemId = item.id.trim();
+        if (!isMockMode() && !/^\d+$/.test(itemId)) {
+          throw paymentFlowError(
+            'INVALID_RESERVATION_OPTION',
+            '상품 옵션 정보가 올바르지 않습니다. 새로고침 후 다시 시도해주세요.',
+          );
+        }
+        return {
+          itemId,
+          quantity,
+        };
+      })
+      .filter((item): item is { itemId: string; quantity: number } => item !== null);
 
   const normalizeOwnedCouponId = (ownedCouponId?: string | number | null) => {
     const value = String(ownedCouponId ?? '').trim();
@@ -1458,8 +1525,11 @@ export function SpaceReservationPage() {
                   </button>
                 </div>
                 <div className="space-reservation__option-list">
-                  {RESERVATION_OPTION_ITEMS.map((item) => (
-                    <div className="space-reservation__option-item" key={item.key}>
+                  {reservationOptionItems.length === 0 ? (
+                    <p className="space-reservation__option-empty">추가 가능한 상품 옵션이 없습니다.</p>
+                  ) : null}
+                  {reservationOptionItems.map((item) => (
+                    <div className="space-reservation__option-item" key={item.id}>
                       <div className="space-reservation__option-main">
                         <div className="space-reservation__option-icon">
                           {item.image ? (
@@ -1479,19 +1549,19 @@ export function SpaceReservationPage() {
                             onClick={() =>
                               setSelectedOptionCounts((current) => ({
                                 ...current,
-                                [item.key]: Math.max((current[item.key] ?? 0) - 1, 0),
+                                [item.id]: Math.max((current[item.id] ?? 0) - 1, 0),
                               }))
                             }
                             type="button"
                           >
                             −
                           </button>
-                          <span>{selectedOptionCounts[item.key] ?? 0}</span>
+                          <span>{selectedOptionCounts[item.id] ?? 0}</span>
                           <button
                             onClick={() =>
                               setSelectedOptionCounts((current) => ({
                                 ...current,
-                                [item.key]: (current[item.key] ?? 0) + 1,
+                                [item.id]: (current[item.id] ?? 0) + 1,
                               }))
                             }
                             type="button"
