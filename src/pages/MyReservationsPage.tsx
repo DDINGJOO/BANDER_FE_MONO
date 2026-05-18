@@ -34,6 +34,18 @@ const TAB_API_MAP: Record<MyReservationTab, string> = {
 type BookingStatus = MyBookingItem['status'];
 type ReservationAction = 'cancel' | 'writeReview' | 'viewMyReview' | 'none';
 
+function isCanceledStatus(status: BookingStatus) {
+  return (
+    status === 'CANCEL_REQUESTED' ||
+    status === 'REFUND_REQUESTED' ||
+    status === 'CANCELED_USER' ||
+    status === 'CANCELED_VENDOR' ||
+    status === 'CANCELLED' ||
+    status === 'REFUNDED' ||
+    status === 'REJECTED'
+  );
+}
+
 function isCanceledTabPending(status: BookingStatus, tab: MyReservationTab) {
   return tab === 'canceled' && status === 'PENDING';
 }
@@ -66,6 +78,10 @@ function statusPillClass(status: BookingStatus, tab: MyReservationTab) {
   return 'my-res-card__pill--muted';
 }
 
+function formatWon(value: number) {
+  return `${value.toLocaleString()}원`;
+}
+
 function formatDateRange(date: string, startTime: string, endTime: string) {
   const parsed = new Date(date);
   const weekday = ['일', '월', '화', '수', '목', '금', '토'][parsed.getDay()];
@@ -74,10 +90,14 @@ function formatDateRange(date: string, startTime: string, endTime: string) {
   const end = endTime.slice(0, 5);
   const [startH, startM] = start.split(':').map(Number);
   const [endH, endM] = end.split(':').map(Number);
-  const durationMinutes = (endH * 60 + endM) - (startH * 60 + startM);
+  let durationMinutes = (endH * 60 + endM) - (startH * 60 + startM);
+  if (durationMinutes < 0) {
+    durationMinutes += 24 * 60;
+  }
   const durationHours = durationMinutes / 60;
   return {
-    dateTimeLine: `${dateStr} ${start} ~ ${end} `,
+    dateLine: dateStr,
+    timeLine: `${start} ~ ${end}`,
     durationLine: `총 ${durationHours}시간 이용`,
   };
 }
@@ -117,8 +137,11 @@ type CardItem = {
   thumbUrl: string;
   spaceTitle: string;
   vendorName: string;
-  dateTimeLine: string;
+  dateLine: string;
+  timeLine: string;
   durationLine: string;
+  paidAmount: number;
+  refundAmount: number | null;
   detailPath: string;
 };
 
@@ -160,7 +183,11 @@ function ReservationCard({
                   src={item.thumbUrl}
                   loading="lazy"
                 />
-              ) : null}
+              ) : (
+                <span className="my-res-card__thumb my-res-card__thumb--placeholder" aria-hidden>
+                  {(item.spaceTitle || item.vendorName || 'B').trim().charAt(0)}
+                </span>
+              )}
               <div className="my-res-card__text">
                 {item.spaceTitle ? (
                   <p className="my-res-card__space-title">{item.spaceTitle}</p>
@@ -184,13 +211,35 @@ function ReservationCard({
         <div className="my-res-card__bottom">
           <div className="my-res-card__details">
             <div className="my-res-card__detail-row" key={`${item.bookingId}-d0`}>
-              <span className="my-res-card__detail-label">일자/시간</span>
-              <span className="my-res-card__detail-value">{item.dateTimeLine}</span>
+              <span className="my-res-card__detail-label">일자</span>
+              <span className="my-res-card__detail-value">{item.dateLine}</span>
             </div>
             <div className="my-res-card__detail-row" key={`${item.bookingId}-d1`}>
               <span className="my-res-card__detail-label">예약시간</span>
-              <span className="my-res-card__detail-value">{item.durationLine}</span>
+              <span className="my-res-card__detail-value">
+                {item.timeLine} ({item.durationLine})
+              </span>
             </div>
+            <div className="my-res-card__detail-row" key={`${item.bookingId}-d2`}>
+              <span className="my-res-card__detail-label">결제금액</span>
+              {isCanceledStatus(item.status) || item.tab === 'canceled' ? (
+                <span className="my-res-card__detail-value my-res-card__price my-res-card__price--canceled">
+                  -{formatWon(item.paidAmount)}
+                </span>
+              ) : (
+                <span className="my-res-card__detail-value my-res-card__price">
+                  {formatWon(item.paidAmount)}
+                </span>
+              )}
+            </div>
+            {isCanceledStatus(item.status) || item.tab === 'canceled' ? (
+              <div className="my-res-card__detail-row" key={`${item.bookingId}-d3`}>
+                <span className="my-res-card__detail-label">환불금액</span>
+                <span className="my-res-card__detail-value my-res-card__refund">
+                  {item.refundAmount == null ? '환불 처리 중' : formatWon(item.refundAmount)}
+                </span>
+              </div>
+            ) : null}
           </div>
         </div>
       </Link>
@@ -199,18 +248,21 @@ function ReservationCard({
 }
 
 function toCardItem(booking: MyBookingItem, tab: MyReservationTab, reviewedBookingIds: Set<string>): CardItem {
-  const { dateTimeLine, durationLine } = formatDateRange(booking.date, booking.startTime, booking.endTime);
+  const { dateLine, timeLine, durationLine } = formatDateRange(booking.date, booking.startTime, booking.endTime);
   return {
     bookingId: booking.bookingId,
     studioId: booking.studioId,
     status: booking.status,
     tab,
     action: bookingAction(booking.status, tab, reviewedBookingIds.has(booking.bookingId)),
-    thumbUrl: '',
-    spaceTitle: '',
-    vendorName: booking.studioName,
-    dateTimeLine,
+    thumbUrl: booking.studioThumbnailUrl?.trim() ?? '',
+    spaceTitle: booking.roomName?.trim() || '예약한 합주실',
+    vendorName: booking.studioName?.trim() || '업체 정보',
+    dateLine,
+    timeLine,
     durationLine,
+    paidAmount: booking.paidAmount ?? booking.totalPriceWon,
+    refundAmount: booking.refundAmount ?? null,
     detailPath: `/reservation-detail?bookingId=${booking.bookingId}`,
   };
 }

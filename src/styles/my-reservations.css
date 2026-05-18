@@ -305,6 +305,16 @@
   flex-shrink: 0;
 }
 
+.my-res-card__thumb--placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #eef1f5;
+  color: var(--color-muted-strong);
+  font-size: 18px;
+  font-weight: 700;
+}
+
 .my-res-card__text {
   display: flex;
   flex-direction: column;
@@ -398,6 +408,21 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.my-res-card__price {
+  font-weight: 700;
+}
+
+.my-res-card__price--canceled {
+  color: var(--color-danger);
+  text-decoration: line-through;
+  text-decoration-thickness: 1.5px;
+}
+
+.my-res-card__refund {
+  font-weight: 700;
+  color: var(--color-danger);
 }
 
 @media (max-width: 640px) {

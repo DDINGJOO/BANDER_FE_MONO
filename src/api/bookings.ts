@@ -82,11 +82,18 @@ export type MyBookingItem = {
   bookingId: string;
   studioId: string;
   studioName: string;
+  roomId?: string | null;
+  roomName?: string | null;
+  studioThumbnailUrl?: string | null;
   date: string;
   startTime: string;
   endTime: string;
   status: string;
   totalPriceWon: number;
+  paidAmount?: number | null;
+  refundAmount?: number | null;
+  refundedAt?: string | null;
+  cancelledAt?: string | null;
   createdAt: string;
 };
 
