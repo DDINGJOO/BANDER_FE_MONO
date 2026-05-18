@@ -17,7 +17,7 @@ import {
 } from '../data/reservationCancelModal';
 import type { ReservationCancelNoticeRow } from '../components/reservations/ReservationCancelModal';
 import { type MyReservationTab } from '../data/myReservations';
-import { getMyBookings, getRefundEstimate, type MyBookingItem } from '../api/bookings';
+import { cancelBooking, getMyBookings, getRefundEstimate, type MyBookingItem } from '../api/bookings';
 
 const TAB_LABELS: Record<MyReservationTab, string> = {
   upcoming: '이용전',
@@ -32,20 +32,37 @@ const TAB_API_MAP: Record<MyReservationTab, string> = {
 };
 
 type BookingStatus = MyBookingItem['status'];
+type ReservationAction = 'cancel' | 'writeReview' | 'viewMyReview' | 'none';
 
-function statusPillLabel(status: BookingStatus) {
-  if (status === 'CONFIRMED') return '예약확정';
-  if (status === 'PENDING') return '예약대기';
-  if (status === 'COMPLETED') return '이용완료';
-  if (status === 'CANCELED_USER') return '예약취소';
-  return '업체예약취소';
+function isCanceledTabPending(status: BookingStatus, tab: MyReservationTab) {
+  return tab === 'canceled' && status === 'PENDING';
 }
 
-function statusPillClass(status: BookingStatus) {
-  if (status === 'CONFIRMED') return 'my-res-card__pill--confirmed';
-  if (status === 'CANCELED_USER' || status === 'CANCELED_VENDOR') {
+function statusPillLabel(status: BookingStatus, tab: MyReservationTab) {
+  if (isCanceledTabPending(status, tab)) return '환불 처리 중';
+  if (status === 'CONFIRMED' || status === 'PAID') return '예약확정';
+  if (status === 'PENDING_PAYMENT') return '결제대기';
+  if (status === 'PAYMENT_CONFIRMING') return '결제 확인 중';
+  if (status === 'PENDING' || status === 'PENDING_APPROVAL') return '예약대기';
+  if (status === 'COMPLETED') return '이용완료';
+  if (status === 'CANCEL_REQUESTED' || status === 'REFUND_REQUESTED') return '환불 처리 중';
+  if (status === 'CANCELED_USER' || status === 'CANCELLED' || status === 'REFUNDED') return '예약취소';
+  if (status === 'CANCELED_VENDOR' || status === 'REJECTED') return '업체예약취소';
+  return status || '예약상태 확인 중';
+}
+
+function statusPillClass(status: BookingStatus, tab: MyReservationTab) {
+  if (status === 'CONFIRMED' || status === 'PAID') return 'my-res-card__pill--confirmed';
+  if (
+    status === 'CANCELED_USER' ||
+    status === 'CANCELED_VENDOR' ||
+    status === 'CANCELLED' ||
+    status === 'REFUNDED' ||
+    status === 'REJECTED'
+  ) {
     return 'my-res-card__pill--canceled';
   }
+  if (isCanceledTabPending(status, tab)) return 'my-res-card__pill--muted';
   return 'my-res-card__pill--muted';
 }
 
@@ -65,13 +82,22 @@ function formatDateRange(date: string, startTime: string, endTime: string) {
   };
 }
 
-function bookingAction(status: BookingStatus): 'cancel' | 'writeReview' | 'viewMyReview' | 'none' {
-  if (status === 'CONFIRMED' || status === 'PENDING') return 'cancel';
+function bookingAction(status: BookingStatus, tab: MyReservationTab): ReservationAction {
+  if (isCanceledTabPending(status, tab)) return 'none';
+  if (
+    status === 'CONFIRMED' ||
+    status === 'PAID' ||
+    status === 'PENDING' ||
+    status === 'PENDING_PAYMENT' ||
+    status === 'PENDING_APPROVAL'
+  ) {
+    return 'cancel';
+  }
   if (status === 'COMPLETED') return 'writeReview';
   return 'none';
 }
 
-function actionButtonLabel(action: 'cancel' | 'writeReview' | 'viewMyReview' | 'none') {
+function actionButtonLabel(action: ReservationAction) {
   if (action === 'cancel') return '예약취소';
   if (action === 'writeReview') return '리뷰쓰기';
   if (action === 'viewMyReview') return '내가 쓴 리뷰보기';
@@ -81,7 +107,8 @@ function actionButtonLabel(action: 'cancel' | 'writeReview' | 'viewMyReview' | '
 type CardItem = {
   bookingId: string;
   status: BookingStatus;
-  action: 'cancel' | 'writeReview' | 'viewMyReview' | 'none';
+  tab: MyReservationTab;
+  action: ReservationAction;
   thumbUrl: string;
   spaceTitle: string;
   vendorName: string;
@@ -105,8 +132,8 @@ function ReservationCard({
         <Link className="my-res-card__block-link" to={item.detailPath}>
           <div className="my-res-card__meta-row">
             <div className="my-res-card__meta-left">
-              <span className={`my-res-card__pill ${statusPillClass(item.status)}`}>
-                {statusPillLabel(item.status)}
+              <span className={`my-res-card__pill ${statusPillClass(item.status, item.tab)}`}>
+                {statusPillLabel(item.status, item.tab)}
               </span>
             </div>
             <div className="my-res-card__meta-right">
@@ -166,12 +193,13 @@ function ReservationCard({
   );
 }
 
-function toCardItem(booking: MyBookingItem): CardItem {
+function toCardItem(booking: MyBookingItem, tab: MyReservationTab): CardItem {
   const { dateTimeLine, durationLine } = formatDateRange(booking.date, booking.startTime, booking.endTime);
   return {
     bookingId: booking.bookingId,
     status: booking.status,
-    action: bookingAction(booking.status),
+    tab,
+    action: bookingAction(booking.status, tab),
     thumbUrl: '',
     spaceTitle: '',
     vendorName: booking.studioName,
@@ -191,7 +219,8 @@ export function MyReservationsPage() {
   const [selectedCancelQuoteId, setSelectedCancelQuoteId] = useState<string | null>(null);
   const [reviewViewOpen, setReviewViewOpen] = useState(false);
   const [cancelModalOpen, setCancelModalOpen] = useState(false);
-  const [cancelToast, setCancelToast] = useState(false);
+  const [cancelToastMessage, setCancelToastMessage] = useState<string | null>(null);
+  const [isCancelling, setIsCancelling] = useState(false);
   const [cancelNoticeRows, setCancelNoticeRows] = useState<ReservationCancelNoticeRow[]>(RESERVATION_CANCEL_NOTICE_DEFAULT);
   const [cancelLeadLines, setCancelLeadLines] = useState<[string, string]>(RESERVATION_CANCEL_LEAD_LINES);
   const [headerSearchOpen, setHeaderSearchOpen] = useState(false);
@@ -225,7 +254,7 @@ export function MyReservationsPage() {
     setLoading(true);
     getMyBookings({ tab: TAB_API_MAP[tab], size: 20 })
       .then((page) => {
-        setBookings(page.items.map(toCardItem));
+        setBookings(page.items.map((booking) => toCardItem(booking, tab)));
       })
       .catch(() => {
         setBookings([]);
@@ -264,9 +293,9 @@ export function MyReservationsPage() {
 
       <div className="my-reservations-page__main">
         <div className="my-reservations">
-          {cancelToast ? (
+          {cancelToastMessage ? (
             <p className="my-reservations__flash" role="status">
-              환불이 완료되었습니다. 영업일 기준 3-5일 내 결제 수단으로 입금됩니다.
+              {cancelToastMessage}
             </p>
           ) : null}
           <header className="my-reservations__header">
@@ -335,16 +364,9 @@ export function MyReservationsPage() {
                           setCancelModalOpen(true);
                         })
                         .catch(() => {
-                          if (row.status === 'CONFIRMED') {
-                            window.alert('환불 정보를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.');
-                            setSelectedBookingId(null);
-                            setSelectedCancelQuoteId(null);
-                            return;
-                          }
+                          window.alert('취소/환불 정보를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.');
+                          setSelectedBookingId(null);
                           setSelectedCancelQuoteId(null);
-                          setCancelNoticeRows(RESERVATION_CANCEL_NOTICE_DEFAULT);
-                          setCancelLeadLines(RESERVATION_CANCEL_LEAD_LINES);
-                          setCancelModalOpen(true);
                         });
                     }
                   }}
@@ -369,34 +391,41 @@ export function MyReservationsPage() {
         leadLines={cancelLeadLines}
         noticeRows={cancelNoticeRows}
         onClose={() => {
+          if (isCancelling) {
+            return;
+          }
           setCancelModalOpen(false);
           setSelectedBookingId(null);
           setSelectedCancelQuoteId(null);
         }}
         onConfirm={() => {
-          // 이전엔 cancel API 응답 전에 toast 를 띄워 실제 실패해도 "취소 성공" 으로 보였음.
-          // 이제 API 성공 후에만 toast 띄움 + 실패 시 error alert.
-          if (selectedBookingId != null) {
-            const targetId = selectedBookingId;
-            import('../api/bookings').then(({ cancelBooking }) => {
-              cancelBooking(targetId, {
-                cancelReason: '고객 취소',
-                quoteId: selectedCancelQuoteId ?? undefined,
-              }).then(() => {
-                setBookings((prev) => prev.filter((b) => b.bookingId !== targetId));
-                setCancelToast(true);
-                window.setTimeout(() => setCancelToast(false), 6000);
-              }).catch((err) => {
-                const message = err instanceof Error && err.message
-                  ? err.message
-                  : '예약 취소에 실패했습니다. 잠시 후 다시 시도해주세요.';
-                window.alert(message);
-              });
-            });
+          if (selectedBookingId == null || isCancelling) {
+            return;
           }
-          setCancelModalOpen(false);
-          setSelectedBookingId(null);
-          setSelectedCancelQuoteId(null);
+          const targetId = selectedBookingId;
+          const quoteId = selectedCancelQuoteId;
+          setIsCancelling(true);
+          cancelBooking(targetId, {
+            cancelReason: '고객 취소',
+            quoteId: quoteId ?? undefined,
+          })
+            .then(() => {
+              setBookings((prev) => prev.filter((b) => b.bookingId !== targetId));
+              setCancelToastMessage('예약 취소가 완료되었습니다. 환불 대상 결제는 영업일 기준 3-5일 내 결제 수단으로 입금됩니다.');
+              window.setTimeout(() => setCancelToastMessage(null), 6000);
+            })
+            .catch((err) => {
+              const message = err instanceof Error && err.message
+                ? err.message
+                : '예약 취소에 실패했습니다. 잠시 후 다시 시도해주세요.';
+              window.alert(message);
+            })
+            .finally(() => {
+              setIsCancelling(false);
+              setCancelModalOpen(false);
+              setSelectedBookingId(null);
+              setSelectedCancelQuoteId(null);
+            });
         }}
         open={cancelModalOpen}
       />

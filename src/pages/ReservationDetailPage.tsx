@@ -128,15 +128,18 @@ function isBookerPhoneAnswer(answer: ReservationAnswerRequest) {
 
 /**
  * BookingDetail.status 는 booking-service 의 raw DB status (BookingStatus enum 10종) 일 수도,
- * read-service 의 view-status 5종 (PENDING/CONFIRMED/COMPLETED/CANCELED_USER/CANCELED_VENDOR) 일
+ * read-service 의 view-status (PENDING/CONFIRMED/COMPLETED/CANCELED_USER/CANCELED_VENDOR 등) 일
  * 수도 있다. ADR-002 (2026-05-12) 자동 환불 정책 정합성 확인:
- *   - REFUND_REQUESTED / CANCEL_REQUESTED → "처리 중" 의 PENDING 으로 표시
+ *   - REFUND_REQUESTED / CANCEL_REQUESTED → 환불 처리 중
  *   - CANCELLED / REFUNDED → 사용자 취소 계열
  *   - REJECTED → 점주(또는 시스템 자동) 취소 계열
  */
 function badgeForStatus(status: string) {
   if (status === 'PENDING' || status === 'PENDING_PAYMENT' || status === 'PENDING_APPROVAL') {
     return { className: 'res-detail__badge res-detail__badge--muted', text: '예약대기' };
+  }
+  if (status === 'PAYMENT_CONFIRMING') {
+    return { className: 'res-detail__badge res-detail__badge--muted', text: '결제 확인 중' };
   }
   if (status === 'CONFIRMED' || status === 'PAID') {
     return { className: 'res-detail__badge res-detail__badge--blue', text: '예약확정' };
@@ -455,15 +458,8 @@ export function ReservationDetailPage() {
                       setCancelModalOpen(true);
                     })
                     .catch(() => {
-                      if (detail.status === 'CONFIRMED') {
-                        window.alert('환불 정보를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.');
-                        setCancelQuoteId(null);
-                        return;
-                      }
+                      window.alert('취소/환불 정보를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.');
                       setCancelQuoteId(null);
-                      setCancelNoticeRows(RESERVATION_CANCEL_NOTICE_DEFAULT);
-                      setCancelLeadLines(RESERVATION_CANCEL_LEAD_LINES);
-                      setCancelModalOpen(true);
                     });
                 }}
               >
@@ -521,7 +517,7 @@ export function ReservationDetailPage() {
           })
             .then(() => {
               // ADR-002: 사용자 환불 자동화 — 점주 승인 단계 없이 즉시 환불 완료.
-              window.alert('환불이 완료되었습니다. 영업일 기준 3-5일 내 결제 수단으로 입금됩니다.');
+              window.alert('예약 취소가 완료되었습니다. 환불 대상 결제는 영업일 기준 3-5일 내 결제 수단으로 입금됩니다.');
               navigate('/my-reservations');
             })
             .catch((err) => {
