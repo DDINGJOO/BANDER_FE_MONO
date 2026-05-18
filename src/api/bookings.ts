@@ -1,4 +1,4 @@
-import { ApiError, getJson, postJson, requestJson } from './client';
+import { ApiError, getJson, postJson, requestJson, requestVoid } from './client';
 import { getApiBaseUrl } from '../config/publicEnv';
 
 // --- Types ---
@@ -108,6 +108,17 @@ export type CreateReviewRequest = {
   rating: number;
   content: string;
   imageRefs?: string[];
+};
+
+export type ReviewResponse = {
+  reviewId: string;
+  userId: string;
+  studioId: string;
+  bookingId: string | null;
+  rating: number;
+  content: string;
+  imageRefs: string[];
+  createdAt: string;
 };
 
 export type CursorPageResponse<T> = {
@@ -451,7 +462,7 @@ export function getSpaceAvailability(spaceId: number | string, date: string) {
 }
 
 export function createReview(req: CreateReviewRequest) {
-  return postJson<{ reviewId: string }>('/api/v1/reviews', req);
+  return postJson<ReviewResponse>('/api/v1/reviews', req);
 }
 
 export function getMyReviews(params: { cursor?: string; size?: number } = {}) {
@@ -459,5 +470,11 @@ export function getMyReviews(params: { cursor?: string; size?: number } = {}) {
   if (params.cursor) query.set('cursor', params.cursor);
   if (params.size != null) query.set('size', String(params.size));
   const qs = query.toString();
-  return getJson<CursorPageResponse<{ reviewId: string; bookingId: string; rating: number; content: string; createdAt: string }>>(`/api/v1/users/me/reviews${qs ? `?${qs}` : ''}`);
+  return getJson<CursorPageResponse<ReviewResponse>>(`/api/v1/users/me/reviews${qs ? `?${qs}` : ''}`);
+}
+
+export function deleteReview(reviewId: string) {
+  return requestVoid(`/api/v1/reviews/${encodeURIComponent(reviewId)}`, {
+    method: 'DELETE',
+  });
 }

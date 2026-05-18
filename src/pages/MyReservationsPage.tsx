@@ -263,7 +263,11 @@ export function MyReservationsPage() {
       getMyReviews({ size: 100 }).catch(() => ({ items: [] })),
     ])
       .then(([page, reviewsPage]) => {
-        const reviewedBookingIds = new Set(reviewsPage.items.map((review) => review.bookingId));
+        const reviewedBookingIds = new Set(
+          reviewsPage.items
+            .map((review) => review.bookingId)
+            .filter((bookingId): bookingId is string => Boolean(bookingId)),
+        );
         setBookings(page.items.map((booking) => toCardItem(booking, tab, reviewedBookingIds)));
       })
       .catch(() => {

@@ -119,6 +119,17 @@
   color: #6d7a87;
 }
 
+.my-reviews__state {
+  margin: 0 0 24px;
+  font-size: 15px;
+  line-height: 22px;
+  color: #6d7a87;
+}
+
+.my-reviews__state--error {
+  color: #e04f5f;
+}
+
 .my-review-card {
   display: flex;
   flex-direction: column;
@@ -284,6 +295,16 @@
   border-radius: 10px;
   object-fit: cover;
   flex-shrink: 0;
+}
+
+.my-review-card__space-thumb--placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #eef1f5;
+  color: #6d7a87;
+  font-size: 18px;
+  font-weight: 700;
 }
 
 .my-review-card__space-text {
