@@ -22,6 +22,7 @@ import {
 import {
   getBookingDetail,
   cancelBooking,
+  getMyReviews,
   getRefundEstimate,
   type BookingDetailResponse,
   type ReservationAnswerRequest,
@@ -196,6 +197,7 @@ export function ReservationDetailPage() {
   const [cancelQuoteId, setCancelQuoteId] = useState<string | null>(null);
   const [isCancelling, setIsCancelling] = useState(false);
   const [detail, setDetail] = useState<BookingDetailResponse | null>(null);
+  const [hasReview, setHasReview] = useState(false);
 
   const filteredSuggestions = HEADER_SEARCH_KEYWORD_SUGGESTIONS.filter((item) =>
     item.toLowerCase().includes(headerSearchQuery.toLowerCase()),
@@ -222,8 +224,14 @@ export function ReservationDetailPage() {
 
   useEffect(() => {
     if (!bookingId) return;
+    setHasReview(false);
     getBookingDetail(bookingId)
       .then(setDetail)
+      .catch(() => undefined);
+    getMyReviews({ size: 100 })
+      .then((page) => {
+        setHasReview(page.items.some((review) => review.bookingId === bookingId));
+      })
       .catch(() => undefined);
   }, [bookingId]);
 
@@ -253,9 +261,19 @@ export function ReservationDetailPage() {
   const endTime = `${String(endDate.getHours()).padStart(2, '0')}:${String(endDate.getMinutes()).padStart(2, '0')}`;
   const durationMs = endDate.getTime() - new Date(detail.startsAt).getTime();
   const durationHours = durationMs / (1000 * 60 * 60);
+  const paidAmount = detail.paidAmount ?? detail.totalPrice;
+  const couponDiscountAmount = detail.couponDiscountAmount ?? 0;
+  const refundAmount = detail.refundAmount ?? 0;
+  const selectedOptions = (detail.selectedOptions ?? [])
+    .filter((option) => option.quantity != null && option.quantity > 0)
+    .slice()
+    .sort((a, b) => a.sortOrder - b.sortOrder);
 
   const cta = action === 'review'
-    ? { className: 'res-detail__cta res-detail__cta--yellow', label: '리뷰쓰기' }
+    ? {
+        className: 'res-detail__cta res-detail__cta--yellow',
+        label: hasReview ? '내가 쓴 리뷰보기' : '리뷰쓰기',
+      }
     : action === 'cancel'
       ? { className: 'res-detail__cta res-detail__cta--muted', label: '예약취소' }
       : null;
@@ -405,6 +423,14 @@ export function ReservationDetailPage() {
                     <span className="res-detail__row-label">가격</span>
                     <span className="res-detail__row-value">{formatPrice(detail.totalPrice)}</span>
                   </div>
+                  {selectedOptions.map((option) => (
+                    <div className="res-detail__row" key={option.optionId}>
+                      <span className="res-detail__row-label">{option.name}</span>
+                      <span className="res-detail__row-value">
+                        {option.quantity}개 · {formatPrice(option.lineTotal ?? ((option.unitPrice ?? 0) * (option.quantity ?? 0)))}
+                      </span>
+                    </div>
+                  ))}
                 </div>
               </div>
             </section>
@@ -412,19 +438,46 @@ export function ReservationDetailPage() {
             <section>
               <div className="res-detail__pay-header">
                 <h2>결제 금액</h2>
-                <p className="res-detail__pay-total">{formatPrice(detail.totalPrice)}</p>
+                <p className="res-detail__pay-total">{formatPrice(paidAmount)}</p>
               </div>
               <div className="res-detail__subcard">
                 <div className="res-detail__pay-split">
                   <div className="res-detail__pay-split-bottom">
                     <div className="res-detail__row">
-                      <span className="res-detail__row-label">실 결제 금액</span>
+                      <span className="res-detail__row-label">예약 금액</span>
                       <span className="res-detail__row-value">{formatPrice(detail.totalPrice)}</span>
+                    </div>
+                    {couponDiscountAmount > 0 ? (
+                      <div className="res-detail__row">
+                        <span className="res-detail__row-label">쿠폰 할인</span>
+                        <span className="res-detail__row-value">-{formatPrice(couponDiscountAmount)}</span>
+                      </div>
+                    ) : null}
+                    <div className="res-detail__row">
+                      <span className="res-detail__row-label">실 결제 금액</span>
+                      <span className="res-detail__row-value">{formatPrice(paidAmount)}</span>
                     </div>
                     {detail.paymentMethod ? (
                       <div className="res-detail__row">
                         <span className="res-detail__row-label">결제 수단</span>
                         <span className="res-detail__row-value">{detail.paymentMethod}</span>
+                      </div>
+                    ) : null}
+                    {refundAmount > 0 ? (
+                      <div className="res-detail__row">
+                        <span className="res-detail__row-label">환불 금액</span>
+                        <span className="res-detail__row-value">{formatPrice(refundAmount)}</span>
+                      </div>
+                    ) : null}
+                    {detail.refundedAt ? (
+                      <div className="res-detail__row">
+                        <span className="res-detail__row-label">환불 일시</span>
+                        <span className="res-detail__row-value">{formatDateTime(detail.refundedAt)}</span>
+                      </div>
+                    ) : detail.cancelledAt ? (
+                      <div className="res-detail__row">
+                        <span className="res-detail__row-label">취소 일시</span>
+                        <span className="res-detail__row-value">{formatDateTime(detail.cancelledAt)}</span>
                       </div>
                     ) : null}
                   </div>
@@ -440,7 +493,15 @@ export function ReservationDetailPage() {
                 className={cta.className}
                 onClick={() => {
                   if (action === 'review') {
-                    navigate('/review/write');
+                    if (hasReview) {
+                      navigate('/my-reviews');
+                      return;
+                    }
+                    if (!detail.studioId) {
+                      window.alert('리뷰 작성에 필요한 예약 정보를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.');
+                      return;
+                    }
+                    navigate(`/review/write?bookingId=${encodeURIComponent(detail.bookingId)}&studioId=${encodeURIComponent(detail.studioId)}`);
                     return;
                   }
                   if (!bookingId) {

@@ -5,6 +5,8 @@ import { HomeHeader } from '../components/home/HomeHeader';
 import { ChevronIcon } from '../components/shared/Icons';
 import { HEADER_SEARCH_KEYWORD_SUGGESTIONS } from '../config/searchSuggestions';
 import { loadAuthSession } from '../data/authSession';
+import { createReview } from '../api/bookings';
+import { ApiError } from '../api/client';
 import {
   REVIEW_WRITE_DEMO_BODY,
   REVIEW_WRITE_DEMO_IMAGE_URLS,
@@ -54,6 +56,8 @@ export function ReviewWritePage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const demoFilled = searchParams.get('demo') === 'filled';
+  const bookingId = searchParams.get('bookingId');
+  const studioId = searchParams.get('studioId');
   const isAuthenticated = Boolean(loadAuthSession());
   const [headerSearchOpen, setHeaderSearchOpen] = useState(false);
   const [headerSearchQuery, setHeaderSearchQuery] = useState('');
@@ -64,6 +68,7 @@ export function ReviewWritePage() {
   const [hoverRating, setHoverRating] = useState(0);
   const [text, setText] = useState('');
   const [photos, setPhotos] = useState<PhotoItem[]>([]);
+  const [submitting, setSubmitting] = useState(false);
   const photoInputId = useId();
 
   const filteredSuggestions = HEADER_SEARCH_KEYWORD_SUGGESTIONS.filter((item) =>
@@ -116,7 +121,7 @@ export function ReviewWritePage() {
   const displayStars = hoverRating || rating;
   /** 확정 점수 기준 (Figma 6163:41948 · 호버로 문구가 바뀌지 않게) */
   const showSatisfiedLabel = rating >= 4;
-  const canSubmit = rating >= 1 && text.trim().length > 0;
+  const canSubmit = rating >= 1 && text.trim().length > 0 && !submitting;
 
   const onPickPhotos = (files: FileList | null) => {
     if (!files?.length) return;
@@ -140,9 +145,34 @@ export function ReviewWritePage() {
     });
   };
 
-  const onSubmit = () => {
+  const onSubmit = async () => {
     if (!canSubmit) return;
-    navigate('/my-reservations');
+    if (!bookingId || !studioId) {
+      window.alert('리뷰 작성에 필요한 예약 정보를 불러오지 못했습니다.');
+      return;
+    }
+    setSubmitting(true);
+    try {
+      await createReview({
+        studioId,
+        bookingId,
+        rating,
+        content: text.trim(),
+        imageRefs: [],
+      });
+      navigate('/my-reservations?tab=past');
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 409) {
+        window.alert('이미 작성한 리뷰가 있습니다.');
+        navigate('/my-reviews');
+        return;
+      }
+      window.alert(error instanceof Error && error.message
+        ? error.message
+        : '리뷰 등록에 실패했습니다. 잠시 후 다시 시도해주세요.');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -272,7 +302,7 @@ export function ReviewWritePage() {
               disabled={!canSubmit}
               onClick={onSubmit}
             >
-              완료
+              {submitting ? '등록 중' : '완료'}
             </button>
           </div>
         </div>

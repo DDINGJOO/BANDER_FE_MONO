@@ -5,7 +5,7 @@
 
 import type { ApiOffsetPageDto } from './common';
 
-export type MyReservationTabDto = 'upcoming' | 'past' | 'canceled';
+export type MyReservationTabDto = 'all' | 'upcoming' | 'past' | 'canceled';
 
 export type MyReservationStatusDto =
   | 'confirmed'

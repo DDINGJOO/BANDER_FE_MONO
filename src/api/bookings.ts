@@ -44,6 +44,7 @@ export type BookingCommandResponse = {
 
 export type BookingDetailResponse = {
   bookingId: string;
+  studioId?: string | null;
   roomId: string;
   roomName: string;
   studioName: string;
@@ -53,11 +54,26 @@ export type BookingDetailResponse = {
   startsAt: string;
   endsAt: string;
   totalPrice: number;
+  paidAmount?: number | null;
+  couponDiscountAmount?: number | null;
   paymentMethod: string | null;
   bookerName: string;
   bookerPhone: string;
   bookerNote: string | null;
   reservationAnswers?: ReservationAnswerRequest[];
+  selectedOptions?: Array<{
+    optionId: string;
+    name: string;
+    description?: string | null;
+    unitPrice?: number | null;
+    quantity?: number | null;
+    lineTotal?: number | null;
+    imageUrl?: string | null;
+    sortOrder: number;
+  }>;
+  refundAmount?: number | null;
+  refundedAt?: string | null;
+  cancelledAt?: string | null;
   cancelReason: string | null;
   createdAt: string;
 };
@@ -87,6 +103,7 @@ export type SpaceAvailabilityResponse = {
 };
 
 export type CreateReviewRequest = {
+  studioId: string;
   bookingId: string;
   rating: number;
   content: string;

@@ -1,10 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { HomeFooter } from '../components/home/HomeFooter';
 import { HomeHeader } from '../components/home/HomeHeader';
 import { ReservationCancelModal } from '../components/reservations/ReservationCancelModal';
-import { ReviewViewModal } from '../components/reviews/ReviewViewModal';
-import { REVIEW_VIEW_MODAL_DEFAULT } from '../data/reviewViewModal';
 import { ChevronIcon } from '../components/shared/Icons';
 import { HEADER_SEARCH_KEYWORD_SUGGESTIONS } from '../config/searchSuggestions';
 import { loadAuthSession } from '../data/authSession';
@@ -17,15 +15,17 @@ import {
 } from '../data/reservationCancelModal';
 import type { ReservationCancelNoticeRow } from '../components/reservations/ReservationCancelModal';
 import { type MyReservationTab } from '../data/myReservations';
-import { cancelBooking, getMyBookings, getRefundEstimate, type MyBookingItem } from '../api/bookings';
+import { cancelBooking, getMyBookings, getMyReviews, getRefundEstimate, type MyBookingItem } from '../api/bookings';
 
 const TAB_LABELS: Record<MyReservationTab, string> = {
+  all: '전체',
   upcoming: '이용전',
   past: '이용후',
   canceled: '취소',
 };
 
 const TAB_API_MAP: Record<MyReservationTab, string> = {
+  all: 'ALL',
   upcoming: 'UPCOMING',
   past: 'PAST',
   canceled: 'CANCELED',
@@ -82,7 +82,7 @@ function formatDateRange(date: string, startTime: string, endTime: string) {
   };
 }
 
-function bookingAction(status: BookingStatus, tab: MyReservationTab): ReservationAction {
+function bookingAction(status: BookingStatus, tab: MyReservationTab, reviewed: boolean): ReservationAction {
   if (isCanceledTabPending(status, tab)) return 'none';
   if (
     status === 'CONFIRMED' ||
@@ -93,7 +93,7 @@ function bookingAction(status: BookingStatus, tab: MyReservationTab): Reservatio
   ) {
     return 'cancel';
   }
-  if (status === 'COMPLETED') return 'writeReview';
+  if (status === 'COMPLETED') return reviewed ? 'viewMyReview' : 'writeReview';
   return 'none';
 }
 
@@ -104,8 +104,13 @@ function actionButtonLabel(action: ReservationAction) {
   return '';
 }
 
+function parseTabParam(value: string | null): MyReservationTab {
+  return value === 'all' || value === 'past' || value === 'canceled' ? value : 'upcoming';
+}
+
 type CardItem = {
   bookingId: string;
+  studioId: string;
   status: BookingStatus;
   tab: MyReservationTab;
   action: ReservationAction;
@@ -193,13 +198,14 @@ function ReservationCard({
   );
 }
 
-function toCardItem(booking: MyBookingItem, tab: MyReservationTab): CardItem {
+function toCardItem(booking: MyBookingItem, tab: MyReservationTab, reviewedBookingIds: Set<string>): CardItem {
   const { dateTimeLine, durationLine } = formatDateRange(booking.date, booking.startTime, booking.endTime);
   return {
     bookingId: booking.bookingId,
+    studioId: booking.studioId,
     status: booking.status,
     tab,
-    action: bookingAction(booking.status, tab),
+    action: bookingAction(booking.status, tab, reviewedBookingIds.has(booking.bookingId)),
     thumbUrl: '',
     spaceTitle: '',
     vendorName: booking.studioName,
@@ -211,13 +217,13 @@ function toCardItem(booking: MyBookingItem, tab: MyReservationTab): CardItem {
 
 export function MyReservationsPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const isAuthenticated = Boolean(loadAuthSession());
-  const [tab, setTab] = useState<MyReservationTab>('upcoming');
+  const [tab, setTab] = useState<MyReservationTab>(() => parseTabParam(searchParams.get('tab')));
   const [bookings, setBookings] = useState<CardItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedBookingId, setSelectedBookingId] = useState<string | null>(null);
   const [selectedCancelQuoteId, setSelectedCancelQuoteId] = useState<string | null>(null);
-  const [reviewViewOpen, setReviewViewOpen] = useState(false);
   const [cancelModalOpen, setCancelModalOpen] = useState(false);
   const [cancelToastMessage, setCancelToastMessage] = useState<string | null>(null);
   const [isCancelling, setIsCancelling] = useState(false);
@@ -252,9 +258,13 @@ export function MyReservationsPage() {
 
   useEffect(() => {
     setLoading(true);
-    getMyBookings({ tab: TAB_API_MAP[tab], size: 20 })
-      .then((page) => {
-        setBookings(page.items.map((booking) => toCardItem(booking, tab)));
+    Promise.all([
+      getMyBookings({ tab: TAB_API_MAP[tab], size: 20 }),
+      getMyReviews({ size: 100 }).catch(() => ({ items: [] })),
+    ])
+      .then(([page, reviewsPage]) => {
+        const reviewedBookingIds = new Set(reviewsPage.items.map((review) => review.bookingId));
+        setBookings(page.items.map((booking) => toCardItem(booking, tab, reviewedBookingIds)));
       })
       .catch(() => {
         setBookings([]);
@@ -345,10 +355,10 @@ export function MyReservationsPage() {
                   item={item}
                   onAction={(row) => {
                     if (row.action === 'writeReview') {
-                      navigate('/review/write');
+                      navigate(`/review/write?bookingId=${encodeURIComponent(row.bookingId)}&studioId=${encodeURIComponent(row.studioId)}`);
                     }
                     if (row.action === 'viewMyReview') {
-                      setReviewViewOpen(true);
+                      navigate('/my-reviews');
                     }
                     if (row.action === 'cancel') {
                       setSelectedBookingId(row.bookingId);
@@ -378,12 +388,6 @@ export function MyReservationsPage() {
       </div>
 
       <HomeFooter />
-
-      <ReviewViewModal
-        content={REVIEW_VIEW_MODAL_DEFAULT}
-        open={reviewViewOpen}
-        onClose={() => setReviewViewOpen(false)}
-      />
 
       <ReservationCancelModal
         alertText={RESERVATION_CANCEL_ALERT_DEFAULT}
